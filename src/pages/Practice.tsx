@@ -33,6 +33,17 @@ export function Practice() {
   const q = list[pos];
   const statuses: [StatusFilter, typeof T.all][] = [["all", T.all], ["unanswered", T.unanswered], ["incorrect", T.incorrectF], ["mastered", T.masteredF]];
 
+  if (CONTENT.questions.length === 0) {
+    return (
+      <div>
+        <header className="page-head"><h1><Bi t={T.practiceAll} /></h1></header>
+        <section className="card stack" data-testid="practice-in-review">
+          <p className="notice"><Bi t={T.contentInReview} /></p>
+          <p className="small muted"><Bi t={T.notOfficial} /></p>
+        </section>
+      </div>
+    );
+  }
   return (
     <div>
       <header className="page-head"><h1><Bi t={T.practiceAll} /></h1></header>

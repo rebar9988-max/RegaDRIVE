@@ -5,7 +5,7 @@ Each step below needs an explicit decision by the owner. None of them is done by
 ## 1. Connect the domain www.regaplatform.com
 1. In Cloudflare, confirm that `regaplatform.com` is a zone in the RegaDRIVE owner's account. Also confirm it serves no other application that would be replaced.
 2. Create a Cloudflare API token limited to *Workers Scripts: Edit* on that account (not a Rega24/R&L token). Store it as the GitHub secret `CLOUDFLARE_API_TOKEN`, and the account ID as `CLOUDFLARE_ACCOUNT_ID`.
-3. Add to `wrangler.jsonc`: `"routes": [{ "pattern": "www.regaplatform.com", "custom_domain": true }]`. Set the GitHub repository variable `REGAPLATFORM_DOMAIN_VERIFIED=true`.
+3. Add to `wrangler.jsonc`: `"routes": [{ "pattern": "www.regaplatform.com", "custom_domain": true }]`. (Done in the repository. Cloudflare only attaches the domain if the zone `regaplatform.com` is in the token's account.)
 4. Content approval is required before the first deploy. The production build publishes only content that passed human review (see `docs/CONTENT_REVIEW.md`), and preflight blocks deployment with fewer than 30 approved questions.
 5. Run *Actions → Deploy to Cloudflare (manual)* on `main` with the confirmation `DEPLOY-REGADRIVE`. The workflow:
    - runs the full CI on the exact commit, then `preflight --stage=deploy` with every gate fatal;
