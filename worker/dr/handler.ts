@@ -208,7 +208,7 @@ export async function handleDr(req: Request, env: DrEnv, deps: DrDeps = {}): Pro
       await audit(actor, "code.verify", "denied", { reason: "rate limited" });
       return reply({ error: "RATE_LIMITED" }, 429);
     }
-    let body: { code?: unknown } = {};
+    let body: { code?: unknown };
     try { body = await req.json(); } catch { return reply({ error: "BAD_REQUEST" }, 400); }
     const code = typeof body.code === "string" ? body.code.replace(/\s/g, "") : "";
     const id = readCookie(req, CHALLENGE_COOKIE);
@@ -310,7 +310,7 @@ export async function handleDr(req: Request, env: DrEnv, deps: DrDeps = {}): Pro
   }
 
   if (path === "/api/dr/features" && req.method === "POST") {
-    let body: { key?: unknown; state?: unknown } = {};
+    let body: { key?: unknown; state?: unknown };
     try { body = await req.json(); } catch { return reply({ error: "BAD_REQUEST" }, 400); }
     const def = typeof body.key === "string" ? featureByKey(body.key) : undefined;
     const state = body.state === "ON" || body.state === "OFF" || body.state === "LOCKED" ? body.state : null;
@@ -345,13 +345,13 @@ export async function handleDr(req: Request, env: DrEnv, deps: DrDeps = {}): Pro
   }
 
   if (path === "/api/dr/backups/restore" && req.method === "POST") {
-    let body: { id?: unknown } = {};
+    let body: { id?: unknown };
     try { body = await req.json(); } catch { return reply({ error: "BAD_REQUEST" }, 400); }
     if (typeof body.id !== "string") return reply({ error: "BAD_REQUEST" }, 400);
     if (!steppedUp) return needStepUp("backup.restore");
     const row = await db.prepare("SELECT snapshot FROM dr_backups WHERE id = ?").bind(body.id).first<{ snapshot: string }>();
     if (!row) return reply({ error: "NOT_FOUND" }, 404);
-    let items: { key: string; state: FeatureState }[] = [];
+    let items: { key: string; state: FeatureState }[];
     try { items = JSON.parse(row.snapshot); } catch { return reply({ error: "CORRUPT_BACKUP" }, 422); }
     const valid = items.filter((i) => featureByKey(i.key)?.controllable && ["ON", "OFF", "LOCKED"].includes(i.state));
     const safety = await snapshot(`before restore of ${body.id}`);

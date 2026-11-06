@@ -170,11 +170,12 @@ const Note = ({ children }: { children: ReactNode }) => <div className="dr-msg n
 
 function AuditTable() {
   const [rows, setRows] = useState<AuditEntry[] | null>(null);
-  const load = useCallback(async () => {
-    const r = await api("/api/dr/audit?limit=150");
-    setRows(r.status === 200 ? (r.body.entries as AuditEntry[]) : []);
+  const load = useCallback(() => api("/api/dr/audit?limit=150").then((r) => setRows(r.status === 200 ? (r.body.entries as AuditEntry[]) : [])), []);
+  useEffect(() => {
+    let live = true;
+    api("/api/dr/audit?limit=150").then((r) => { if (live) setRows(r.status === 200 ? (r.body.entries as AuditEntry[]) : []); });
+    return () => { live = false; };
   }, []);
-  useEffect(() => { void load(); }, [load]);
   if (!rows) return <p aria-busy="true">…</p>;
   return (
     <div className="dr-scroll">
@@ -214,20 +215,20 @@ export function DrAdmin() {
     return () => { meta.remove(); };
   }, []);
 
-  const checkSession = useCallback(async () => {
-    const r = await api("/api/dr/session");
-    if (r.status !== 200) { setAuth({ checked: true, ok: false, to: "", error: errText(r) }); return; }
-    setAuth({ checked: true, ok: r.body.authenticated === true, to: String(r.body.to ?? r.body.email ?? "") });
+  const applySession = useCallback((r: ApiResult) => {
+    if (r.status !== 200) setAuth({ checked: true, ok: false, to: "", error: errText(r) });
+    else setAuth({ checked: true, ok: r.body.authenticated === true, to: String(r.body.to ?? r.body.email ?? "") });
   }, []);
-  const load = useCallback(async () => {
-    const r = await api("/api/dr/overview");
-    if (r.status === 401) { setAuth((a) => ({ ...a, ok: false })); setData(null); return; }
-    if (r.status === 200) setData(r.body as unknown as Overview);
+  const applyOverview = useCallback((r: ApiResult) => {
+    if (r.status === 401) { setAuth((a) => ({ ...a, ok: false })); setData(null); }
+    else if (r.status === 200) setData(r.body as unknown as Overview);
     else setFlash({ kind: "err", text: errText(r) });
   }, []);
-  useEffect(() => { void checkSession(); }, [checkSession]);
-  useEffect(() => { if (auth.ok) void load(); }, [auth.ok, load]);
-  useEffect(() => { if (section === "health") void api("/api/health").then((r) => setHealth(r.body)); }, [section]);
+  const checkSession = useCallback(() => api("/api/dr/session").then(applySession), [applySession]);
+  const load = useCallback(() => api("/api/dr/overview").then(applyOverview), [applyOverview]);
+  useEffect(() => { api("/api/dr/session").then(applySession); }, [applySession]);
+  useEffect(() => { if (auth.ok) api("/api/dr/overview").then(applyOverview); }, [auth.ok, applyOverview]);
+  useEffect(() => { if (section === "health") api("/api/health").then((r) => setHealth(r.body)); }, [section]);
 
   // Runs a mutating request; asks for a fresh e-mail code when the server requires step-up, then retries once.
   const mutate = useCallback(async (path: string, body: unknown, okText: string) => {
