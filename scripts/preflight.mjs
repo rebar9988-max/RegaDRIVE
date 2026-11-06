@@ -30,7 +30,10 @@ if (stage === "deploy") {
 for (const k of ["PAYMENTS_ENABLED", "CHECKOUT_ENABLED", "LIVE_PAYMENT_WEBHOOKS_ENABLED", "PURCHASE_REQUIRED", "DATABASE_PRODUCTION_ENABLED",
   "OFFICIAL_QUESTION_BANK_ENABLED", "CONTENT_ADMIN_ENABLED", "CONTENT_IMPORT_EXECUTION_ENABLED", "PUBLIC_OFFICIAL_MOCK_EXAMS_ENABLED", "CONTENT_AUTO_SYNC_ENABLED", "SUBSCRIPTIONS_ENABLED"]) gate(v[k] === "false", `${k}=false`);
 gate(!Object.keys(v).some((k) => k.startsWith("OWNER_")), "no owner activation present in config");
-gate(!cfg.d1_databases || cfg.d1_databases.length === 0, "no D1 binding (production DB off)");
+// The only allowed D1 binding is the owner-approved (2026-11-07) RegaDRIVE database for the /dr control center.
+const d1 = cfg.d1_databases ?? [];
+gate(d1.length === 0 || (d1.length === 1 && d1[0].binding === "DB" && d1[0].database_name === "regadrive-db" && d1[0].database_id === "bd9f0f57-3b67-49ab-9597-f8ce9b305c88"), "D1: only the RegaDRIVE /dr database regadrive-db (student data stays off)");
+gate(/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(v.DR_OWNER_EMAIL ?? "") && v.DR_OWNER_EMAIL === "regaplatform1@gmail.com", "/dr sign-in codes go only to the owner-chosen address");
 gate(!cfg.r2_buckets && !cfg.kv_namespaces && !cfg.durable_objects && !cfg.queues, "no billable storage bindings");
 
 // 3. AI cannot incur charges

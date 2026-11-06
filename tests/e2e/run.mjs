@@ -269,6 +269,27 @@ try {
     await ctx.close();
   });
 
+  await test("/dr owner control center: sign-in page, fail-closed API, accessible on iPhone", async () => {
+    const s = await (await fetch(`${BASE}/api/dr/session`)).json();
+    assert.equal(s.authenticated, false);
+    assert.match(s.to, /^re•+@gmail\.com$/, "only the masked owner address is shown");
+    assert.equal((await fetch(`${BASE}/api/dr/overview`)).status, 401, "no data without a session");
+    assert.equal((await fetch(`${BASE}/api/dr/auth/request`, { method: "POST" })).status, 403, "mutations need the x-dr-request header");
+    assert.equal((await fetch(`${BASE}/api/dr/features`, { method: "POST", headers: { "x-dr-request": "1" }, body: JSON.stringify({ key: "payments", state: "ON" }) })).status, 401);
+    const ctx = await browser.newContext({ ...devices["iPhone 13"], bypassCSP: true });
+    const page = await ctx.newPage();
+    const errors = [];
+    page.on("pageerror", (e) => errors.push(e.message));
+    await page.goto(`${BASE}/dr`);
+    await page.getByRole("button", { name: "ناردنی کۆدی چوونەژوورەوە" }).waitFor();
+    assert.equal(await page.locator(".tabbar").count(), 0, "student navigation is not shown on /dr");
+    assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth), false, "no horizontal overflow");
+    await axe(page, "/dr");
+    await page.screenshot({ path: `${OUT}/dr-login-iphone.png`, fullPage: true });
+    assert.deepEqual(errors, []);
+    await ctx.close();
+  });
+
   await test("offline: app shell and practice work after first visit (service worker)", async () => {
     const ctx = await browser.newContext({ viewport: { width: 390, height: 844 } });
     const page = await ctx.newPage();

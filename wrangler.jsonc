@@ -14,8 +14,11 @@
   },
   // Workers AI (free daily allocation). Used only when AI is enabled and the gateway's free-only guard passes.
   "ai": { "binding": "AI" },
-  // Production database is OFF. No D1 binding is declared on purpose (DATABASE_PRODUCTION_ENABLED=false).
-  // Migrations in ./migrations are tested locally only.
+  // D1 `regadrive-db` (owner-approved 2026-11-07) is used ONLY by the /dr owner control center (dr_* tables,
+  // migrations/0003_dr_admin.sql). Student data stays OFF (DATABASE_PRODUCTION_ENABLED=false).
+  "d1_databases": [
+    { "binding": "DB", "database_name": "regadrive-db", "database_id": "bd9f0f57-3b67-49ab-9597-f8ce9b305c88", "migrations_dir": "migrations" }
+  ],
   "vars": {
     "APP_ENV": "production",
     "CONTENT_MODE": "production",
@@ -38,7 +41,10 @@
     "AI_MAX_RETRIES_PER_PROVIDER": "1",
     "AI_DAILY_COST_LIMIT_EUR": "0",
     "AI_DOMAIN_SCOPE": "regadrive",
-    "LIFETIME_PRICE_EUR": "20"
+    "LIFETIME_PRICE_EUR": "20",
+    // /dr: the only address that can receive a sign-in code (owner decision 2026-11-07), and the verified sender.
+    "DR_OWNER_EMAIL": "regaplatform1@gmail.com",
+    "DR_MAIL_FROM": "RegaDRIVE <security@regaplatform.com>"
   },
   "observability": { "enabled": true }
 }
