@@ -23,7 +23,7 @@ function swVersion(): Plugin {
       const mode = process.env.VITE_CONTENT_MODE === "preview" ? "preview" : "production";
       const c = contentFor(mode);
       writeFileSync("dist/build-info.json", JSON.stringify({
-        buildId: id, contentMode: mode, rulesVersion: KLASSE_B_RULES_2026.version,
+        buildId: id, contentMode: mode, adminUi: process.env.VITE_ADMIN_UI === "true", rulesVersion: KLASSE_B_RULES_2026.version,
         visible: { questions: c.questions.length, lessons: c.lessons.length, signs: c.signs.length, vocabulary: c.vocabulary.length },
       }, null, 2));
     },

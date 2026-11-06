@@ -8,6 +8,7 @@ RegaDRIVE is a modern Kurdish Sorani and German driving-theory learning app for 
 - **Web app:** React 19 + TypeScript (strict) + Vite, installable PWA, offline-first (IndexedDB + versioned service worker).
 - **Runtime:** one isolated Cloudflare Worker (`regadrive`) serving static assets and a small fail-closed API (`worker/`).
 - **Database:** Cloudflare D1 schema in `migrations/`, **tested locally only**. There is no D1 binding, so the production database is OFF.
+- **Official content import (prepared, OFF):** owner-only import (JSON/CSV, images, videos, Sorani editing, preview, duplicate and version detection) in `docs/import/`. Nothing is imported or published automatically.
 - **Content:** a fail-closed publication pipeline (`docs/CONTENT_REVIEW.md`). Production shows human-approved items only.
 - **AI:** free-only gateway with a cost guard before every request (`worker/ai/gateway.ts`) for Gemini, Groq, OpenRouter (`:free` models only) and Workers AI. No paid fallback. It is restricted to explaining reviewed RegaDRIVE content.
 

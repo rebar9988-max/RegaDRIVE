@@ -23,4 +23,11 @@ describe("feature flags fail closed", () => {
     expect(readFlags({ AI_ENABLED: "TRUE" }).aiEnabled).toBe(false);
     expect(readFlags({ AI_ENABLED: "true" }).aiEnabled).toBe(true);
   });
+  it("content, import, official-bank, sync and subscription features are off and cannot be enabled by config alone", () => {
+    const f = readFlags({ OFFICIAL_QUESTION_BANK_ENABLED: "true", CONTENT_IMPORT_EXECUTION_ENABLED: "true", PUBLIC_OFFICIAL_MOCK_EXAMS_ENABLED: "true", CONTENT_AUTO_SYNC_ENABLED: "true", SUBSCRIPTIONS_ENABLED: "true", DATABASE_PRODUCTION_ENABLED: "true", CONTENT_ADMIN_ENABLED: "true" });
+    expect(f).toMatchObject({ officialQuestionBankEnabled: false, contentImportExecutionEnabled: false, publicOfficialMockExamsEnabled: false, contentAutoSyncEnabled: false, subscriptionsEnabled: false, contentAdminEnabled: true });
+    const owner = readFlags({ OWNER_DATABASE_ACTIVATION: "I-APPROVE-LIVE-ACTIVATION", DATABASE_PRODUCTION_ENABLED: "true", CONTENT_ADMIN_ENABLED: "true", CONTENT_IMPORT_EXECUTION_ENABLED: "true" });
+    expect(owner.contentImportExecutionEnabled).toBe(true);
+    expect(readFlags({}).contentAdminEnabled).toBe(false);
+  });
 });

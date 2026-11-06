@@ -37,3 +37,12 @@ Prerequisites: a reviewed privacy policy, retention and deletion rules, and a wo
 ## 4. Payments (€20 lifetime)
 Prerequisites: a working database (step 3), a chosen provider, sandbox testing, legal review (German consumer and withdrawal rights) and a security sign-off. On iOS and Android, also check the app-store digital-purchase rules.
 Activation: implement the provider adapter, set `PAYMENT_WEBHOOK_SECRET`, `OWNER_PAYMENTS_ACTIVATION=I-APPROVE-LIVE-ACTIVATION`, `PAYMENTS_ENABLED=true`, and then `CHECKOUT_ENABLED` / `LIVE_PAYMENT_WEBHOOKS_ENABLED`. `PURCHASE_REQUIRED` only takes effect when payments **and** the database are active.
+
+## 5. Official question bank (licensed content). All of this is OFF.
+Flags (all `false` and enforced in `src/lib/shared/flags.ts`): `OFFICIAL_QUESTION_BANK_ENABLED`, `CONTENT_ADMIN_ENABLED`, `CONTENT_IMPORT_EXECUTION_ENABLED`, `PUBLIC_OFFICIAL_MOCK_EXAMS_ENABLED`, `CONTENT_AUTO_SYNC_ENABLED` (never honoured) and `SUBSCRIPTIONS_ENABLED` (never honoured).
+1. Obtain a written licence for the official catalogue, images and videos. Register it as a `content_licenses` record.
+2. Prepare files from `docs/import/` and preview them locally in a `VITE_ADMIN_UI=true` build at `/admin/import`.
+3. Admin API (dry run): `wrangler secret put ADMIN_OWNER_TOKEN_SHA256`, using the SHA-256 hex of a random token of at least 32 characters. Optionally set `ADMIN_ACCESS_EMAIL` behind a Cloudflare Access application. Then set `CONTENT_ADMIN_ENABLED=true`.
+4. Import execution needs step 3 of this document (production D1, owner activation) plus `CONTENT_IMPORT_EXECUTION_ENABLED=true`. Media storage needs a RegaDRIVE-only R2 bucket; check the free-tier limits first.
+5. Showing official content needs `OWNER_OFFICIAL_CONTENT_ACTIVATION=I-APPROVE-LIVE-ACTIVATION` and `OFFICIAL_QUESTION_BANK_ENABLED=true`. Public official mock exams additionally need `PUBLIC_OFFICIAL_MOCK_EXAMS_ENABLED=true`. Every item still needs an owner APPROVED review; the database enforces this.
+6. Update `scripts/preflight.mjs`, which currently fails while any of these flags is true, in the same reviewed PR.

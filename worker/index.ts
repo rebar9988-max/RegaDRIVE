@@ -8,8 +8,10 @@ import { AiGateway, SYSTEM_PROMPT, type AiEnv } from "./ai/gateway";
 import { questionById } from "../src/content/questions";
 import { isQuestionVisible } from "../src/content/access";
 import { RateLimiter } from "./lib/rateLimit";
+import { handleAdmin } from "./lib/admin";
+import type { AdminEnv } from "./lib/adminAuth";
 
-export interface Env extends FlagEnv, AiEnv {
+export interface Env extends FlagEnv, AiEnv, AdminEnv {
   /** "preview" only for local/CI; production shows and explains approved content only. */
   CONTENT_MODE?: string;
   ASSETS: { fetch(req: Request): Promise<Response> };
@@ -44,6 +46,9 @@ export async function handleApi(req: Request, env: Env, now = Date.now()): Promi
       purchaseRequired: flags.purchaseRequired, databaseProductionEnabled: flags.databaseProductionEnabled,
       licenseEnforcementEnabled: flags.licenseEnforcementEnabled, aiEnabled: flags.aiEnabled, aiFreeOnly: flags.aiFreeOnly,
       aiPaidFallbackEnabled: flags.aiPaidFallbackEnabled, lifetimePriceEur: flags.lifetimePriceEur,
+      officialQuestionBankEnabled: flags.officialQuestionBankEnabled, contentAdminEnabled: flags.contentAdminEnabled,
+      contentImportExecutionEnabled: flags.contentImportExecutionEnabled, publicOfficialMockExamsEnabled: flags.publicOfficialMockExamsEnabled,
+      contentAutoSyncEnabled: flags.contentAutoSyncEnabled, subscriptionsEnabled: flags.subscriptionsEnabled,
     });
   }
 
@@ -51,6 +56,11 @@ export async function handleApi(req: Request, env: Env, now = Date.now()): Promi
   if (req.method !== "GET" && req.method !== "HEAD") {
     const origin = req.headers.get("origin");
     if (p !== "/api/payments/webhook" && origin !== null && origin !== url.origin) return json({ error: "FORBIDDEN_ORIGIN" }, 403);
+  }
+
+  if (p.startsWith("/api/admin/")) {
+    // Owner-only; never cached; preview/validation only while the database is off.
+    return handleAdmin(req, env, flags, json);
   }
 
   if (p.startsWith("/api/auth/") || p.startsWith("/api/me")) {

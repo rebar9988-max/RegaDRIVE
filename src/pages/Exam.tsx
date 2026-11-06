@@ -5,7 +5,8 @@ import { Bi } from "../components/Bi";
 import { QuestionCard } from "../components/QuestionCard";
 import { CONTENT } from "../app/content";
 import { buildMockExam } from "../lib/mockExam";
-import { KLASSE_B_RULES_2026, isAnswerCorrect, scoreExam, type ExamResult } from "../lib/shared/exam";
+import { KLASSE_B_RULES_2026, scoreExam, type ExamResult } from "../lib/shared/exam";
+import { isQuestionAnswerCorrect } from "../lib/answers";
 import { recordAnswer } from "../lib/progress";
 
 export function Exam() {
@@ -23,7 +24,7 @@ export function Exam() {
   const start = () => { setSeed(Date.now() >>> 0); setAnswers({}); setPos(0); setResult(null); };
   const submit = () => {
     if (result) return;
-    const scored = questions.map((q) => ({ questionId: q.id, points: q.points ?? 0, correct: isAnswerCorrect(answers[q.id] ?? [], q.correct) }));
+    const scored = questions.map((q) => ({ questionId: q.id, points: q.points ?? 0, correct: isQuestionAnswerCorrect(q, answers[q.id] ?? []) }));
     const r = scoreExam(scored, rules);
     setResult(r);
     update((p) => {
@@ -50,7 +51,7 @@ export function Exam() {
   }
 
   if (result) {
-    const wrong = questions.filter((q) => !isAnswerCorrect(answers[q.id] ?? [], q.correct));
+    const wrong = questions.filter((q) => !isQuestionAnswerCorrect(q, answers[q.id] ?? []));
     return (
       <div data-testid="exam-result">
         <header className="page-head"><h1><Bi t={result.passed ? T.passed : T.failed} /></h1></header>

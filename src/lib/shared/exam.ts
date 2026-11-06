@@ -69,3 +69,10 @@ export function isAnswerCorrect(selected: readonly string[], correct: readonly s
   if (s.size !== selected.length) return false;
   return correct.every((c) => s.has(c));
 }
+
+/** Number questions: exact match after normalising German decimal commas and whitespace. */
+export function isNumericAnswerCorrect(input: string, expected: number): boolean {
+  const t = input.trim().replace(/\s+/g, "").replace(",", ".");
+  if (!/^-?\d+(\.\d+)?$/.test(t)) return false;
+  return Math.abs(Number(t) - expected) < 1e-9;
+}

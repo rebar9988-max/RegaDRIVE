@@ -1,0 +1,186 @@
+import { useState } from "react";
+import { Bi, useBiText } from "../components/Bi";
+import { TOPICS } from "../content/topics";
+import { checkMedia } from "../lib/shared/media";
+import { csvToImport, jsonToImport, validateImport, type ImportPreview, type ImportQuestion, type MediaManifestEntry } from "../lib/shared/importer";
+
+/**
+ * Owner-only import workbench (compiled only into builds with VITE_ADMIN_UI=true).
+ * Everything runs locally in the browser: no upload, no database write, no publication.
+ */
+const t = {
+  title: { ckb: "هاوردەکردنی ناوەڕۆک (تەنها خاوەن)", de: "Inhaltsimport (nur Inhaber)" },
+  local: { ckb: "هەموو پشکنینەکان لە وێبگەڕەکەتدا دەکرێن. هیچ شتێک نانێردرێت و هیچ شتێک بڵاو ناکرێتەوە.", de: "Alle Prüfungen laufen lokal im Browser. Nichts wird hochgeladen oder veröffentlicht." },
+  licences: { ckb: "ناسنامەی مۆڵەتە تۆمارکراوەکان", de: "Registrierte Lizenz-IDs" },
+  file: { ckb: "فایلی پرسیارەکان (JSON یان CSV)", de: "Fragendatei (JSON oder CSV)" },
+  media: { ckb: "وێنە و ڤیدیۆکان", de: "Bilder und Videos" },
+  validate: { ckb: "پشکنین و پێشبینین", de: "Prüfen und Vorschau" },
+  export: { ckb: "هەناردەکردنی JSON ـی ڕاستکراوە", de: "Korrigiertes JSON exportieren" },
+  commit: { ckb: "هاوردەکردن بۆ داتابەیس (ناچالاک)", de: "In Datenbank importieren (deaktiviert)" },
+  commitWhy: { ckb: "داتابەیسی بەرهەمهێنان کوژاوەیە. هاوردەکردن تەنها دوای ڕەزامەندی خاوەن چالاک دەبێت.", de: "Die Produktionsdatenbank ist ausgeschaltet. Der Import wird erst nach Freigabe durch den Inhaber aktiviert." },
+  manual: { ckb: "زیادکردنی دەستی", de: "Manuelle Eingabe" },
+  add: { ckb: "زیادکردن", de: "Hinzufügen" },
+};
+
+const emptyManual = () => ({ questionCode: "", catalogueVersion: "", licenseId: "", categoryType: "Grundstoff", points: "4", topicId: "priority", answerType: "choice", promptDe: "", promptCkb: "", a: "", aCkb: "", b: "", bCkb: "", c: "", cCkb: "", correct: "a", numeric: "", explDe: "", explCkb: "" });
+
+export function AdminImport() {
+  const label = useBiText();
+  const [rows, setRows] = useState<ImportQuestion[]>([]);
+  const [parseError, setParseError] = useState<string | null>(null);
+  const [licences, setLicences] = useState("");
+  const [media, setMedia] = useState<Map<string, MediaManifestEntry>>(new Map());
+  const [mediaErrors, setMediaErrors] = useState<string[]>([]);
+  const [preview, setPreview] = useState<ImportPreview | null>(null);
+  const [manual, setManual] = useState(emptyManual);
+
+  const loadFile = async (f: File | undefined) => {
+    if (!f) return;
+    setPreview(null);
+    try {
+      const text = await f.text();
+      setRows(f.name.toLowerCase().endsWith(".csv") ? csvToImport(text) : jsonToImport(text));
+      setParseError(null);
+    } catch (e) { setRows([]); setParseError((e as Error).message); }
+  };
+
+  const loadMedia = async (files: FileList | null) => {
+    const next = new Map<string, MediaManifestEntry>();
+    const errs: string[] = [];
+    for (const f of Array.from(files ?? [])) {
+      const r = await checkMedia(f.name, new Uint8Array(await f.arrayBuffer()));
+      if (r.ok && r.result) next.set(f.name, { file: f.name, kind: r.result.kind, key: r.result.key, bytes: r.result.bytes, mime: r.result.mime });
+      else errs.push(`${f.name}: ${r.errors.join("; ")}`);
+    }
+    setMedia(next); setMediaErrors(errs); setPreview(null);
+  };
+
+  const validate = async () => setPreview(await validateImport(rows, {
+    knownTopics: new Set(TOPICS.map((x) => x.id)),
+    knownLicenses: new Set(licences.split(/[\s,;]+/).filter(Boolean)),
+    existing: new Map(),
+    media,
+  }));
+
+  const editCkb = (i: number, path: "prompt" | "explanation" | `option:${string}`, value: string) => {
+    setRows((rs) => rs.map((r, idx) => {
+      if (idx !== i) return r;
+      if (path === "prompt") return { ...r, prompt: { ...r.prompt, ckb: value || undefined } };
+      if (path === "explanation") return { ...r, explanation: { ...r.explanation, ckb: value || undefined } };
+      const id = path.slice(7);
+      return { ...r, options: (r.options ?? []).map((o) => (o.id === id ? { ...o, ckb: value || undefined } : o)) };
+    }));
+    setPreview(null);
+  };
+
+  const addManual = () => {
+    const m = manual;
+    const opts = (["a", "b", "c"] as const).filter((k) => m[k].trim()).map((k) => ({ id: k, de: m[k], ckb: m[`${k}Ckb` as "aCkb"] || undefined }));
+    setRows((rs) => [...rs, {
+      questionCode: m.questionCode || null, catalogueVersion: m.catalogueVersion || null, sourceType: "licensed_official", licenseId: m.licenseId || null,
+      categoryType: m.categoryType as ImportQuestion["categoryType"], points: Number(m.points), licenseClasses: ["B"], topicId: m.topicId,
+      answerType: m.answerType as ImportQuestion["answerType"], prompt: { de: m.promptDe, ckb: m.promptCkb || undefined },
+      options: m.answerType === "choice" ? opts : undefined, correct: m.answerType === "choice" ? m.correct.split(/[;,\s]+/).filter(Boolean) : undefined,
+      numericAnswer: m.answerType === "number" ? Number(m.numeric.replace(",", ".")) : undefined,
+      explanation: { de: m.explDe || undefined, ckb: m.explCkb || undefined }, media: [],
+    }]);
+    setManual(emptyManual()); setPreview(null);
+  };
+
+  const exportJson = () => {
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(new Blob([JSON.stringify({ questions: rows }, null, 2)], { type: "application/json" }));
+    a.download = "regadrive-import.json"; a.click(); URL.revokeObjectURL(a.href);
+  };
+
+  const field = (k: keyof ReturnType<typeof emptyManual>, l: string, opts?: { dir?: "rtl" | "ltr"; area?: boolean }) => (
+    <label className="stack" style={{ gap: 4 }}>
+      <span className="small muted">{l}</span>
+      {opts?.area
+        ? <textarea className="input" style={{ minHeight: 72, paddingBlock: 8 }} dir={opts.dir ?? "ltr"} value={manual[k]} onChange={(e) => setManual({ ...manual, [k]: e.target.value })} />
+        : <input className="input" dir={opts?.dir ?? "ltr"} value={manual[k]} onChange={(e) => setManual({ ...manual, [k]: e.target.value })} />}
+    </label>
+  );
+
+  return (
+    <div data-testid="admin-import">
+      <header className="page-head"><h1><Bi t={t.title} /></h1><p className="notice small"><Bi t={t.local} /></p></header>
+
+      <section className="card stack">
+        <label className="stack" style={{ gap: 4 }}><span className="small muted">{label(t.licences)}</span>
+          <input className="input" dir="ltr" value={licences} onChange={(e) => { setLicences(e.target.value); setPreview(null); }} data-testid="licences" /></label>
+        <label className="stack" style={{ gap: 4 }}><span className="small muted">{label(t.file)}</span>
+          <input type="file" accept=".json,.csv,application/json,text/csv" onChange={(e) => loadFile(e.target.files?.[0])} data-testid="question-file" /></label>
+        {parseError && <p className="feedback bad" role="alert">{parseError}</p>}
+        <label className="stack" style={{ gap: 4 }}><span className="small muted">{label(t.media)}</span>
+          <input type="file" multiple accept="image/png,image/jpeg,image/webp,video/mp4,video/webm" onChange={(e) => loadMedia(e.target.files)} data-testid="media-files" /></label>
+        {media.size > 0 && <p className="small muted" dir="ltr">{[...media.values()].map((m) => `${m.file} → ${m.key.slice(0, 18)}…`).join(" · ")}</p>}
+        {mediaErrors.map((m) => <p key={m} className="feedback bad small" role="alert">{m}</p>)}
+        <p className="small muted" dir="ltr" data-testid="row-count">{rows.length} rows</p>
+        <div className="q-actions">
+          <button type="button" className="btn btn-primary" disabled={rows.length === 0} onClick={validate} data-testid="validate"><Bi t={t.validate} /></button>
+          <button type="button" className="btn btn-secondary" disabled={rows.length === 0} onClick={exportJson}><Bi t={t.export} /></button>
+        </div>
+      </section>
+
+      <details className="card section">
+        <summary className="section-title" style={{ cursor: "pointer", minHeight: 44, display: "flex", alignItems: "center" }}><Bi t={t.manual} inline /></summary>
+        <div className="grid grid-2" style={{ marginTop: 12 }}>
+          {field("questionCode", "questionCode")}{field("catalogueVersion", "catalogueVersion (YYYY-MM-DD)")}{field("licenseId", "licenseId")}
+          <label className="stack" style={{ gap: 4 }}><span className="small muted">categoryType</span>
+            <select className="input" value={manual.categoryType} onChange={(e) => setManual({ ...manual, categoryType: e.target.value })}><option>Grundstoff</option><option>Zusatzstoff</option></select></label>
+          <label className="stack" style={{ gap: 4 }}><span className="small muted">points</span>
+            <select className="input" value={manual.points} onChange={(e) => setManual({ ...manual, points: e.target.value })}>{[2, 3, 4, 5].map((p) => <option key={p}>{p}</option>)}</select></label>
+          <label className="stack" style={{ gap: 4 }}><span className="small muted">topicId</span>
+            <select className="input" value={manual.topicId} onChange={(e) => setManual({ ...manual, topicId: e.target.value })}>{TOPICS.map((x) => <option key={x.id} value={x.id}>{x.id}</option>)}</select></label>
+          <label className="stack" style={{ gap: 4 }}><span className="small muted">answerType</span>
+            <select className="input" value={manual.answerType} onChange={(e) => setManual({ ...manual, answerType: e.target.value })}><option value="choice">choice</option><option value="number">number</option></select></label>
+          {field("promptDe", "prompt (DE, original)", { area: true })}{field("promptCkb", "prompt (CKB)", { area: true, dir: "rtl" })}
+          {manual.answerType === "choice" ? <>
+            {field("a", "option a (DE)")}{field("aCkb", "option a (CKB)", { dir: "rtl" })}{field("b", "option b (DE)")}{field("bCkb", "option b (CKB)", { dir: "rtl" })}
+            {field("c", "option c (DE)")}{field("cCkb", "option c (CKB)", { dir: "rtl" })}{field("correct", "correct (e.g. a;c)")}
+          </> : field("numeric", "numericAnswer")}
+          {field("explDe", "explanation (DE)", { area: true })}{field("explCkb", "explanation (CKB)", { area: true, dir: "rtl" })}
+        </div>
+        <div className="q-actions"><button type="button" className="btn btn-secondary" onClick={addManual}><Bi t={t.add} /></button></div>
+      </details>
+
+      {preview && (
+        <section className="section stack" data-testid="preview">
+          {preview.fatal && <p className="feedback bad" role="alert">{preview.fatal}</p>}
+          <div className="chip-row" dir="ltr" data-testid="summary">
+            {(["new", "update", "duplicate", "invalid"] as const).map((k) => <span key={k} className="badge">{k}: {preview.summary[k]}</span>)}
+            <span className="badge badge-outline">warnings: {preview.summary.warnings}</span>
+          </div>
+          {preview.rows.map((r) => (
+            <article key={r.index} className="card stack" data-testid="preview-row" data-status={r.status}>
+              <div className="row" dir="ltr"><span className="badge">{r.status}</span><strong>#{r.index + 1}</strong><span className="muted">{r.code ?? "—"}</span>
+                {r.question && <span className="badge badge-outline">draft · hidden</span>}</div>
+              {r.errors.map((e, i) => <p key={`e${i}`} className="small" dir="ltr" style={{ color: "var(--danger-ink)" }}>✕ {e.field}: {e.message}</p>)}
+              {r.warnings.map((w, i) => <p key={`w${i}`} className="small muted" dir="ltr">⚠ {w.field}: {w.message}</p>)}
+              {r.question && (
+                <div className="stack">
+                  <p dir="ltr" lang="de">{r.question.prompt.de}</p>
+                  <textarea className="input" dir="rtl" lang="ckb" style={{ minHeight: 64, paddingBlock: 8 }} aria-label="prompt CKB"
+                    defaultValue={rows[r.index]?.prompt.ckb ?? ""} onBlur={(e) => editCkb(r.index, "prompt", e.target.value)} data-testid="edit-prompt-ckb" />
+                  {(rows[r.index]?.options ?? []).map((o) => (
+                    <div key={o.id} className="grid grid-2">
+                      <span dir="ltr" lang="de">{o.id}) {o.de}{(rows[r.index]?.correct ?? []).includes(o.id) ? " ✓" : ""}</span>
+                      <input className="input" dir="rtl" lang="ckb" aria-label={`option ${o.id} CKB`} defaultValue={o.ckb ?? ""} onBlur={(e) => editCkb(r.index, `option:${o.id}`, e.target.value)} />
+                    </div>
+                  ))}
+                  <textarea className="input" dir="rtl" lang="ckb" style={{ minHeight: 64, paddingBlock: 8 }} aria-label="explanation CKB"
+                    defaultValue={rows[r.index]?.explanation?.ckb ?? ""} onBlur={(e) => editCkb(r.index, "explanation", e.target.value)} />
+                </div>
+              )}
+            </article>
+          ))}
+          <div className="card stack">
+            <button type="button" className="btn btn-primary" disabled aria-disabled="true" data-testid="commit"><Bi t={t.commit} /></button>
+            <p className="small muted"><Bi t={t.commitWhy} /></p>
+          </div>
+        </section>
+      )}
+    </div>
+  );
+}

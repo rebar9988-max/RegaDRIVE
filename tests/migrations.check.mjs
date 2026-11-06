@@ -32,6 +32,39 @@ db.exec(`INSERT INTO purchase_orders VALUES ('o1','u1','mock','ref1',2000,'EUR',
 throws(`INSERT INTO student_entitlements VALUES ('u1','LIFETIME',NULL,${now})`, "entitlement state domain");
 throws(`DELETE FROM users WHERE id='u1'`, "orders keep users (RESTRICT)");
 db.exec(`DELETE FROM users WHERE id='u2'`);
+
+// ── 0002: licensed content import ────────────────────────────────────────
+for (const t of ["content_reviews","question_translations","media_assets","question_media","question_versions","import_batches","import_errors"]) {
+  assert.ok(db.prepare("SELECT 1 FROM sqlite_master WHERE type='table' AND name=?").get(t), `missing table ${t}`);
+}
+db.exec(`INSERT INTO content_licenses VALUES ('LIC-FIXTURE','Fixture Licensor','test only',${now},NULL,'fixture')`);
+const insOff = (id, code, pub = "hidden") => `INSERT INTO questions (id,topic_id,question_code,points,category_type,license_classes,source_type,license_id,content_version,review_status,publication_status,prompt_ckb,prompt_de,explanation_ckb,explanation_de,catalogue_version,content_hash) VALUES ('${id}','speed','${code}',4,'Grundstoff','["B"]','licensed_official','LIC-FIXTURE','v','draft','${pub}','','Platzhalter','','','2026-01-01','h1')`;
+throws(insOff("o0", "0.0.00-000", "published"), "imports can never insert published content");
+db.exec(insOff("o1", "0.0.00-001"));
+throws(`UPDATE questions SET prompt_de='geändert' WHERE id='o1'`, "licensed wording immutable");
+throws(`UPDATE questions SET points=5 WHERE id='o1'`, "licensed points immutable");
+db.exec(`UPDATE questions SET prompt_ckb='کوردی' WHERE id='o1'`); // translations remain editable
+db.exec(`INSERT INTO answer_options VALUES ('o1','a',0,'','A',1)`);
+throws(`UPDATE answer_options SET text_de='B' WHERE question_id='o1'`, "licensed options immutable");
+throws(`UPDATE questions SET publication_status='published' WHERE id='o1'`, "no publication without approval");
+throws(`INSERT INTO content_reviews VALUES ('r0','o1','question','EDUCATIONAL_REVIEW','bot','automated','pass','x',NULL,${now})`, "human stage cannot be automated");
+db.exec(`INSERT INTO content_reviews VALUES ('r1','o1','question','APPROVED','Owner','content_owner','pass','evidence/1','other-hash',${now})`);
+db.exec(`UPDATE questions SET stage='APPROVED' WHERE id='o1'`);
+throws(`UPDATE questions SET publication_status='published' WHERE id='o1'`, "approval must match the exact content hash");
+db.exec(`INSERT INTO content_reviews VALUES ('r2','o1','question','APPROVED','Owner','content_owner','pass','evidence/2','h1',${now})`);
+db.exec(`UPDATE questions SET publication_status='published' WHERE id='o1'`); // allowed only now
+throws(`INSERT INTO questions (id,topic_id,points,category_type,license_classes,source_type,content_version,review_status,prompt_ckb,prompt_de,explanation_ckb,explanation_de,answer_type) VALUES ('n1','speed',3,'Grundstoff','["B"]','original','v','draft','p','p','e','e','number')`, "number question needs numeric_answer");
+db.exec(`INSERT INTO media_assets VALUES ('m1','image','media/${"a".repeat(64)}.webp','${"a".repeat(64)}','image/webp',1000,NULL,NULL,NULL,'LIC-FIXTURE','owner',${now})`);
+throws(`INSERT INTO media_assets VALUES ('m2','image','media/${"b".repeat(64)}.svg','${"b".repeat(64)}','image/svg+xml',10,NULL,NULL,NULL,NULL,'owner',${now})`, "svg rejected");
+throws(`INSERT INTO media_assets VALUES ('m3','image','media/${"a".repeat(64)}.webp','${"a".repeat(64)}','image/webp',1000,NULL,NULL,NULL,NULL,'owner',${now})`, "duplicate media rejected");
+db.exec(`INSERT INTO question_media VALUES ('o1','m1','stimulus',0,'Bild',NULL)`);
+throws(`DELETE FROM media_assets WHERE id='m1'`, "media in use cannot be deleted");
+db.exec(`INSERT INTO import_batches (id,format,uploaded_by,status,rows_total,rows_invalid,created_at) VALUES ('b1','json','owner','validated',2,1,${now})`);
+throws(`UPDATE import_batches SET status='committed' WHERE id='b1'`, "batch with invalid rows cannot be committed");
+db.exec(`INSERT INTO question_versions VALUES ('o1',1,'h1','2026-01-01','{}','b1','owner',${now})`);
+throws(`INSERT INTO question_versions VALUES ('o1',2,'h1','2026-01-01','{}','b1','owner',${now})`, "same content twice is a duplicate version");
+db.exec(`INSERT INTO question_translations VALUES ('o1','prompt','ckb','کوردی','draft','t',${now})`);
+throws(`INSERT INTO question_translations VALUES ('o1','prompt','fa','x','draft','t',${now})`, "only Sorani translations");
 const ic = db.prepare("PRAGMA integrity_check").get();
 assert.equal(Object.values(ic)[0], "ok");
 assert.equal(db.prepare("PRAGMA foreign_key_check").all().length, 0);

@@ -7,7 +7,7 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
-    "build:preview": "tsc -b && VITE_CONTENT_MODE=preview vite build",
+    "build:preview": "tsc -b && VITE_CONTENT_MODE=preview VITE_ADMIN_UI=true vite build",
     "typecheck": "tsc -b --noEmit",
     "lint": "eslint .",
     "test": "vitest run",

@@ -2,7 +2,8 @@ import { useId, useState } from "react";
 import type { Question } from "../content/types";
 import { signById } from "../content/signs";
 import { topicById } from "../content/topics";
-import { isAnswerCorrect } from "../lib/shared/exam";
+import { isQuestionAnswerCorrect } from "../lib/answers";
+import { QuestionMedia } from "./QuestionMedia";
 import { recordAnswer, toggleBookmark } from "../lib/progress";
 import { useApp } from "../app/state";
 import { T } from "../app/strings";
@@ -31,7 +32,8 @@ export function QuestionCard({ question: q, mode, sessionId, index, total, selec
   const legendId = useId();
   const sign = q.signId ? signById(q.signId) : undefined;
   const topic = topicById(q.topicId);
-  const correct = isAnswerCorrect(selected, q.correct);
+  const correct = isQuestionAnswerCorrect(q, selected);
+  const isNumber = q.answerType === "number";
   const reveal = mode === "practice" && checked;
   const bookmarked = progress.bookmarks.includes(q.id);
 
@@ -40,11 +42,16 @@ export function QuestionCard({ question: q, mode, sessionId, index, total, selec
     const next = selected.includes(id) ? selected.filter((s) => s !== id) : [...selected, id];
     if (controlled) onSelect?.(next); else setLocal(next);
   };
+  const setNumber = (v: string) => {
+    if (reveal) return;
+    const next = v.trim() === "" ? [] : [v];
+    if (controlled) onSelect?.(next); else setLocal(next);
+  };
 
   const check = () => {
     if (checked || selected.length === 0) return;
     setChecked(true);
-    update((p) => recordAnswer(p, sessionId, q.id, isAnswerCorrect(selected, q.correct), Date.now()));
+    update((p) => recordAnswer(p, sessionId, q.id, isQuestionAnswerCorrect(q, selected), Date.now()));
   };
 
   return (
@@ -61,11 +68,19 @@ export function QuestionCard({ question: q, mode, sessionId, index, total, selec
       </div>
 
       {sign && <SignIcon sign={sign} className="q-sign" label={`${label(sign.name)} (${sign.stvoNumber})`} />}
+      {q.media?.map((m) => <QuestionMedia key={m.key} media={m} />)}
 
       <fieldset className="options" aria-describedby={`${legendId}-hint`}>
         <legend id={legendId} className="q-prompt"><Bi t={q.prompt} /></legend>
-        <p id={`${legendId}-hint`} className="muted small" style={{ marginTop: -8, marginBottom: 4 }}><Bi t={T.multipleHint} inline /></p>
-        {q.options.map((o) => {
+        <p id={`${legendId}-hint`} className="muted small" style={{ marginTop: -8, marginBottom: 4 }}><Bi t={isNumber ? T.numberHint : T.multipleHint} inline /></p>
+        {isNumber && (
+          <label className={`option${reveal ? (correct ? " is-correct" : " is-wrong") : ""}`} style={{ gridTemplateColumns: "1fr" }}>
+            <span className="sr-only">{label(T.numberHint)}</span>
+            <input className="input" type="text" inputMode="decimal" autoComplete="off" dir="ltr" value={selected[0] ?? ""}
+              disabled={reveal} onChange={(e) => setNumber(e.target.value)} data-testid="number-answer" style={{ width: "100%", height: 48, margin: 0 }} />
+          </label>
+        )}
+        {!isNumber && q.options.map((o) => {
           const isSel = selected.includes(o.id);
           const isRight = q.correct.includes(o.id);
           const cls = ["option", isSel && "is-selected", reveal && isRight && "is-correct", reveal && isSel && !isRight && "is-wrong", reveal && "is-disabled"].filter(Boolean).join(" ");
@@ -81,6 +96,7 @@ export function QuestionCard({ question: q, mode, sessionId, index, total, selec
       {reveal && (
         <div className={`feedback ${correct ? "ok" : "bad"}`} role="status" data-testid="feedback">
           <div className="feedback-title"><Bi t={correct ? T.correct : T.incorrect} inline /></div>
+          {isNumber && !correct && q.numericAnswer !== undefined && <p className="num-block"><Bi t={T.correctAnswers} inline />: <span className="num">{String(q.numericAnswer).replace(".", ",")}</span></p>}
           <Bi t={q.explanation} />
           <AiExplain questionId={q.id} />
         </div>

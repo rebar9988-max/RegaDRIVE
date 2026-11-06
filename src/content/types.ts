@@ -18,13 +18,31 @@ export interface QuestionMetadata {
 
 export interface AnswerOption { id: string; text: Bilingual }
 
+/** "choice": tick one or more options. "number": type a numeric answer (official catalogue has these too). */
+export type AnswerType = "choice" | "number";
+export type MediaKind = "image" | "video";
+export interface MediaRef {
+  kind: MediaKind;
+  /** Content-addressed storage key, e.g. "media/<sha256>.webp". Served from /media/<key> once storage is activated. */
+  key: string;
+  alt: Bilingual;
+  /** Still image shown before a video plays. */
+  posterKey?: string;
+}
+
 export interface Question extends QuestionMetadata {
   id: string;
   topicId: string;
   prompt: Bilingual;
   options: AnswerOption[];
-  /** Option ids that are correct. More than one may be correct. */
+  /** Option ids that are correct. More than one may be correct. Empty for number questions. */
   correct: string[];
+  answerType?: AnswerType;
+  numericAnswer?: number;
+  media?: MediaRef[];
+  /** Official catalogue release the licensed wording belongs to. */
+  catalogueVersion?: string | null;
+  licenseId?: string | null;
   explanation: Bilingual;
   vocabularyIds: string[];
   signId?: string;

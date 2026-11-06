@@ -261,3 +261,5 @@ button, input, select { font: inherit; color: inherit; }
 .num { direction: ltr; unicode-bidi: isolate; }
 [dir="rtl"] .stat-value, [dir="rtl"] .num-block { text-align: right; }
 .btn svg, .chip svg { width: 20px; height: 20px; flex: none; }
+.q-media { margin: 0 0 var(--s4); aspect-ratio: 16 / 9; width: 100%; border-radius: var(--radius-sm); overflow: hidden; background: var(--pearl); border: 1px solid var(--border); }
+.q-media img, .q-media video { width: 100%; height: 100%; object-fit: contain; display: block; }
