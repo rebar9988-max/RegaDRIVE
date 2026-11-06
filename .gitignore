@@ -1,0 +1,10 @@
+node_modules
+dist
+.wrangler
+.wrangler-dry
+.dev.vars
+*.local
+test-results
+playwright-report
+node_modules/.tmp
+.wrangler-e2e.json

@@ -1,0 +1,35 @@
+{
+  // RegaDRIVE — isolated Worker. Shares NO resources with Rega24 or R&L.
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "regadrive",
+  "main": "worker/index.ts",
+  "compatibility_date": "2026-11-01",
+  "assets": {
+    "directory": "./dist",
+    "binding": "ASSETS",
+    "not_found_handling": "single-page-application",
+    "run_worker_first": ["/api/*"]
+  },
+  // Workers AI (free daily allocation). Used only when AI is enabled and the gateway's free-only guard passes.
+  "ai": { "binding": "AI" },
+  // Production database is OFF. No D1 binding is declared on purpose (DATABASE_PRODUCTION_ENABLED=false).
+  // Migrations in ./migrations are tested locally only.
+  "vars": {
+    "APP_ENV": "production",
+    "PAYMENTS_ENABLED": "false",
+    "CHECKOUT_ENABLED": "false",
+    "LIVE_PAYMENT_WEBHOOKS_ENABLED": "false",
+    "PURCHASE_REQUIRED": "false",
+    "DATABASE_PRODUCTION_ENABLED": "false",
+    "LICENSE_ENFORCEMENT_ENABLED": "false",
+    "AI_ENABLED": "true",
+    "AI_FREE_ONLY": "true",
+    "AI_PAID_FALLBACK_ENABLED": "false",
+    "AI_PROVIDER_ORDER": "gemini,groq,openrouter,workers-ai",
+    "AI_MAX_RETRIES_PER_PROVIDER": "1",
+    "AI_DAILY_COST_LIMIT_EUR": "0",
+    "AI_DOMAIN_SCOPE": "regadrive",
+    "LIFETIME_PRICE_EUR": "20"
+  },
+  "observability": { "enabled": true }
+}
