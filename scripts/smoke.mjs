@@ -2,13 +2,21 @@
 // Usage: node scripts/smoke.mjs https://www.regaplatform.com   [--allow-http for local runs]
 import assert from "node:assert/strict";
 import { chromium, devices } from "playwright";
+import { mkdirSync } from "node:fs";
 import { retry, isNetworkError } from "./lib/retry.mjs";
+
+mkdirSync("test-results", { recursive: true });
+/** Scripts the hosting platform injects into HTML (e.g. Cloudflare Web Analytics / challenge scripts). Our strict
+ *  CSP blocks them by design; they are reported as warnings, never hidden, and never count as app errors. */
+const PLATFORM_INJECTED = /static\.cloudflareinsights\.com|\/cdn-cgi\//;
+const warnings = [];
 
 const base = (process.argv[2] ?? "https://www.regaplatform.com").replace(/\/$/, "");
 const allowHttp = process.argv.includes("--allow-http");
 const results = [];
 const check = async (name, fn) => {
-  try { await fn(); results.push([name, "PASS"]); } catch (e) { results.push([name, `FAIL: ${e.message.split("\n")[0]}`]); }
+  try { await fn(); results.push([name, "PASS"]); }
+  catch (e) { results.push([name, `FAIL: ${String(e.message).replace(/\s+/g, " ").slice(0, 600)}`]); }
 };
 const get = (p, init) => retry(() => fetch(base + p, { ...init, signal: AbortSignal.timeout(15000) }), { attempts: 3, isRecoverable: isNetworkError });
 
@@ -51,13 +59,23 @@ try {
       const ctx = await browser.newContext(opts);
       const page = await ctx.newPage();
       const errors = [];
-      page.on("pageerror", (e) => errors.push(e.message));
-      page.on("console", (m) => { if (m.type() === "error") errors.push(m.text()); });
+      page.on("pageerror", (e) => errors.push(`pageerror: ${e.message}`));
+      page.on("console", (m) => {
+        if (m.type() !== "error") return;
+        const text = `${m.text()} @ ${m.location()?.url ?? ""}`;
+        (PLATFORM_INJECTED.test(text) ? warnings : errors).push(`[${name}] console: ${text}`);
+      });
+      page.on("requestfailed", (r) => {
+        const text = `${r.url()} (${r.failure()?.errorText ?? "failed"})`;
+        (PLATFORM_INJECTED.test(r.url()) ? warnings : errors).push(`[${name}] request failed: ${text}`);
+      });
       await page.goto(base);
       await page.waitForSelector("[data-testid=home]", { timeout: 20000 });
       assert.equal(await page.getAttribute("html", "dir"), "rtl");
       assert.equal(await page.getAttribute("html", "lang"), "ckb");
-      assert.ok(await page.$eval(".hero-logo", (i) => i.complete && i.naturalWidth > 0), "official logo");
+      // Wait for the logo to finish downloading over the real network (an instant check races the download).
+      await page.waitForFunction(() => { const i = document.querySelector(".hero-logo"); return !!i && i.complete && i.naturalWidth > 0; }, null, { timeout: 15000 })
+        .catch(() => { throw new Error("official logo did not load within 15 s"); });
       assert.equal(await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth), 0, "no horizontal overflow");
       assert.equal(await page.locator("[data-testid=preview-banner]").count(), 0, "no preview banner in production");
       await page.goto(`${base}/practice`);
@@ -68,12 +86,13 @@ try {
       await page.click("[data-testid=mode-de]");
       assert.equal(await page.getAttribute("html", "dir"), "ltr", "German LTR");
       await page.screenshot({ path: `test-results/smoke-${name}.png`, fullPage: true }).catch(() => {});
-      assert.deepEqual(errors, []);
+      assert.deepEqual(errors, [], `runtime errors: ${errors.join(" | ")}`);
       await ctx.close();
     });
   }
 } finally { await browser.close(); }
 
+for (const w of warnings) console.log(`WARN ${w}`);
 for (const [n, r] of results) console.log(`${r.startsWith("PASS") ? "PASS" : "FAIL"} ${n}${r.startsWith("PASS") ? "" : ` — ${r.slice(6)}`}`);
 const failed = results.filter(([, r]) => !r.startsWith("PASS")).length;
 console.log(`\nSMOKE ${failed ? "FAILED" : "PASSED"}: ${results.length - failed}/${results.length}`);
