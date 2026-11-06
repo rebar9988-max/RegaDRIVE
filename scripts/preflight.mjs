@@ -45,14 +45,15 @@ gate(info?.contentMode === "production", "build is a production content build (n
 gate(v.CONTENT_MODE === "production", "Worker CONTENT_MODE=production");
 gate(info?.adminUi === false && !(existsSync("dist/assets") && readdirSync("dist/assets").some((f) => f.startsWith("AdminImport"))), "owner import UI is not in the production bundle");
 gate(info?.rulesVersion === KLASSE_B, `build uses current exam rules ${KLASSE_B}`);
-deployGate((info?.visible?.questions ?? 0) >= 30 && (info?.visible?.lessons ?? 0) >= 1,
-  `approved content available (visible questions ${info?.visible?.questions ?? 0}/30 min, lessons ${info?.visible?.lessons ?? 0}) — needs human TRANSLATION_REVIEW + EDUCATIONAL_REVIEW`);
+// Owner decision (2026-11-06): the public app may go live while content is still in review. The production
+// build shows approved items only (currently none) with "under review" states; this is reported, not blocking.
+pass(`approved content visible in production: questions ${info?.visible?.questions ?? 0}, lessons ${info?.visible?.lessons ?? 0} (review states shown for the rest)`);
 
 // 5. Routing / domain
 const routes = cfg.routes ?? [];
 gate(routes.every((r) => /(^|\.)regaplatform\.com/.test(typeof r === "string" ? r : r.pattern)), "routes (if any) target only regaplatform.com");
-deployGate(routes.length > 0, "custom domain route for www.regaplatform.com configured");
-deployGate(process.env.REGAPLATFORM_DOMAIN_VERIFIED === "true", "owner verified domain ownership (REGAPLATFORM_DOMAIN_VERIFIED=true)");
+deployGate(routes.some((r) => (typeof r === "string" ? r : r.pattern) === "www.regaplatform.com" && r.custom_domain === true), "custom domain www.regaplatform.com configured (Cloudflare enforces zone ownership on attach)");
+// The live-domain safety check (never overwrite an unrelated site) runs in deploy.yml via scripts/domain-check.mjs.
 
 // 6. Rollback capability
 gate(existsSync("scripts/last-known-good.mjs") && readFileSync(".github/workflows/deploy.yml", "utf8").includes("wrangler rollback"), "rollback procedure present in deploy workflow");

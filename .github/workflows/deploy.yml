@@ -1,6 +1,5 @@
 name: Deploy to Cloudflare (manual)
-# Manual only, main only. Needs RegaDRIVE-only secrets CLOUDFLARE_API_TOKEN + CLOUDFLARE_ACCOUNT_ID and the
-# repository variable REGAPLATFORM_DOMAIN_VERIFIED=true (set by the owner after verifying the domain).
+# Manual only, main only. Needs RegaDRIVE-only secrets CLOUDFLARE_API_TOKEN + CLOUDFLARE_ACCOUNT_ID.
 on:
   workflow_dispatch:
     inputs:
@@ -22,7 +21,6 @@ jobs:
     environment: production
     env:
       TARGET_URL: https://www.regaplatform.com
-      REGAPLATFORM_DOMAIN_VERIFIED: ${{ vars.REGAPLATFORM_DOMAIN_VERIFIED }}
       CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
       CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
     steps:
@@ -33,6 +31,10 @@ jobs:
           cache: npm
       - run: for i in 1 2 3; do npm ci && exit 0; sleep $((2 ** i * 2)); done; exit 1
       - run: npx playwright install --with-deps chromium
+      - name: Require RegaDRIVE Cloudflare credentials
+        run: |
+          test -n "$CLOUDFLARE_API_TOKEN" || { echo "::error::Missing repository secret CLOUDFLARE_API_TOKEN (RegaDRIVE-only token)"; exit 1; }
+          test -n "$CLOUDFLARE_ACCOUNT_ID" || { echo "::error::Missing repository secret CLOUDFLARE_ACCOUNT_ID"; exit 1; }
       - name: Production build
         run: npm run build
       - name: Preflight (all gates fatal)
