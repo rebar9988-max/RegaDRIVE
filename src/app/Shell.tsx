@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 import { Link, usePath } from "./router";
 import { useApp } from "./state";
 import { T } from "./strings";
+import { CONTENT_MODE } from "./content";
 import { Bi, useBiText } from "../components/Bi";
 import { Icon, type IconName } from "../components/Icon";
 import type { Bilingual } from "../content/types";
@@ -52,6 +53,7 @@ export function Shell({ children }: { children: ReactNode }) {
           ))}
         </nav>
         <main id="main" className="main" tabIndex={-1}>
+          {CONTENT_MODE === "preview" && <div className="notice small" role="note" data-testid="preview-banner" style={{ marginBottom: 16 }}><Bi t={T.previewBanner} /></div>}
           {saveError && <div className="notice small" role="alert" style={{ marginBottom: 16 }}><Bi t={T.saveError} /></div>}
           {children}
         </main>

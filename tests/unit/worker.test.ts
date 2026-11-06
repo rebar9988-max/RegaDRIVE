@@ -11,7 +11,7 @@ const call = (path: string, init?: RequestInit, e = env()) => handleApi(new Requ
 
 describe("worker API", () => {
   it("health and flags report payments and database OFF", async () => {
-    expect(await (await call("/api/health")).json()).toMatchObject({ ok: true, database: "off", payments: "off" });
+    expect(await (await call("/api/health")).json()).toMatchObject({ ok: true, contentMode: "production", database: "off", payments: "off" });
     const f = await (await call("/api/flags")).json();
     expect(f).toMatchObject({ paymentsEnabled: false, checkoutEnabled: false, livePaymentWebhooksEnabled: false, purchaseRequired: false, databaseProductionEnabled: false, aiPaidFallbackEnabled: false, lifetimePriceEur: 20 });
   });
@@ -37,7 +37,12 @@ describe("worker API", () => {
   it("restricts AI to known RegaDRIVE content and degrades gracefully without providers", async () => {
     const unknown = await call("/api/ai/explain", { method: "POST", body: JSON.stringify({ questionId: "write me a poem" }) });
     expect(unknown.status).toBe(404);
-    const known = await call("/api/ai/explain", { method: "POST", body: JSON.stringify({ questionId: "rd-g-003" }) });
+    // Production: unapproved content is never explained.
+    const prod = await call("/api/ai/explain", { method: "POST", body: JSON.stringify({ questionId: "rd-g-003" }) });
+    expect(prod.status).toBe(404);
+    expect(await prod.json()).toEqual({ error: "CONTENT_NOT_APPROVED" });
+    // Preview (local/CI): content reaches the gateway, which degrades gracefully without free providers.
+    const known = await call("/api/ai/explain", { method: "POST", body: JSON.stringify({ questionId: "rd-g-003" }) }, env({ CONTENT_MODE: "preview" }));
     expect(known.status).toBe(503);
     expect(await known.json()).toEqual({ error: "NO_FREE_PROVIDER_AVAILABLE" });
     const status = await (await call("/api/ai/status")).json() as { providers: { status: string }[]; paidFallback: boolean };

@@ -3,7 +3,7 @@ import { useApp } from "../app/state";
 import { T } from "../app/strings";
 import { Bi, useBiText } from "../components/Bi";
 import { QuestionCard } from "../components/QuestionCard";
-import { publishedQuestions } from "../content/questions";
+import { CONTENT } from "../app/content";
 import { TOPICS } from "../content/topics";
 import { defaultFilter, filterQuestions, type QuestionFilter, type StatusFilter } from "../lib/search";
 
@@ -25,7 +25,7 @@ export function Practice() {
   const [session, setSession] = useState(newSession);
   const [pos, setPos] = useState(0);
   const list = useMemo(
-    () => filterQuestions(publishedQuestions(), filter, progress, settings.masteryThreshold),
+    () => filterQuestions(CONTENT.questions, filter, progress, settings.masteryThreshold),
     // eslint-disable-next-line react-hooks/exhaustive-deps -- intentionally recomputed only on filter/session change
     [filter, session],
   );
@@ -71,7 +71,7 @@ export function Practice() {
         <QuestionCard key={`${session}-${q.id}`} question={q} mode="practice" sessionId={session} index={pos} total={list.length}
           onNext={pos + 1 < list.length ? () => setPos(pos + 1) : undefined} />
       ) : (
-        <p className="card muted"><Bi t={T.noResults} /></p>
+        <p className="card muted"><Bi t={CONTENT.questions.length === 0 ? T.contentInReview : T.noResults} /></p>
       )}
       {q && pos > 0 && (
         <div className="q-actions"><button type="button" className="btn btn-secondary" onClick={() => setPos(pos - 1)}><Bi t={T.previous} /></button></div>

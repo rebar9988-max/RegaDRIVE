@@ -6,9 +6,12 @@ import { readFlags, type FlagEnv } from "../src/lib/shared/flags";
 import { verifyWebhookSignature } from "../src/lib/shared/payments";
 import { AiGateway, SYSTEM_PROMPT, type AiEnv } from "./ai/gateway";
 import { questionById } from "../src/content/questions";
+import { isQuestionVisible } from "../src/content/access";
 import { RateLimiter } from "./lib/rateLimit";
 
 export interface Env extends FlagEnv, AiEnv {
+  /** "preview" only for local/CI; production shows and explains approved content only. */
+  CONTENT_MODE?: string;
   ASSETS: { fetch(req: Request): Promise<Response> };
   PAYMENT_WEBHOOK_SECRET?: string;
 }
@@ -33,7 +36,7 @@ export async function handleApi(req: Request, env: Env, now = Date.now()): Promi
   const p = url.pathname;
 
   if (p === "/api/health") {
-    return json({ ok: true, app: "regadrive", version: VERSION, database: flags.databaseProductionEnabled ? "on" : "off", payments: flags.paymentsEnabled ? "on" : "off" });
+    return json({ ok: true, app: "regadrive", version: VERSION, contentMode: env.CONTENT_MODE === "preview" ? "preview" : "production", database: flags.databaseProductionEnabled ? "on" : "off", payments: flags.paymentsEnabled ? "on" : "off" });
   }
   if (p === "/api/flags") {
     return json({
@@ -75,7 +78,7 @@ export async function handleApi(req: Request, env: Env, now = Date.now()): Promi
   }
 
   if (p === "/api/ai/status") {
-    return json({ freeOnly: true, paidFallback: false, providers: getGateway(env).status() });
+    return json({ freeOnly: true, paidFallback: false, costLimitEur: 0, providers: getGateway(env).status() });
   }
 
   if (p === "/api/ai/explain") {
@@ -89,6 +92,8 @@ export async function handleApi(req: Request, env: Env, now = Date.now()): Promi
     const q = questionById(id);
     // Domain restriction: only reviewed RegaDRIVE content can be explained; free-text prompts are not accepted.
     if (!q) return json({ error: "UNKNOWN_CONTENT" }, 404);
+    // Only content that passed the publication gate may be explained in production.
+    if (!isQuestionVisible(q.id, env.CONTENT_MODE === "preview" ? "preview" : "production")) return json({ error: "CONTENT_NOT_APPROVED" }, 404);
     const correct = q.options.filter((o) => q.correct.includes(o.id));
     const user = [
       `Question (DE): ${q.prompt.de}`, `Question (CKB): ${q.prompt.ckb}`,

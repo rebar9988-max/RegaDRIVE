@@ -1,6 +1,6 @@
 // End-to-end tests against the real Workers runtime (wrangler dev, fully local).
 // The remote-only Workers AI binding is removed for the test config; everything else is identical.
-// Usage: npm run build && npm run test:e2e   (screenshots → test-results/)
+// Usage: npm run build:preview && npm run test:e2e   (screenshots → test-results/)
 import { spawn } from "node:child_process";
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { createRequire } from "node:module";
@@ -16,6 +16,7 @@ mkdirSync(OUT, { recursive: true });
 
 const cfg = JSON.parse(readFileSync("wrangler.jsonc", "utf8").replace(/^\s*\/\/.*$/gm, ""));
 delete cfg.ai;
+cfg.vars = { ...cfg.vars, CONTENT_MODE: "preview" }; // E2E runs against the preview build (npm run build:preview)
 delete cfg.$schema;
 writeFileSync(".wrangler-e2e.json", JSON.stringify(cfg, null, 2));
 
@@ -52,6 +53,8 @@ try {
 
   await test("API: health, flags OFF, auth unavailable, checkout refused", async () => {
     const h = await (await fetch(`${BASE}/api/health`)).json();
+    const info = await (await fetch(`${BASE}/build-info.json`)).json();
+    assert.equal(info.contentMode, "preview", "E2E must run against the preview build");
     assert.equal(h.database, "off"); assert.equal(h.payments, "off");
     const f = await (await fetch(`${BASE}/api/flags`)).json();
     for (const k of ["paymentsEnabled", "checkoutEnabled", "livePaymentWebhooksEnabled", "purchaseRequired", "databaseProductionEnabled", "aiPaidFallbackEnabled"]) assert.equal(f[k], false, k);

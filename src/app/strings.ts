@@ -56,5 +56,7 @@ export const T = {
   errorPoints: b("خاڵی هەڵە", "Fehlerpunkte"),
   fivePointRule: b("دوو پرسیاری ٥ خاڵی هەڵە بوون", "Zwei 5-Punkte-Fragen falsch"),
   simulationNotice: b("ئەمە تەنها تاقیکردنەوەیەکی ڕاهێنانە، نەک تاقیکردنەوەی فەرمی.", "Dies ist nur eine Übungssimulation, keine amtliche Prüfung."),
+  contentInReview: b("ئەم ناوەڕۆکە لە پێداچوونەوەی پسپۆڕدایە و تەنها دوای پەسەندکردن بڵاو دەکرێتەوە.", "Diese Inhalte werden noch fachlich geprüft und erst nach Freigabe veröffentlicht."),
+  previewBanner: b("پێشبینین: ناوەڕۆکی پێداچوونەوە نەکراو پیشان دەدرێت (تەنها بۆ تاقیکردنەوە).", "Vorschau: Inhalte ohne Freigabe werden angezeigt (nur zum Testen)."),
   reviewMistakes: b("پێداچوونەوەی هەڵەکان", "Fehler wiederholen"),
 };
