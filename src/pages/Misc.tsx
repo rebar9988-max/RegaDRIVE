@@ -5,6 +5,7 @@ import { useApp, useNow, type LangMode } from "../app/state";
 import { T } from "../app/strings";
 import { Bi, useBiText } from "../components/Bi";
 import { Icon } from "../components/Icon";
+import { ContentStatus } from "../components/ContentStatus";
 import { CONTENT } from "../app/content";
 import { TOPICS } from "../content/topics";
 import { normalize } from "../lib/search";
@@ -39,6 +40,14 @@ export function ProgressPage() {
     <div>
       <header className="page-head"><h1><Bi t={T.nav.progress} /></h1>
         <p className="small muted"><Bi t={{ ckb: "پێشکەوتن تەنها لەسەر ئەم ئامێرە پاشەکەوت دەکرێت.", de: "Der Fortschritt wird nur auf diesem Gerät gespeichert." }} /></p></header>
+      {qs.length === 0 && <ContentStatus testId="progress-status" />}
+      {qs.length > 0 && Object.keys(progress.questions).length === 0 && (
+        <div className="card stack" data-testid="progress-empty" style={{ marginBottom: 16 }}>
+          <Bi t={T.noProgressYet} />
+          <Link href="/practice" className="btn btn-primary"><Bi t={T.startPractice} /></Link>
+        </div>
+      )}
+      {qs.length > 0 && <>
       <div className="grid grid-3">
         <div className="card stat"><span className="stat-value">{streakDays(progress, now)}</span><span className="stat-label muted"><Bi t={T.streak} /></span></div>
         <div className="card stat"><span className="stat-value">{progress.bookmarks.length}</span><span className="stat-label muted"><Bi t={T.bookmarked} /></span></div>
@@ -77,6 +86,7 @@ export function ProgressPage() {
           </ul>
         </section>
       )}
+      </>}
     </div>
   );
 }
@@ -90,6 +100,7 @@ export function Vocabulary() {
     <div>
       <header className="page-head"><h1><Bi t={T.nav.vocab} /></h1></header>
       <label className="sr-only" htmlFor="v-search">{label(T.search)}</label>
+      {CONTENT.vocabulary.length === 0 ? <ContentStatus testId="vocab-status" /> : <>
       <input id="v-search" className="input" type="search" value={text} onChange={(e) => setText(e.target.value)} placeholder={label(T.search)} style={{ marginBottom: 16 }} />
       <div className="card" style={{ padding: 0 }}>
         {list.map((v) => (
@@ -100,6 +111,7 @@ export function Vocabulary() {
         ))}
         {list.length === 0 && <p className="muted" style={{ padding: 16 }}><Bi t={T.noResults} /></p>}
       </div>
+      </>}
     </div>
   );
 }
@@ -147,7 +159,6 @@ function useFlags() {
 
 export function Account() {
   const flags = useFlags();
-  const label = useBiText();
   return (
     <div>
       <header className="page-head"><h1><Bi t={T.nav.account} /></h1></header>
@@ -155,7 +166,6 @@ export function Account() {
         <Bi t={{ ckb: "هەژماری قوتابی (تۆمارکردن، چوونەژوورەوە، پشتڕاستکردنەوەی ئیمەیڵ) ئامادەکراوە، بەڵام هێشتا چالاک نییە، چونکە داتابەیسی بەرهەمهێنان بە ئەنقەست کوژاوەتەوە.",
           de: "Schülerkonten (Registrierung, Anmeldung, E-Mail-Bestätigung) sind vorbereitet, aber noch nicht aktiv, weil die Produktionsdatenbank bewusst ausgeschaltet ist." }} />
         <Bi t={{ ckb: "هەموو پێشکەوتنەکەت بە سەلامەتی لەسەر ئەم ئامێرە پاشەکەوت دەکرێت.", de: "Dein gesamter Lernfortschritt wird sicher auf diesem Gerät gespeichert." }} />
-        <button className="btn btn-primary" disabled aria-disabled="true">{label({ ckb: "تۆمارکردن (بەم زووانە)", de: "Registrieren (bald verfügbar)" })}</button>
         <p className="small muted" dir="ltr" style={{ textAlign: "start" }}>DATABASE_PRODUCTION_ENABLED = {String(flags?.databaseProductionEnabled ?? false)}</p>
       </section>
     </div>
@@ -164,16 +174,21 @@ export function Account() {
 
 export function Access() {
   const flags = useFlags();
-  const label = useBiText();
   const price = flags?.lifetimePriceEur ?? 20;
   return (
     <div>
       <header className="page-head"><h1><Bi t={T.nav.access} /></h1></header>
       <section className="card stack" data-testid="purchase">
-        <h2 dir="ltr" style={{ textAlign: "start" }}>Lifetime Access — €{price}</h2>
-        <Bi t={{ ckb: "پارەدانێکی یەکجارە بۆ هەمیشە. هیچ بەشداربوونی مانگانە، نوێکردنەوە یان تێچووی شاراوە نییە.", de: "Einmalzahlung für lebenslangen Zugang. Kein Abo, keine Verlängerung, keine versteckten Kosten." }} />
-        <p className="notice" role="note"><Bi t={{ ckb: "پارەدان هێشتا چالاک نییە. لە ئێستادا هەموو ناوەڕۆکی فێرکاری بەخۆڕاییە. هیچ زانیارییەکی کارتی بانکی کۆ ناکرێتەوە.", de: "Zahlungen sind noch nicht aktiviert. Alle Lerninhalte sind derzeit kostenlos. Es werden keine Kartendaten erfasst." }} /></p>
-        <button className="btn btn-primary" disabled aria-disabled="true" data-testid="buy">{label({ ckb: "کڕین (ناچالاک)", de: "Kaufen (deaktiviert)" })}</button>
+        <h2 className="section-title"><Bi t={{ ckb: "ئێستا بەخۆڕاییە", de: "Derzeit kostenlos" }} /></h2>
+        <Bi t={{ ckb: "RegaDRIVE لە ئێستادا بەخۆڕاییە. هیچ پارەدانێک وەرناگیرێت و هیچ زانیارییەکی کارتی بانکی کۆ ناکرێتەوە.", de: "RegaDRIVE ist derzeit kostenlos. Es werden keine Zahlungen angenommen und keine Kartendaten erfasst." }} />
+      </section>
+      <section className="card stack section" data-testid="planned-plan" aria-labelledby="planned-title">
+        <div className="row">
+          <h2 id="planned-title" className="section-title" style={{ margin: 0 }}><Bi t={{ ckb: "پلانی داهاتوو", de: "Geplantes Angebot" }} /></h2>
+          <span className="badge badge-outline"><Bi t={{ ckb: "ناچالاکە، ناتوانرێت بکڕدرێت", de: "Nicht aktiv, nicht kaufbar" }} inline /></span>
+        </div>
+        <p className="muted"><Bi t={{ ckb: `بۆ داهاتوو پلانێکی یەکجاری بۆ هەمیشە بە نزیکەی ${price} یۆرۆ لە بەرچاوە. ئەم پلانە هێشتا چالاک نییە، نرخەکە کۆتایی نییە، و ئێستا هیچ ڕێگایەک بۆ کڕین نییە.`,
+          de: `Für später ist ein einmaliger Lebenszeit-Zugang für voraussichtlich ${price} € geplant. Dieses Angebot ist noch nicht aktiv, der Preis ist nicht endgültig und ein Kauf ist derzeit nicht möglich.` }} /></p>
       </section>
     </div>
   );
@@ -231,12 +246,20 @@ export function About() {
     <div>
       <header className="page-head"><h1><Bi t={T.nav.about} /></h1></header>
       <div className="stack" style={{ gap: 16 }}>
-        <section className="card stack"><h2 className="section-title"><Bi t={{ ckb: "دەربارە", de: "Über RegaDRIVE" }} /></h2><Bi t={T.notOfficial} /></section>
-        <section className="card stack"><h2 className="section-title"><Bi t={{ ckb: "مافی بڵاوکردنەوە", de: "Urheberrecht" }} /></h2><Bi t={T.copyright} />
+        <section className="card stack" id="about"><h2 className="section-title"><Bi t={{ ckb: "دەربارە", de: "Über RegaDRIVE" }} /></h2><Bi t={T.notOfficial} /></section>
+        <section className="card stack" id="impressum" aria-labelledby="impressum-title">
+          <h2 id="impressum-title" className="section-title"><Bi t={T.impressum} /></h2>
+          <Bi t={{ ckb: "زانیارییە یاسایییەکانی دابینکەر (Impressum) هێشتا لەلایەن بەڕێوەبەرەوە بڵاو نەکراوەتەوە. تا ئەو کاتە، ئەم ماڵپەڕە بە تەواوی ئامادەی یاسایی نییە.",
+            de: "Die gesetzlich vorgeschriebenen Anbieterangaben (Impressum) wurden vom Betreiber noch nicht veröffentlicht. Bis dahin ist diese Website rechtlich noch nicht vollständig startbereit." }} />
+        </section>
+        <section className="card stack" id="privacy" aria-labelledby="privacy-title">
+          <h2 id="privacy-title" className="section-title"><Bi t={T.privacy} /></h2>
+          <Bi t={{ ckb: "پێشکەوتنی فێربوونت تەنها لە وێبگەڕەکەتدا (IndexedDB) پاشەکەوت دەکرێت. هیچ هەژمار، ڕیکلام، شوێنپێهەڵگرتن یان فرۆشتنی داتا نییە.", de: "Dein Lernfortschritt wird nur in deinem Browser (IndexedDB) gespeichert. Es gibt keine Konten, keine Werbung, kein Tracking und keinen Datenverkauf." }} />
+          <Bi t={{ ckb: "ماڵپەڕەکە لەسەر Cloudflare هۆست کراوە. بۆ گەیاندنی پەڕەکان، Cloudflare زانیاری تەکنیکیی پەیوەندی (وەک ناونیشانی IP) پرۆسێس دەکات.", de: "Die Website wird bei Cloudflare gehostet. Zur Auslieferung der Seiten verarbeitet Cloudflare technische Verbindungsdaten (z. B. die IP-Adresse)." }} />
+          <p className="small muted"><Bi t={{ ckb: "تێبینی: ئەم دەقە هێشتا پێداچوونەوەی یاسایی بۆ نەکراوە و جێگەی ڕاگەیەندراوێکی تەواوی تایبەتمەندی ناگرێتەوە.", de: "Hinweis: Dieser Text wurde noch nicht rechtlich geprüft und ersetzt keine vollständige Datenschutzerklärung." }} /></p>
+        </section>
+        <section className="card stack" id="copyright"><h2 className="section-title"><Bi t={{ ckb: "مافی بڵاوکردنەوە", de: "Urheberrecht" }} /></h2><Bi t={T.copyright} />
           <Bi t={{ ckb: "پرسیارەکان، وانەکان و وەرگێڕانەکان ناوەڕۆکی ڕەسەنی RegaDRIVE ـن. نیشانەکانی هاتووچۆ شێوەی سادەکراوی نیشانە فەرمییەکانی StVO ـن.", de: "Fragen, Lektionen und Übersetzungen sind eigene Inhalte von RegaDRIVE. Verkehrszeichen sind vereinfachte Darstellungen der amtlichen StVO-Zeichen." }} /></section>
-        <section className="card stack"><h2 className="section-title"><Bi t={{ ckb: "تایبەتمەندی", de: "Datenschutz" }} /></h2>
-          <Bi t={{ ckb: "هیچ ڕیکلام، هیچ شوێنپێهەڵگرتن و هیچ فرۆشتنی داتا نییە. پێشکەوتن تەنها لە ئامێرەکەتدا دەمێنێتەوە.", de: "Keine Werbung, kein Tracking, kein Datenverkauf. Der Fortschritt bleibt auf deinem Gerät." }} />
-          <p className="small muted"><Bi t={{ ckb: "تێبینی: ئەم دەقە پێداچوونەوەی یاسایی بۆ نەکراوە.", de: "Hinweis: Dieser Text wurde noch nicht rechtlich geprüft." }} /></p></section>
       </div>
     </div>
   );

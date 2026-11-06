@@ -46,6 +46,18 @@ await check("critical routes and official assets", async () => {
   const logo = await get("/brand/regadrive-logo.webp");
   assert.equal(logo.status, 200); assert.match(logo.headers.get("content-type") ?? "", /image\/webp/);
 });
+await check("unknown/legacy paths are real 404s with noindex (no soft-404)", async () => {
+  for (const p of ["/businesses/legacy-check", "/de/marketplace"]) {
+    const r = await get(p);
+    assert.equal(r.status, 404, p);
+    assert.equal(r.headers.get("x-robots-tag"), "noindex", p);
+  }
+});
+await check("sitemap lists only RegaDRIVE routes on this domain", async () => {
+  const x = await (await get("/sitemap.xml")).text();
+  const locs = [...x.matchAll(/<loc>([^<]+)<\/loc>/g)].map((m) => m[1]);
+  assert.ok(locs.length > 0 && locs.every((l) => l.startsWith("https://www.regaplatform.com/")), "foreign URL in sitemap");
+});
 await check("security headers", async () => {
   const r = await get("/");
   assert.match(r.headers.get("content-security-policy") ?? "", /default-src 'self'/);
@@ -81,7 +93,14 @@ try {
       await page.goto(`${base}/practice`);
       await page.waitForSelector("main#main > div:not([aria-busy])");
       const cards = await page.locator("[data-testid=question-card]").count();
-      if (cards > 0) assert.equal(await page.locator("[data-testid=question-card] legend .bi > span").first().getAttribute("dir"), "rtl");
+      if (cards > 0) assert.equal(await page.locator("[data-testid=question-card] legend .bi > span[lang]").first().getAttribute("dir"), "rtl");
+      assert.equal(await page.locator("[data-testid=site-footer] a[href='/about#impressum']").count(), 1, "legal footer");
+      await page.goto(`${base}/exam`);
+      await page.waitForSelector("main#main > div:not([aria-busy])");
+      if (cards === 0) assert.equal(await page.locator("[data-testid=exam-start]").count(), 0, "no start button without approved exam content");
+      await page.goto(`${base}/access`);
+      await page.waitForSelector("[data-testid=planned-plan]");
+      assert.equal(await page.locator("[data-testid=buy]").count(), 0, "no buy action");
       await page.goto(`${base}/settings`);
       await page.click("[data-testid=mode-de]");
       assert.equal(await page.getAttribute("html", "dir"), "ltr", "German LTR");

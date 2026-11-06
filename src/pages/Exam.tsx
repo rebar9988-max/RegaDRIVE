@@ -3,6 +3,7 @@ import { useApp } from "../app/state";
 import { T } from "../app/strings";
 import { Bi } from "../components/Bi";
 import { QuestionCard } from "../components/QuestionCard";
+import { ContentStatus } from "../components/ContentStatus";
 import { CONTENT } from "../app/content";
 import { buildMockExam } from "../lib/mockExam";
 import { KLASSE_B_RULES_2026, scoreExam, type ExamResult } from "../lib/shared/exam";
@@ -43,9 +44,9 @@ export function Exam() {
           <Bi t={{ ckb: `${rules.grundstoffCount} پرسیاری بنەڕەتی (Grundstoff) + ${rules.zusatzstoffCount} پرسیاری زیادە (Zusatzstoff). زۆرترین خاڵی هەڵەی ڕێگەپێدراو: ${rules.maxErrorPoints}. دوو پرسیاری ٥ خاڵی هەڵە = سەرکەوتوو نەبوون.`,
             de: `${rules.grundstoffCount} Grundstoff- + ${rules.zusatzstoffCount} Zusatzstofffragen. Höchstens ${rules.maxErrorPoints} Fehlerpunkte. Zwei falsche 5-Punkte-Fragen = nicht bestanden.` }} />
           <p className="small muted"><Bi t={{ ckb: "یاساکانی خاڵدان لەگەڵ سەرچاوەکان بەراورد کراون (وەشان: " + rules.version + "). کاتی فەرمی لەگەڵ قوتابخانەی شۆفێری یان TÜV/DEKRA دڵنیا بکەرەوە.", de: "Bewertungsregeln mit Quellen abgeglichen (Version: " + rules.version + "). Die amtliche Bearbeitungszeit bitte bei Fahrschule oder TÜV/DEKRA bestätigen." }} /></p>
-          {!canRun && <p className="notice"><Bi t={T.contentInReview} /></p>}
-          <button type="button" className="btn btn-primary" onClick={start} disabled={!canRun} data-testid="exam-start"><Bi t={T.startExam} /></button>
+          {canRun && <button type="button" className="btn btn-primary" onClick={start} data-testid="exam-start"><Bi t={T.startExam} /></button>}
         </section>
+        {!canRun && <div className="section"><ContentStatus testId="exam-status" /></div>}
       </div>
     );
   }

@@ -29,7 +29,7 @@ const isActive = (path: string, href: string) => (href === "/" ? path === "/" : 
 
 export function Shell({ children }: { children: ReactNode }) {
   const path = usePath();
-  const { online, saveError } = useApp();
+  const { online, saveError, settings } = useApp();
   const label = useBiText();
   const moreActive = MORE_LINKS.some((l) => isActive(path, l.href)) || path === "/more";
   return (
@@ -45,7 +45,7 @@ export function Shell({ children }: { children: ReactNode }) {
         </div>
       </header>
       <div className="layout">
-        <nav className="sidenav" aria-label={label(T.nav.more)}>
+        <nav className="sidenav" aria-label={label(T.mainNav)}>
           {[...TABS.filter((t) => t.href !== "/more"), ...MORE_LINKS].map((l) => (
             <Link key={l.href} href={l.href} className="navlink" aria-current={isActive(path, l.href) ? "page" : undefined}>
               <Icon name={l.icon} /><Bi t={l.t} />
@@ -56,9 +56,18 @@ export function Shell({ children }: { children: ReactNode }) {
           {CONTENT_MODE === "preview" && <div className="notice small" role="note" data-testid="preview-banner" style={{ marginBottom: 16 }}><Bi t={T.previewBanner} /></div>}
           {saveError && <div className="notice small" role="alert" style={{ marginBottom: 16 }}><Bi t={T.saveError} /></div>}
           {children}
+          <footer className="site-footer" data-testid="site-footer">
+            {([["/about#impressum", T.impressum], ["/about#privacy", T.privacy], ["/about", T.footerLegal]] as const).map(([href, t]) => (
+              <Link key={href} href={href}>
+                {settings.langMode !== "de" && <span lang="ckb">{t.ckb}</span>}
+                {settings.langMode === "bi" && <span aria-hidden="true" className="footer-sep">·</span>}
+                {settings.langMode !== "ckb" && <span lang="de" dir="ltr">{t.de}</span>}
+              </Link>
+            ))}
+          </footer>
         </main>
       </div>
-      <nav className="tabbar" aria-label={label(T.nav.home)}>
+      <nav className="tabbar" aria-label={label(T.mainNav)}>
         {TABS.map((t) => {
           const active = t.href === "/more" ? moreActive : isActive(path, t.href);
           return (

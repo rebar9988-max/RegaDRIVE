@@ -3,6 +3,7 @@ import { useApp } from "../app/state";
 import { T } from "../app/strings";
 import { Bi, useBiText } from "../components/Bi";
 import { QuestionCard } from "../components/QuestionCard";
+import { ContentStatus } from "../components/ContentStatus";
 import { CONTENT } from "../app/content";
 import { TOPICS } from "../content/topics";
 import { defaultFilter, filterQuestions, type QuestionFilter, type StatusFilter } from "../lib/search";
@@ -37,10 +38,8 @@ export function Practice() {
     return (
       <div>
         <header className="page-head"><h1><Bi t={T.practiceAll} /></h1></header>
-        <section className="card stack" data-testid="practice-in-review">
-          <p className="notice"><Bi t={T.contentInReview} /></p>
-          <p className="small muted"><Bi t={T.notOfficial} /></p>
-        </section>
+        <ContentStatus testId="practice-in-review" />
+        <p className="notice small section" role="note"><Bi t={T.notOfficial} /></p>
       </div>
     );
   }
