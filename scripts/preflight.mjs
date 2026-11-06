@@ -1,7 +1,7 @@
 // Read-only production preflight for RegaDRIVE. Changes nothing.
 //   --stage=ci      safety gates are fatal; deployment prerequisites are reported as blockers (non-fatal)
 //   --stage=deploy  every gate is fatal (used by .github/workflows/deploy.yml before `wrangler deploy`)
-import { readFileSync, existsSync } from "node:fs";
+import { readFileSync, existsSync, readdirSync } from "node:fs";
 import { execSync } from "node:child_process";
 import { KLASSE_B } from "./lib/rules.mjs";
 
@@ -27,8 +27,9 @@ if (stage === "deploy") {
 }
 
 // 2. Payments and production database OFF
-for (const k of ["PAYMENTS_ENABLED", "CHECKOUT_ENABLED", "LIVE_PAYMENT_WEBHOOKS_ENABLED", "PURCHASE_REQUIRED", "DATABASE_PRODUCTION_ENABLED"]) gate(v[k] === "false", `${k}=false`);
-gate(!("OWNER_PAYMENTS_ACTIVATION" in v) && !("OWNER_DATABASE_ACTIVATION" in v), "no owner activation present in config");
+for (const k of ["PAYMENTS_ENABLED", "CHECKOUT_ENABLED", "LIVE_PAYMENT_WEBHOOKS_ENABLED", "PURCHASE_REQUIRED", "DATABASE_PRODUCTION_ENABLED",
+  "OFFICIAL_QUESTION_BANK_ENABLED", "CONTENT_ADMIN_ENABLED", "CONTENT_IMPORT_EXECUTION_ENABLED", "PUBLIC_OFFICIAL_MOCK_EXAMS_ENABLED", "CONTENT_AUTO_SYNC_ENABLED", "SUBSCRIPTIONS_ENABLED"]) gate(v[k] === "false", `${k}=false`);
+gate(!Object.keys(v).some((k) => k.startsWith("OWNER_")), "no owner activation present in config");
 gate(!cfg.d1_databases || cfg.d1_databases.length === 0, "no D1 binding (production DB off)");
 gate(!cfg.r2_buckets && !cfg.kv_namespaces && !cfg.durable_objects && !cfg.queues, "no billable storage bindings");
 
@@ -42,6 +43,7 @@ const info = existsSync("dist/build-info.json") ? JSON.parse(readFileSync("dist/
 gate(info !== null && existsSync("dist/index.html") && existsSync("dist/brand/regadrive-logo.webp"), "production build with official logo present");
 gate(info?.contentMode === "production", "build is a production content build (no unapproved preview content)");
 gate(v.CONTENT_MODE === "production", "Worker CONTENT_MODE=production");
+gate(info?.adminUi === false && !(existsSync("dist/assets") && readdirSync("dist/assets").some((f) => f.startsWith("AdminImport"))), "owner import UI is not in the production bundle");
 gate(info?.rulesVersion === KLASSE_B, `build uses current exam rules ${KLASSE_B}`);
 deployGate((info?.visible?.questions ?? 0) >= 30 && (info?.visible?.lessons ?? 0) >= 1,
   `approved content available (visible questions ${info?.visible?.questions ?? 0}/30 min, lessons ${info?.visible?.lessons ?? 0}) — needs human TRANSLATION_REVIEW + EDUCATIONAL_REVIEW`);

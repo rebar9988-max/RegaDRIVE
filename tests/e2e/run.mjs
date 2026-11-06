@@ -204,6 +204,31 @@ try {
     await ctx.close();
   });
 
+  await test("owner import workbench (preview build only): validate fixture locally, never import or publish", async () => {
+    const ctx = await browser.newContext({ viewport: { width: 1280, height: 900 }, bypassCSP: true });
+    const page = await ctx.newPage();
+    await page.goto(`${BASE}/admin/import`);
+    await page.waitForSelector("[data-testid=admin-import]");
+    await page.fill("[data-testid=licences]", "LIC-FIXTURE");
+    await page.setInputFiles("[data-testid=question-file]", "tests/fixtures/import/valid.json");
+    await page.setInputFiles("[data-testid=media-files]", { name: "fixture.png", mimeType: "image/png", buffer: Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0, 0, 0, 0]) });
+    await page.waitForFunction(() => document.querySelector("[data-testid=row-count]")?.textContent?.startsWith("2"));
+    await page.click("[data-testid=validate]");
+    await page.locator("[data-testid=summary]").waitFor();
+    const summary = await page.textContent("[data-testid=summary]");
+    assert.ok(summary.includes("new: 2") && summary.includes("invalid: 0"), summary);
+    assert.equal(await page.locator("[data-testid=preview-row]").count(), 2);
+    assert.ok(await page.locator("[data-testid=commit]").isDisabled(), "import execution disabled");
+    assert.equal(await page.locator("text=draft · hidden").count(), 2, "imports are draft and hidden");
+    await axe(page, "/admin/import");
+    // Without the licence registered, every row is rejected.
+    await page.fill("[data-testid=licences]", "");
+    await page.click("[data-testid=validate]");
+    await page.waitForFunction(() => document.querySelector("[data-testid=summary]")?.textContent?.includes("invalid: 2"));
+    await page.screenshot({ path: `${OUT}/admin-import.png`, fullPage: true });
+    await ctx.close();
+  });
+
   await test("offline: app shell and practice work after first visit (service worker)", async () => {
     const ctx = await browser.newContext({ viewport: { width: 390, height: 844 } });
     const page = await ctx.newPage();

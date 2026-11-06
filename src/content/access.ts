@@ -21,7 +21,9 @@ export function contentFor(mode: ContentMode) {
   const visible = <T extends { id: string }>(items: T[]) => (mode === "preview" ? items : items.filter((i) => gateOk(i.id)));
   return {
     mode,
-    questions: visible(QUESTIONS.filter((q) => q.publicationStatus === "published")),
+    // Licensed official content is never bundled into the static app; it may only come from the
+    // owner-activated, authorised server path (OFFICIAL_QUESTION_BANK_ENABLED, currently off).
+    questions: visible(QUESTIONS.filter((q) => q.publicationStatus === "published" && q.sourceType !== "licensed_official")),
     lessons: visible(LESSONS),
     signs: visible(SIGNS),
     vocabulary: visible(VOCABULARY),

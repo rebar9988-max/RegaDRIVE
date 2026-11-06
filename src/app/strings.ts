@@ -32,6 +32,7 @@ export const T = {
   incorrect: b("هەڵەیە", "Leider falsch"),
   correctAnswers: b("وەڵامی ڕاست", "Richtige Antwort"),
   multipleHint: b("یەک یان زیاتر لە یەک وەڵام ڕاستە", "Eine oder mehrere Antworten sind richtig"),
+  numberHint: b("وەڵامەکە وەک ژمارە بنووسە", "Antwort als Zahl eingeben"),
   points: b("خاڵ", "Punkte"),
   bookmark: b("نیشانەکردن", "Merken"),
   bookmarked: b("نیشانەکراوە", "Gemerkt"),

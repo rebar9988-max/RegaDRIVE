@@ -16,6 +16,14 @@ export interface FlagEnv {
   AI_PAID_FALLBACK_ENABLED?: string;
   AI_DAILY_COST_LIMIT_EUR?: string;
   LIFETIME_PRICE_EUR?: string;
+  OFFICIAL_QUESTION_BANK_ENABLED?: string;
+  CONTENT_ADMIN_ENABLED?: string;
+  CONTENT_IMPORT_EXECUTION_ENABLED?: string;
+  PUBLIC_OFFICIAL_MOCK_EXAMS_ENABLED?: string;
+  CONTENT_AUTO_SYNC_ENABLED?: string;
+  SUBSCRIPTIONS_ENABLED?: string;
+  /** Owner-set acknowledgement required before licensed official content may be shown. */
+  OWNER_OFFICIAL_CONTENT_ACTIVATION?: string;
   /** Owner-set acknowledgement required before any money-moving flag may turn on. */
   OWNER_PAYMENTS_ACTIVATION?: string;
   /** Owner-set acknowledgement required before the production database may turn on. */
@@ -34,6 +42,12 @@ export interface Flags {
   aiPaidFallbackEnabled: boolean;
   aiDailyCostLimitEur: number;
   lifetimePriceEur: number;
+  officialQuestionBankEnabled: boolean;
+  contentAdminEnabled: boolean;
+  contentImportExecutionEnabled: boolean;
+  publicOfficialMockExamsEnabled: boolean;
+  contentAutoSyncEnabled: boolean;
+  subscriptionsEnabled: boolean;
 }
 
 const on = (v: string | undefined): boolean => v === "true";
@@ -45,6 +59,9 @@ export function readFlags(env: FlagEnv): Flags {
   const paymentsEnabled = paymentsApproved && on(env.PAYMENTS_ENABLED);
   const databaseProductionEnabled = dbApproved && on(env.DATABASE_PRODUCTION_ENABLED);
   const price = Number(env.LIFETIME_PRICE_EUR ?? "20");
+  const officialApproved = env.OWNER_OFFICIAL_CONTENT_ACTIVATION === ACTIVATION_PHRASE;
+  const officialQuestionBankEnabled = officialApproved && on(env.OFFICIAL_QUESTION_BANK_ENABLED);
+  const contentAdminEnabled = on(env.CONTENT_ADMIN_ENABLED);
   return {
     paymentsEnabled,
     // Checkout and live webhooks can never be on while payments are off.
@@ -60,5 +77,16 @@ export function readFlags(env: FlagEnv): Flags {
     aiPaidFallbackEnabled: false,
     aiDailyCostLimitEur: 0,
     lifetimePriceEur: Number.isFinite(price) && price > 0 ? price : 20,
+    officialQuestionBankEnabled,
+    // Owner-only admin surface (validation/preview). Off by default.
+    contentAdminEnabled,
+    // Writing imports needs the admin surface AND an owner-activated production database.
+    contentImportExecutionEnabled: contentAdminEnabled && databaseProductionEnabled && on(env.CONTENT_IMPORT_EXECUTION_ENABLED),
+    // Public exams with official content need the owner-activated official bank.
+    publicOfficialMockExamsEnabled: officialQuestionBankEnabled && on(env.PUBLIC_OFFICIAL_MOCK_EXAMS_ENABLED),
+    // No automatic synchronisation of content is implemented or allowed.
+    contentAutoSyncEnabled: false,
+    // RegaDRIVE sells a one-time lifetime purchase only; subscriptions are never enabled.
+    subscriptionsEnabled: false,
   };
 }

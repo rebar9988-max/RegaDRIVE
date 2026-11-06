@@ -1,0 +1,21 @@
+{
+  "_note": "FAKE TEST FIXTURE — placeholder text and codes, not real exam content. Never imported into production.",
+  "questions": [
+    {
+      "questionCode": "0.0.00-001", "catalogueVersion": "2026-01-01", "sourceType": "licensed_official", "licenseId": "LIC-FIXTURE",
+      "categoryType": "Grundstoff", "points": 4, "licenseClasses": ["B"], "topicId": "priority", "answerType": "choice",
+      "prompt": { "de": "Platzhalter-Testfrage eins", "ckb": "پرسیاری تاقیکردنەوەی یەک" },
+      "options": [{ "id": "a", "de": "Antwort A", "ckb": "وەڵامی A" }, { "id": "b", "de": "Antwort B", "ckb": "وەڵامی B" }],
+      "correct": ["a"],
+      "explanation": { "de": "Testerklärung", "ckb": "ڕوونکردنەوەی تاقیکردنەوە" },
+      "media": [{ "kind": "image", "file": "fixture.png", "altDe": "Testbild", "altCkb": "وێنەی تاقیکردنەوە" }]
+    },
+    {
+      "questionCode": "0.0.00-002", "catalogueVersion": "2026-01-01", "sourceType": "licensed_official", "licenseId": "LIC-FIXTURE",
+      "categoryType": "Zusatzstoff", "points": 3, "licenseClasses": ["B"], "topicId": "distance", "answerType": "number",
+      "prompt": { "de": "Platzhalter-Zahlenfrage" },
+      "numericAnswer": 40,
+      "explanation": { "de": "Testerklärung" }
+    }
+  ]
+}

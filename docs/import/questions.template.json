@@ -1,0 +1,40 @@
+{
+  "questions": [
+    {
+      "questionCode": "[[official question code from the licensed catalogue]]",
+      "catalogueVersion": "[[YYYY-MM-DD release of the licensed catalogue]]",
+      "sourceType": "licensed_official",
+      "licenseId": "[[id of the registered licence]]",
+      "categoryType": "Grundstoff",
+      "points": 4,
+      "licenseClasses": ["B"],
+      "topicId": "priority",
+      "answerType": "choice",
+      "prompt": { "de": "[[German original wording — unchanged]]", "ckb": "[[Sorani translation]]" },
+      "options": [
+        { "id": "a", "de": "[[German option a]]", "ckb": "[[Sorani option a]]" },
+        { "id": "b", "de": "[[German option b]]", "ckb": "[[Sorani option b]]" },
+        { "id": "c", "de": "[[German option c]]", "ckb": "[[Sorani option c]]" }
+      ],
+      "correct": ["a"],
+      "explanation": { "de": "[[German explanation]]", "ckb": "[[Sorani explanation]]" },
+      "media": [{ "kind": "image", "file": "[[file name of the uploaded image]]", "altDe": "[[German image description]]", "altCkb": "[[Sorani image description]]" }],
+      "vocabularyIds": []
+    },
+    {
+      "questionCode": "[[official question code]]",
+      "catalogueVersion": "[[YYYY-MM-DD]]",
+      "sourceType": "licensed_official",
+      "licenseId": "[[licence id]]",
+      "categoryType": "Grundstoff",
+      "points": 3,
+      "licenseClasses": ["B"],
+      "topicId": "distance",
+      "answerType": "number",
+      "prompt": { "de": "[[German original wording of a number question]]", "ckb": "[[Sorani translation]]" },
+      "numericAnswer": 0,
+      "explanation": { "de": "[[German explanation]]", "ckb": "[[Sorani explanation]]" },
+      "media": [{ "kind": "video", "file": "[[video file name]]", "posterFile": "[[poster image file name]]", "altDe": "[[German video description]]", "altCkb": "[[Sorani video description]]" }]
+    }
+  ]
+}
