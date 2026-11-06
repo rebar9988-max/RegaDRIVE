@@ -17,7 +17,7 @@ jobs:
     uses: ./.github/workflows/ci.yml
   deploy:
     needs: ci   # green CI on this exact SHA is mandatory
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     environment: production
     env:
       TARGET_URL: https://www.regaplatform.com
@@ -37,9 +37,14 @@ jobs:
       - name: Install dependencies (bounded retry)
         timeout-minutes: 5
         run: for i in 1 2 3; do npm ci && exit 0; sleep $((2 ** i * 2)); done; exit 1
-      - name: Install Chromium for the live smoke test (bounded, time-limited)
+      # Install OS packages once: killing apt mid-install can leave a lock
+      # that makes every subsequent retry fail on the same runner.
+      - name: Install browser system dependencies
+        timeout-minutes: 5
+        run: npx playwright install-deps chromium
+      - name: Install Chromium for the live smoke test
         timeout-minutes: 8
-        run: for i in 1 2 3; do timeout 150 npx playwright install --with-deps chromium && exit 0; echo "attempt $i failed or timed out"; sleep $((2 ** i * 2)); done; exit 1
+        run: for i in 1 2 3; do timeout --kill-after=10s 150 npx playwright install chromium && exit 0; echo "attempt $i failed or timed out"; sleep $((2 ** i * 2)); done; exit 1
       - name: Production build
         timeout-minutes: 5
         run: npm run build
