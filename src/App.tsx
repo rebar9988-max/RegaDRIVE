@@ -30,5 +30,5 @@ export function App() {
   const path = usePath();
   const { ready } = useApp();
   // Wait for stored settings/progress so the first paint has the right language and no layout jump.
-  return <Shell>{ready ? <div key={path}>{route(path)}</div> : <div aria-busy="true" style={{ minHeight: "60vh" }} />}</Shell>;
+  return <Shell>{ready ? <div key={path}>{route(path)}</div> : <div className="splash" aria-busy="true"><img className="splash-logo" src="/brand/regadrive-logo.webp" width={112} height={112} alt="RegaDRIVE" /></div>}</Shell>;
 }

@@ -4,6 +4,7 @@ import { MORE_LINKS } from "../app/Shell";
 import { useApp, useNow, type LangMode } from "../app/state";
 import { T } from "../app/strings";
 import { Bi, useBiText } from "../components/Bi";
+import { ProgressRing } from "../components/ProgressRing";
 import { Icon } from "../components/Icon";
 import { CONTENT } from "../app/content";
 import { TOPICS } from "../content/topics";
@@ -34,19 +35,34 @@ export function ProgressPage() {
   const qs = CONTENT.questions;
   const stats = topicStats(progress, qs, settings.masteryThreshold);
   const wrongIds = qs.filter((q) => questionStatus(progress.questions[q.id], settings.masteryThreshold) === "incorrect");
+  const correctCount = qs.filter((q) => progress.questions[q.id]?.lastCorrect === true).length;
+  const mastered = qs.filter((q) => questionStatus(progress.questions[q.id], settings.masteryThreshold) === "mastered").length;
+  const percent = qs.length ? Math.round(mastered / qs.length * 100) : 0;
   const lastExams = [...progress.examHistory].reverse().slice(0, 5);
   return (
     <div>
       <header className="page-head"><h1><Bi t={T.nav.progress} /></h1>
         <p className="small muted"><Bi t={{ ckb: "پێشکەوتن تەنها لەسەر ئەم ئامێرە پاشەکەوت دەکرێت.", de: "Der Fortschritt wird nur auf diesem Gerät gespeichert." }} /></p></header>
-      <div className="grid grid-3">
-        <div className="card stat"><span className="stat-value">{streakDays(progress, now)}</span><span className="stat-label muted"><Bi t={T.streak} /></span></div>
-        <div className="card stat"><span className="stat-value">{progress.bookmarks.length}</span><span className="stat-label muted"><Bi t={T.bookmarked} /></span></div>
-        <div className="card stat"><span className="stat-value">{wrongIds.length}</span><span className="stat-label muted"><Bi t={T.incorrectF} /></span></div>
+      <section className="card progress-summary">
+        <div className="progress-summary-copy"><h2><Bi t={{ ckb: "پێشکەوتنی گشتی", de: "Dein Lernfortschritt" }} /></h2><p className="small muted"><Bi t={{ ckb: `${mastered} لە ${qs.length} پرسیار فێربووە`, de: `${mastered} von ${qs.length} Fragen gemeistert` }} /></p></div>
+        <ProgressRing value={percent} label={label(T.mastered)} />
+      </section>
+      <div className="grid grid-3 progress-stats">
+        <div className="card stat stat-success"><span className="stat-icon"><Icon name="check" /></span><span className="stat-value">{correctCount}</span><span className="stat-label"><Bi t={T.correct} /></span></div>
+        <div className="card stat stat-danger"><span className="stat-icon"><Icon name="sign" /></span><span className="stat-value">{wrongIds.length}</span><span className="stat-label"><Bi t={T.incorrectF} /></span></div>
+        <div className="card stat stat-warning"><span className="stat-icon"><Icon name="trophy" /></span><span className="stat-value">{progress.examHistory.length}</span><span className="stat-label"><Bi t={T.mockExam} /></span></div>
       </div>
+      <section className="card readiness-card"><h2 className="section-title"><Bi t={{ ckb: "ئاستی فێربوونی پرسیارەکان", de: "Stand deines Fragentrainings" }} /><span className="badge" dir="ltr">{percent}%</span></h2><div className="progressbar" role="progressbar" aria-label={label(T.mastered)} aria-valuemin={0} aria-valuemax={100} aria-valuenow={percent}><span style={{ width: `${percent}%` }} /></div></section>
+      <div className="row small muted progress-secondary"><Icon name="flame" /><span>{streakDays(progress, now)} {label(T.streak)}</span><span className="spacer" /><Icon name="bookmark" /><span>{progress.bookmarks.length} {label(T.bookmarked)}</span></div>
       <div className="q-actions">
         <Link href="/practice?status=incorrect" className="btn btn-primary"><Bi t={T.reviewMistakes} /></Link>
         <Link href="/practice?bookmarks=1" className="btn btn-secondary">{label(T.bookmarksOnly)}</Link>
+      </div>
+      <div className="topic-insights">
+        {[{ weak: false, title: { ckb: "بابەتە بەهێزەکان", de: "Deine Stärken" } }, { weak: true, title: T.weakTopics }].map(({ weak, title }) => {
+          const topics = TOPICS.filter((t) => { const stat = stats.get(t.id); return stat && (weak ? wrongIds.some((q) => q.topicId === t.id) : stat.total > 0 && stat.mastered === stat.total); });
+          return <section className="card topic-insight" key={String(weak)}><span className={`insight-icon ${weak ? "warning" : "success"}`}><Icon name={weak ? "sign" : "check"} /></span><div><h2 className="section-title"><Bi t={title} /></h2>{topics.length ? <div className="chip-row">{topics.map((t) => <Link key={t.id} href={`/practice?topic=${t.id}`} className="chip"><Bi t={t.title} /></Link>)}</div> : <p className="small muted"><Bi t={{ ckb: "دوای ڕاهێنان ئەنجامەکان لێرە دەبینیت.", de: "Nach dem Üben siehst du hier deine Ergebnisse." }} /></p>}</div></section>;
+        })}
       </div>
       <section className="section">
         <h2 className="section-title"><Bi t={T.topic} /></h2>
@@ -152,6 +168,7 @@ export function Account() {
     <div>
       <header className="page-head"><h1><Bi t={T.nav.account} /></h1></header>
       <section className="card stack" data-testid="account-unavailable">
+        <img className="account-logo" src="/brand/regadrive-logo.webp" alt="RegaDRIVE" width={112} height={112} />
         <Bi t={{ ckb: "هەژماری قوتابی (تۆمارکردن، چوونەژوورەوە، پشتڕاستکردنەوەی ئیمەیڵ) ئامادەکراوە، بەڵام هێشتا چالاک نییە، چونکە داتابەیسی بەرهەمهێنان بە ئەنقەست کوژاوەتەوە.",
           de: "Schülerkonten (Registrierung, Anmeldung, E-Mail-Bestätigung) sind vorbereitet, aber noch nicht aktiv, weil die Produktionsdatenbank bewusst ausgeschaltet ist." }} />
         <Bi t={{ ckb: "هەموو پێشکەوتنەکەت بە سەلامەتی لەسەر ئەم ئامێرە پاشەکەوت دەکرێت.", de: "Dein gesamter Lernfortschritt wird sicher auf diesem Gerät gespeichert." }} />

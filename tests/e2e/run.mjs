@@ -90,7 +90,9 @@ try {
       // Quick tiles and stat tiles must be equal height (no ragged layout).
       const heights = await page.$$eval(".grid-tiles > .tile", (els) => els.map((e) => Math.round(e.getBoundingClientRect().height)));
       assert.ok(new Set(heights.slice(0, 2)).size === 1 && new Set(heights.slice(2, 4)).size === 1, `tile rows equal height: ${heights}`);
-      const stats = await page.$$eval(".grid-3 > .stat", (els) => els.map((e) => Math.round(e.getBoundingClientRect().height)));
+      assert.equal(heights.length, 4, "four quick navigation tiles");
+      const stats = await page.$$eval(".compact-stats > .stat", (els) => els.map((e) => Math.round(e.getBoundingClientRect().height)));
+      assert.equal(stats.length, 2, "both supplementary statistics remain available");
       assert.equal(new Set(stats).size, 1, `stat tiles equal height: ${stats}`);
       const small = await page.$$eval("a.btn, button.btn, .tab, .chip, .navlink", (els) => els.filter((e) => e.offsetParent && (e.getBoundingClientRect().height < 44 || e.getBoundingClientRect().width < 44)).length);
       assert.equal(small, 0, "touch targets ≥ 44px");
@@ -152,6 +154,7 @@ try {
     const ctx = await browser.newContext({ viewport: { width: 1280, height: 900 } });
     const page = await ctx.newPage();
     await page.goto(`${BASE}/practice`);
+    await page.locator("[data-testid=practice-filter-toggle]").click();
     await page.fill("[data-testid=search]", "Rettungsgasse");
     await page.locator("[data-testid=question-card][data-qid=rd-g-020]").waitFor();
     await page.fill("[data-testid=search]", "پشتێنی سەلامەتی");
@@ -186,7 +189,12 @@ try {
     assert.equal(await page.getAttribute("html", "dir"), "ltr");
     await page.goto(BASE);
     await page.waitForSelector("[data-testid=home]");
-    assert.equal(await page.locator("[lang=ckb]").count(), 0);
+    assert.equal(await page.locator("[lang=ckb]:not(.language-switch button)").count(), 0);
+    // The language picker keeps its native-language label in every mode.
+    await page.locator(".language-switch button[lang=ckb]").click();
+    assert.equal(await page.getAttribute("html", "dir"), "rtl");
+    await page.locator(".language-switch button[lang=de]").click();
+    assert.equal(await page.getAttribute("html", "dir"), "ltr");
     await page.screenshot({ path: `${OUT}/home-desktop-de.png` });
     await ctx.close();
   });
@@ -226,6 +234,38 @@ try {
     await page.click("[data-testid=validate]");
     await page.waitForFunction(() => document.querySelector("[data-testid=summary]")?.textContent?.includes("invalid: 2"));
     await page.screenshot({ path: `${OUT}/admin-import.png`, fullPage: true });
+    await ctx.close();
+  });
+
+  await test("reference navigation, lesson filters and narrow layouts", async () => {
+    const ctx = await browser.newContext({ viewport: { width: 320, height: 844 } });
+    const page = await ctx.newPage();
+    const errors = [];
+    page.on("pageerror", (e) => errors.push(e.message));
+    await page.goto(BASE);
+    await page.locator(".language-switch button[lang=ckb]").click();
+    const hrefs = await page.locator(".tabbar a").evaluateAll((els) => els.map((e) => e.getAttribute("href")));
+    assert.deepEqual(hrefs, ["/", "/learn", "/exam", "/progress", "/settings"]);
+    await page.locator('.tabbar a[href="/learn"]').click();
+    const all = await page.locator(".lesson-list > li").count();
+    assert.ok(all > 0);
+    await page.locator(".lesson-filters button").nth(3).click();
+    assert.equal(await page.locator(".lesson-list > li").count(), 0);
+    await page.locator(".lesson-filters button").nth(2).click();
+    assert.equal(await page.locator(".lesson-list > li").count(), all);
+    await page.locator(".lesson-list a").first().click();
+    await page.locator("[data-testid=lesson-done]").click();
+    await page.goto(`${BASE}/learn`);
+    await page.locator(".lesson-filters button").nth(3).click();
+    assert.equal(await page.locator(".lesson-list > li").count(), 1);
+    for (const path of ["/", "/learn", "/practice", "/progress", "/settings", "/more", "/account"]) {
+      await page.goto(BASE + path);
+      await page.locator("main h1").waitFor();
+      await page.evaluate(() => document.fonts.ready);
+      assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth), false, path);
+      await page.screenshot({ path: `${OUT}/design-320-${path.slice(1) || "home"}.png`, fullPage: true });
+    }
+    assert.deepEqual(errors, []);
     await ctx.close();
   });
 
