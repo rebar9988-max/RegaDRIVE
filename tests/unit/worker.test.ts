@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { handleApi, type Env } from "../../worker/index";
+import worker, { handleApi, APP_ROUTE, type Env } from "../../worker/index";
 import { signWebhook } from "../../src/lib/shared/payments";
 
 const env = (extra: Partial<Env> = {}): Env => ({
@@ -55,5 +55,17 @@ describe("worker API", () => {
   });
   it("services finder never invents providers", async () => {
     expect(await (await call("/api/services")).json()).toMatchObject({ status: "unavailable", results: [] });
+  });
+  it("serves app routes with 200 and unknown (e.g. legacy foreign) paths with 404 + noindex", async () => {
+    const e = env({ ASSETS: { fetch: async () => new Response("<html>shell</html>", { status: 200, headers: { "content-security-policy": "default-src 'self'" } }) } });
+    const get = (p: string) => worker.fetch(new Request(`https://regadrive.test${p}`), e);
+    for (const p of ["/", "/learn", "/learn/l-priority", "/practice", "/exam", "/about", "/access"]) expect((await get(p)).status).toBe(200);
+    for (const p of ["/businesses/old-page", "/de/marketplace", "/admin/import", "/learn/a/b"]) {
+      const r = await get(p);
+      expect(r.status).toBe(404);
+      expect(r.headers.get("x-robots-tag")).toBe("noindex");
+      expect(r.headers.get("content-security-policy")).toContain("default-src");
+    }
+    expect(APP_ROUTE.test("/learn/")).toBe(true);
   });
 });

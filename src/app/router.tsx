@@ -2,10 +2,12 @@ import { useEffect, useState, type AnchorHTMLAttributes, type MouseEvent } from 
 
 const listeners = new Set<() => void>();
 export function navigate(to: string) {
-  if (to === location.pathname + location.search) return;
+  if (to === location.pathname + location.search + location.hash) return;
   history.pushState(null, "", to);
   listeners.forEach((l) => l());
-  window.scrollTo(0, 0);
+  const hash = to.includes("#") ? to.slice(to.indexOf("#") + 1) : "";
+  if (hash) setTimeout(() => document.getElementById(hash)?.scrollIntoView(), 0);
+  else window.scrollTo(0, 0);
 }
 export function usePath(): string {
   const [path, setPath] = useState(() => location.pathname);

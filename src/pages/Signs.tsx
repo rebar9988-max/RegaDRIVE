@@ -1,6 +1,7 @@
 import { T } from "../app/strings";
 import { Bi } from "../components/Bi";
 import { SignIcon } from "../components/SignIcon";
+import { ContentStatus } from "../components/ContentStatus";
 import { CONTENT } from "../app/content";
 const SIGNS = CONTENT.signs;
 
@@ -11,7 +12,7 @@ export function Signs() {
         <h1><Bi t={T.nav.signs} /></h1>
         <p className="small muted"><Bi t={{ ckb: "وێنەکان شێوەی سادەکراوی نیشانە فەرمییەکانن. ژمارەی StVO لە ژێر هەر نیشانەیەکدایە.", de: "Vereinfachte Darstellungen der amtlichen Zeichen. Die StVO-Nummer steht unter jedem Zeichen." }} /></p>
       </header>
-      {SIGNS.length === 0 && <p className="notice"><Bi t={T.contentInReview} /></p>}
+      {SIGNS.length === 0 && <ContentStatus testId="signs-status" />}
       <div className="signs-grid">
         {SIGNS.map((s) => (
           <article key={s.id} className="card sign-tile" data-testid="sign">

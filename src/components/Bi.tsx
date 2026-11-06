@@ -9,6 +9,7 @@ export function Bi({ t, as: Tag = "div", className = "", inline = false }: { t: 
   return (
     <Tag className={`bi${inline ? " inline" : ""} ${className}`.trim()}>
       {m !== "de" && <span className="ckb" lang="ckb" dir="rtl">{t.ckb}</span>}
+      {m === "bi" && <span className="sr-only"> – </span>}
       {m !== "ckb" && <span className="de" lang="de" dir="ltr">{t.de}</span>}
     </Tag>
   );

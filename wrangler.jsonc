@@ -9,8 +9,10 @@
   "assets": {
     "directory": "./dist",
     "binding": "ASSETS",
-    "not_found_handling": "single-page-application",
-    "run_worker_first": ["/api/*"]
+    // Missing files are real 404s. Page routes go through the Worker (handlePage) so that unknown paths,
+    // e.g. legacy URLs of a previous site on this domain, get HTTP 404 + noindex instead of a soft-404.
+    "not_found_handling": "none",
+    "run_worker_first": ["/*", "!/assets/*", "!/brand/*", "!/icons/*", "!/*.*"]
   },
   // Workers AI (free daily allocation). Used only when AI is enabled and the gateway's free-only guard passes.
   "ai": { "binding": "AI" },

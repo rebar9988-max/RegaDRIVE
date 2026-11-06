@@ -124,6 +124,20 @@ function getGateway(env: Env): AiGateway {
   return gateway;
 }
 
+/** Client-side routes of the app. Anything else is a real 404 (no soft-404s for foreign/legacy URLs). */
+export const APP_ROUTE = /^\/(?:learn(?:\/[a-z0-9-]{1,64})?|signs|practice|exam|progress|vocabulary|services|account|access|settings|about|more)?\/?$/;
+
+/** Serves the SPA shell for app routes; unknown paths get the same shell with HTTP 404 and noindex. */
+export async function handlePage(req: Request, env: Env): Promise<Response> {
+  const url = new URL(req.url);
+  const shell = await env.ASSETS.fetch(new Request(new URL("/", url), { headers: req.headers }));
+  if (APP_ROUTE.test(url.pathname)) return shell;
+  const headers = new Headers(shell.headers);
+  headers.set("x-robots-tag", "noindex");
+  headers.set("cache-control", "no-store");
+  return new Response(shell.body, { status: 404, headers });
+}
+
 export default {
   async fetch(req: Request, env: Env): Promise<Response> {
     const url = new URL(req.url);
@@ -131,6 +145,7 @@ export default {
       try { return await handleApi(req, env); }
       catch { return json({ error: "INTERNAL" }, 500); }
     }
+    if ((req.method === "GET" || req.method === "HEAD") && !/\.[a-z0-9]{1,8}$/i.test(url.pathname)) return handlePage(req, env);
     return env.ASSETS.fetch(req);
   },
 };

@@ -92,6 +92,11 @@ try {
       assert.ok(new Set(heights.slice(0, 2)).size === 1 && new Set(heights.slice(2, 4)).size === 1, `tile rows equal height: ${heights}`);
       const stats = await page.$$eval(".grid-3 > .stat", (els) => els.map((e) => Math.round(e.getBoundingClientRect().height)));
       assert.equal(new Set(stats).size, 1, `stat tiles equal height: ${stats}`);
+      assert.equal(await page.locator("[data-testid=site-footer] a[href='/about#impressum']").count(), 1, "Impressum link on every page");
+      const navNames = await page.$$eval("nav", (els) => els.map((e) => e.getAttribute("aria-label")));
+      assert.ok(navNames.every((n) => n === "ڕێنیشاندەری سەرەکی"), `nav landmark names: ${navNames}`);
+      const linkName = await page.$eval(".navlink, .tab", (e) => e.textContent);
+      assert.ok(!/[\u0600-\u06FF][A-Za-z]/.test(linkName), `labels must not run together: ${linkName}`);
       const small = await page.$$eval("a.btn, button.btn, .tab, .chip, .navlink", (els) => els.filter((e) => e.offsetParent && (e.getBoundingClientRect().height < 44 || e.getBoundingClientRect().width < 44)).length);
       assert.equal(small, 0, "touch targets ≥ 44px");
       await page.screenshot({ path: `${OUT}/home-${name}.png`, fullPage: true });
@@ -120,7 +125,7 @@ try {
     await page.goto(`${BASE}/practice?topic=priority`);
     const card = page.locator("[data-testid=question-card]").first();
     await card.waitFor();
-    const order = await card.locator("legend .bi > span").evaluateAll((els) => els.map((e) => [e.getAttribute("lang"), e.getAttribute("dir")]));
+    const order = await card.locator("legend .bi > span[lang]").evaluateAll((els) => els.map((e) => [e.getAttribute("lang"), e.getAttribute("dir")]));
     assert.deepEqual(order, [["ckb", "rtl"], ["de", "ltr"]]);
     // rd-g-003: single correct answer "a"
     assert.equal(await card.getAttribute("data-qid"), "rd-g-003");
@@ -191,12 +196,14 @@ try {
     await ctx.close();
   });
 
-  await test("purchase disabled, account unavailable, services show no invented data", async () => {
+  await test("access is free (planned €20 inactive, no buy action), services show no invented data", async () => {
     const ctx = await browser.newContext({ viewport: { width: 1280, height: 900 } });
     const page = await ctx.newPage();
     await page.goto(`${BASE}/access`);
-    assert.ok(await page.locator("[data-testid=buy]").isDisabled());
-    assert.ok((await page.textContent("[data-testid=purchase]")).includes("€20"));
+    assert.equal(await page.locator("[data-testid=buy], button:has-text('Kaufen')").count(), 0, "no buy action");
+    const planned = await page.textContent("[data-testid=planned-plan]");
+    assert.ok(planned.includes("20 €") && planned.includes("Nicht aktiv, nicht kaufbar"), "price only as an inactive planned offer");
+    assert.ok((await page.textContent("[data-testid=purchase]")).includes("keine Kartendaten"));
     assert.equal(await page.locator("input[autocomplete^=cc-], input[name*=card]").count(), 0, "no card fields");
     await page.goto(`${BASE}/services`);
     await page.click("form button[type=submit]");
