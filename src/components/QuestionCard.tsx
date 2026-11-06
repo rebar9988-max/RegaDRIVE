@@ -1,3 +1,4 @@
+import { Link } from "../app/router";
 import { useId, useState } from "react";
 import type { Question } from "../content/types";
 import { signById } from "../content/signs";
@@ -55,7 +56,11 @@ export function QuestionCard({ question: q, mode, sessionId, index, total, selec
   };
 
   return (
-    <article className="card" aria-labelledby={legendId} data-testid="question-card" data-qid={q.id}>
+    <article className="card question-card" aria-labelledby={legendId} data-testid="question-card" data-qid={q.id}>
+      {index !== undefined && total !== undefined && <>
+        <div className="question-heading"><strong><Bi t={mode === "practice" ? { ckb: "پرسیاری ڕاهێنان", de: "Übungsfrage" } : T.mockExam} /></strong><span className="question-counter" dir="ltr">{index + 1} / {total}</span>{mode === "practice" && <Link href="/" className="icon-button" aria-label={label({ ckb: "داخستنی ڕاهێنان", de: "Übung schließen" })}><Icon name="close" /></Link>}</div>
+        <div className="progressbar question-progress" role="progressbar" aria-label={label({ ckb: "ڕێڕەوی پرسیارەکان", de: "Fragenfortschritt" })} aria-valuemin={0} aria-valuemax={total} aria-valuenow={index + 1}><span style={{ width: `${(index + 1) / total * 100}%` }} /></div>
+      </>}
       <div className="q-meta">
         {index !== undefined && total !== undefined && <span className="badge" dir="ltr">{index + 1} / {total}</span>}
         {q.points !== null && <span className="badge"><Bi t={{ ckb: `${q.points} ${T.points.ckb}`, de: `${q.points} ${T.points.de}` }} inline /></span>}
@@ -97,6 +102,7 @@ export function QuestionCard({ question: q, mode, sessionId, index, total, selec
         <div className={`feedback ${correct ? "ok" : "bad"}`} role="status" data-testid="feedback">
           <div className="feedback-title"><Bi t={correct ? T.correct : T.incorrect} inline /></div>
           {isNumber && !correct && q.numericAnswer !== undefined && <p className="num-block"><Bi t={T.correctAnswers} inline />: <span className="num">{String(q.numericAnswer).replace(".", ",")}</span></p>}
+          <div className="explanation-heading"><Icon name="info" /><Bi t={{ ckb: "ڕوونکردنەوە", de: "Erklärung" }} /></div>
           <Bi t={q.explanation} />
           <AiExplain questionId={q.id} />
         </div>

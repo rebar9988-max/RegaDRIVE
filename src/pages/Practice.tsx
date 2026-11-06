@@ -35,7 +35,7 @@ export function Practice() {
 
   if (CONTENT.questions.length === 0) {
     return (
-      <div>
+      <div className="practice-page">
         <header className="page-head"><h1><Bi t={T.practiceAll} /></h1></header>
         <section className="card stack" data-testid="practice-in-review">
           <p className="notice"><Bi t={T.contentInReview} /></p>
@@ -45,9 +45,10 @@ export function Practice() {
     );
   }
   return (
-    <div>
+    <div className="practice-page">
       <header className="page-head"><h1><Bi t={T.practiceAll} /></h1></header>
-      <section className="card stack" aria-label={label(T.search)} style={{ marginBottom: 16 }}>
+      <details className="practice-filters"><summary data-testid="practice-filter-toggle">{label(T.search)} · {label(T.topic)}</summary>
+      <section className="stack" aria-label={label(T.search)}>
         <label className="sr-only" htmlFor="q-search">{label(T.search)}</label>
         <input id="q-search" className="input" type="search" placeholder={label(T.search)} value={filter.text}
           onChange={(e) => set({ text: e.target.value })} data-testid="search" />
@@ -76,7 +77,7 @@ export function Practice() {
           </select>
         </label>
         <p className="small muted" role="status" data-testid="result-count"><span dir="ltr">{list.length}</span> {label(T.results)}</p>
-      </section>
+      </section></details>
 
       {q ? (
         <QuestionCard key={`${session}-${q.id}`} question={q} mode="practice" sessionId={session} index={pos} total={list.length}

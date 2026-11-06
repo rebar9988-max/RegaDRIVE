@@ -20,6 +20,7 @@
     "node": ">=22"
   },
   "dependencies": {
+    "@phosphor-icons/react": "^2.1.10",
     "react": "^19.3.1",
     "react-dom": "^19.3.1"
   },
