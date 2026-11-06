@@ -1,0 +1,4 @@
+# Copy to .dev.vars for local `wrangler dev`. Never commit real keys. Leave empty to keep providers NOT_CONFIGURED.
+GEMINI_API_KEY=
+GROQ_API_KEY=
+OPENROUTER_API_KEY=
