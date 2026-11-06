@@ -8,3 +8,5 @@ test-results
 playwright-report
 node_modules/.tmp
 .wrangler-e2e.json
+lkg.json
+.wrangler-smoke.json

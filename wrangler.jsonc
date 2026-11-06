@@ -16,6 +16,7 @@
   // Migrations in ./migrations are tested locally only.
   "vars": {
     "APP_ENV": "production",
+    "CONTENT_MODE": "production",
     "PAYMENTS_ENABLED": "false",
     "CHECKOUT_ENABLED": "false",
     "LIVE_PAYMENT_WEBHOOKS_ENABLED": "false",

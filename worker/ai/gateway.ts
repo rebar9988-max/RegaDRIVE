@@ -9,20 +9,26 @@ export type ProviderStatus = "ACTIVE" | "RATE_LIMITED" | "NOT_CONFIGURED" | "UNA
 
 export interface AiEnv {
   AI_ENABLED?: string;
+  AI_FREE_ONLY?: string;
+  AI_PAID_FALLBACK_ENABLED?: string;
+  AI_DAILY_COST_LIMIT_EUR?: string;
   AI_PROVIDER_ORDER?: string;
   AI_MAX_RETRIES_PER_PROVIDER?: string;
   AI_DOMAIN_SCOPE?: string;
   AI_DAILY_REQUESTS_PER_PROVIDER?: string;
-  GEMINI_API_KEY?: string;
+  /** RegaDRIVE-only secrets (never Rega24/R&L keys). */
+  REGADRIVE_GEMINI_API_KEY?: string;
+  REGADRIVE_GROQ_API_KEY?: string;
+  REGADRIVE_OPENROUTER_API_KEY?: string;
   AI_GEMINI_MODEL?: string;
-  AI_GEMINI_FREE_TIER_CONFIRMED?: string;
-  GROQ_API_KEY?: string;
   AI_GROQ_MODEL?: string;
-  AI_GROQ_FREE_TIER_CONFIRMED?: string;
-  OPENROUTER_API_KEY?: string;
   AI_OPENROUTER_MODEL?: string;
   AI_WORKERS_AI_MODEL?: string;
-  AI_WORKERS_AI_FREE_CONFIRMED?: string;
+  /** YYYY-MM-DD written only after scripts/ai-verify.mjs passed for that provider and model. */
+  AI_GEMINI_VERIFIED_ON?: string;
+  AI_GROQ_VERIFIED_ON?: string;
+  AI_OPENROUTER_VERIFIED_ON?: string;
+  AI_WORKERS_AI_VERIFIED_ON?: string;
   AI?: { run(model: string, input: unknown): Promise<unknown> };
 }
 
@@ -31,11 +37,41 @@ type Fetch = typeof fetch;
 
 interface Adapter {
   id: ProviderId;
-  configured(env: AiEnv): { ok: true } | { ok: false; reason: string };
+  configured(env: AiEnv, now: number): Check;
   call(env: AiEnv, req: ChatRequest, f: Fetch, signal: AbortSignal): Promise<string>;
 }
 
-const yes = (v?: string) => v === "true";
+/** Free-tier policy per provider: caps are deliberately below the providers' published free limits. */
+export const FREE_TIER_POLICY: Record<ProviderId, { dailyRequests: number; maxOutputTokens: number; verificationMaxAgeDays: number }> = {
+  gemini: { dailyRequests: 200, maxOutputTokens: 400, verificationMaxAgeDays: 30 },
+  groq: { dailyRequests: 500, maxOutputTokens: 400, verificationMaxAgeDays: 30 },
+  openrouter: { dailyRequests: 40, maxOutputTokens: 400, verificationMaxAgeDays: 30 },
+  "workers-ai": { dailyRequests: 50, maxOutputTokens: 400, verificationMaxAgeDays: 30 },
+};
+
+type Check = { ok: true } | { ok: false; reason: string };
+const need = (cond: unknown, reason: string): Check => (cond ? { ok: true } : { ok: false, reason });
+const first = (...checks: Check[]): Check => checks.find((c) => !c.ok) ?? { ok: true };
+
+/** Whole-gateway zero-cost configuration. Any inconsistency stops ALL providers (fail closed). */
+export function globalCostGuard(e: AiEnv): Check {
+  return first(
+    need(e.AI_ENABLED === "true", "AI_ENABLED is not true"),
+    need(e.AI_FREE_ONLY === undefined || e.AI_FREE_ONLY === "true", "AI_FREE_ONLY must be true"),
+    need(e.AI_PAID_FALLBACK_ENABLED === undefined || e.AI_PAID_FALLBACK_ENABLED === "false", "paid fallback requested"),
+    need(e.AI_DAILY_COST_LIMIT_EUR === undefined || e.AI_DAILY_COST_LIMIT_EUR === "0", "non-zero AI cost limit requested"),
+    need(e.AI_DOMAIN_SCOPE === undefined || e.AI_DOMAIN_SCOPE === "regadrive", "AI_DOMAIN_SCOPE must be regadrive"),
+  );
+}
+
+/** A provider's free-tier verification must exist and be recent; a flag alone is never enough. */
+export function verificationFresh(on: string | undefined, now: number, maxAgeDays: number): Check {
+  if (!on || !/^\d{4}-\d{2}-\d{2}$/.test(on)) return { ok: false, reason: "free-tier verification missing (run scripts/ai-verify.mjs)" };
+  const age = (now - Date.parse(`${on}T00:00:00Z`)) / 86_400_000;
+  if (!(age >= -1)) return { ok: false, reason: "free-tier verification date is in the future" };
+  if (age > maxAgeDays) return { ok: false, reason: "free-tier verification expired" };
+  return { ok: true };
+}
 
 async function postJson(f: Fetch, url: string, headers: Record<string, string>, body: unknown, signal: AbortSignal) {
   const res = await f(url, { method: "POST", headers: { "content-type": "application/json", ...headers }, body: JSON.stringify(body), signal });
@@ -53,14 +89,14 @@ const openAiText = (j: Record<string, unknown>): string => {
 export const ADAPTERS: Record<ProviderId, Adapter> = {
   gemini: {
     id: "gemini",
-    configured: (e) =>
-      !e.GEMINI_API_KEY ? { ok: false, reason: "missing GEMINI_API_KEY" }
-      : !e.AI_GEMINI_MODEL ? { ok: false, reason: "missing AI_GEMINI_MODEL" }
-      : !yes(e.AI_GEMINI_FREE_TIER_CONFIRMED) ? { ok: false, reason: "free tier not confirmed by owner" }
-      : { ok: true },
+    configured: (e, now) => first(
+      need(e.REGADRIVE_GEMINI_API_KEY, "missing REGADRIVE_GEMINI_API_KEY"),
+      need(e.AI_GEMINI_MODEL, "missing AI_GEMINI_MODEL"),
+      verificationFresh(e.AI_GEMINI_VERIFIED_ON, now, FREE_TIER_POLICY.gemini.verificationMaxAgeDays),
+    ),
     async call(e, r, f, signal) {
       const url = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(e.AI_GEMINI_MODEL!)}:generateContent`;
-      const j = await postJson(f, url, { "x-goog-api-key": e.GEMINI_API_KEY! }, {
+      const j = await postJson(f, url, { "x-goog-api-key": e.REGADRIVE_GEMINI_API_KEY! }, {
         systemInstruction: { parts: [{ text: r.system }] },
         contents: [{ role: "user", parts: [{ text: r.user }] }],
         generationConfig: { maxOutputTokens: r.maxTokens, temperature: 0.2 },
@@ -71,13 +107,13 @@ export const ADAPTERS: Record<ProviderId, Adapter> = {
   },
   groq: {
     id: "groq",
-    configured: (e) =>
-      !e.GROQ_API_KEY ? { ok: false, reason: "missing GROQ_API_KEY" }
-      : !e.AI_GROQ_MODEL ? { ok: false, reason: "missing AI_GROQ_MODEL" }
-      : !yes(e.AI_GROQ_FREE_TIER_CONFIRMED) ? { ok: false, reason: "free tier not confirmed by owner" }
-      : { ok: true },
+    configured: (e, now) => first(
+      need(e.REGADRIVE_GROQ_API_KEY, "missing REGADRIVE_GROQ_API_KEY"),
+      need(e.AI_GROQ_MODEL, "missing AI_GROQ_MODEL"),
+      verificationFresh(e.AI_GROQ_VERIFIED_ON, now, FREE_TIER_POLICY.groq.verificationMaxAgeDays),
+    ),
     async call(e, r, f, signal) {
-      return openAiText(await postJson(f, "https://api.groq.com/openai/v1/chat/completions", { authorization: `Bearer ${e.GROQ_API_KEY}` }, {
+      return openAiText(await postJson(f, "https://api.groq.com/openai/v1/chat/completions", { authorization: `Bearer ${e.REGADRIVE_GROQ_API_KEY}` }, {
         model: e.AI_GROQ_MODEL, max_tokens: r.maxTokens, temperature: 0.2,
         messages: [{ role: "system", content: r.system }, { role: "user", content: r.user }],
       }, signal));
@@ -85,13 +121,14 @@ export const ADAPTERS: Record<ProviderId, Adapter> = {
   },
   openrouter: {
     id: "openrouter",
-    configured: (e) =>
-      !e.OPENROUTER_API_KEY ? { ok: false, reason: "missing OPENROUTER_API_KEY" }
-      : !e.AI_OPENROUTER_MODEL ? { ok: false, reason: "missing AI_OPENROUTER_MODEL" }
-      : !e.AI_OPENROUTER_MODEL.endsWith(":free") ? { ok: false, reason: "model is not a :free model" }
-      : { ok: true },
+    configured: (e, now) => first(
+      need(e.REGADRIVE_OPENROUTER_API_KEY, "missing REGADRIVE_OPENROUTER_API_KEY"),
+      need(e.AI_OPENROUTER_MODEL, "missing AI_OPENROUTER_MODEL"),
+      need(e.AI_OPENROUTER_MODEL?.endsWith(":free"), "model is not a :free model"),
+      verificationFresh(e.AI_OPENROUTER_VERIFIED_ON, now, FREE_TIER_POLICY.openrouter.verificationMaxAgeDays),
+    ),
     async call(e, r, f, signal) {
-      return openAiText(await postJson(f, "https://openrouter.ai/api/v1/chat/completions", { authorization: `Bearer ${e.OPENROUTER_API_KEY}` }, {
+      return openAiText(await postJson(f, "https://openrouter.ai/api/v1/chat/completions", { authorization: `Bearer ${e.REGADRIVE_OPENROUTER_API_KEY}` }, {
         model: e.AI_OPENROUTER_MODEL, max_tokens: r.maxTokens, temperature: 0.2,
         // Never let OpenRouter route to a paid endpoint.
         provider: { allow_fallbacks: false },
@@ -101,11 +138,11 @@ export const ADAPTERS: Record<ProviderId, Adapter> = {
   },
   "workers-ai": {
     id: "workers-ai",
-    configured: (e) =>
-      !e.AI ? { ok: false, reason: "missing AI binding" }
-      : !e.AI_WORKERS_AI_MODEL ? { ok: false, reason: "missing AI_WORKERS_AI_MODEL" }
-      : !yes(e.AI_WORKERS_AI_FREE_CONFIRMED) ? { ok: false, reason: "free allocation not confirmed by owner" }
-      : { ok: true },
+    configured: (e, now) => first(
+      need(e.AI, "missing AI binding"),
+      need(e.AI_WORKERS_AI_MODEL, "missing AI_WORKERS_AI_MODEL"),
+      verificationFresh(e.AI_WORKERS_AI_VERIFIED_ON, now, FREE_TIER_POLICY["workers-ai"].verificationMaxAgeDays),
+    ),
     async call(e, r) {
       const out = (await e.AI!.run(e.AI_WORKERS_AI_MODEL!, {
         max_tokens: r.maxTokens,
@@ -138,20 +175,38 @@ export class AiGateway {
     return h;
   }
 
-  private dailyLimit(): number {
-    const n = Number(this.env.AI_DAILY_REQUESTS_PER_PROVIDER ?? "200");
-    return Number.isFinite(n) && n >= 0 ? n : 200;
+  /** Owner may lower, never raise, the free-tier cap. */
+  private dailyLimit(id: ProviderId): number {
+    const cap = FREE_TIER_POLICY[id].dailyRequests;
+    const n = Number(this.env.AI_DAILY_REQUESTS_PER_PROVIDER ?? cap);
+    return Number.isFinite(n) && n >= 0 ? Math.min(n, cap) : cap;
+  }
+
+  /** Cost guard evaluated immediately before every provider request. */
+  costGuard(id: ProviderId): Check {
+    const g = globalCostGuard(this.env);
+    if (!g.ok) return g;
+    if (!this.order().includes(id)) return { ok: false, reason: "not in AI_PROVIDER_ORDER" };
+    const c = ADAPTERS[id].configured(this.env, this.now());
+    if (!c.ok) return c;
+    const h = this.h(id);
+    const t = this.now();
+    if (h.used >= this.dailyLimit(id)) return { ok: false, reason: "daily free quota reached" };
+    if (h.rateLimitedUntil > t) return { ok: false, reason: "provider rate limit" };
+    if (h.openUntil > t) return { ok: false, reason: "circuit open after failures" };
+    return { ok: true };
   }
 
   status(): { id: ProviderId; status: ProviderStatus; detail: string }[] {
     return (Object.keys(ADAPTERS) as ProviderId[]).map((id) => {
-      if (this.env.AI_ENABLED !== "true") return { id, status: "DISABLED", detail: "AI_ENABLED is not true" };
+      const g = globalCostGuard(this.env);
+      if (!g.ok) return { id, status: "DISABLED", detail: g.reason };
       if (!this.order().includes(id)) return { id, status: "DISABLED", detail: "not in AI_PROVIDER_ORDER" };
-      const c = ADAPTERS[id].configured(this.env);
+      const c = ADAPTERS[id].configured(this.env, this.now());
       if (!c.ok) return { id, status: "NOT_CONFIGURED", detail: c.reason };
       const h = this.h(id);
       const t = this.now();
-      if (h.used >= this.dailyLimit() || h.rateLimitedUntil > t) return { id, status: "RATE_LIMITED", detail: "quota or provider rate limit" };
+      if (h.used >= this.dailyLimit(id) || h.rateLimitedUntil > t) return { id, status: "RATE_LIMITED", detail: "quota or provider rate limit" };
       if (h.openUntil > t) return { id, status: "UNAVAILABLE", detail: "circuit open after failures" };
       if (h.lastOk === true) return { id, status: "ACTIVE", detail: "last call succeeded" };
       return { id, status: "UNAVAILABLE", detail: h.lastOk === false ? "last call failed" : "configured, not yet verified by a successful call" };
@@ -159,20 +214,19 @@ export class AiGateway {
   }
 
   async complete(req: ChatRequest): Promise<{ provider: ProviderId; text: string } | { provider: null; error: string }> {
-    if (this.env.AI_ENABLED !== "true") return { provider: null, error: "AI_DISABLED" };
+    if (!globalCostGuard(this.env).ok) return { provider: null, error: "AI_DISABLED" };
     const retries = Math.min(Math.max(Number(this.env.AI_MAX_RETRIES_PER_PROVIDER ?? "1") || 0, 0), 2);
     for (const id of this.order()) {
       const adapter = ADAPTERS[id];
-      if (!adapter.configured(this.env).ok) continue;
       const h = this.h(id);
       for (let attempt = 0; attempt <= retries; attempt++) {
-        const t = this.now();
-        if (h.openUntil > t || h.rateLimitedUntil > t || h.used >= this.dailyLimit()) break;
+        if (!this.costGuard(id).ok) break; // fail closed before EVERY request
         h.used += 1;
+        const capped = { ...req, maxTokens: Math.min(req.maxTokens, FREE_TIER_POLICY[id].maxOutputTokens) };
         const ctrl = new AbortController();
         const timer = setTimeout(() => ctrl.abort(), this.timeoutMs);
         try {
-          const text = (await adapter.call(this.env, req, this.f, ctrl.signal)).trim();
+          const text = (await adapter.call(this.env, capped, this.f, ctrl.signal)).trim();
           if (!text) throw new Error("EMPTY");
           h.failures = 0;
           h.lastOk = true;

@@ -5,9 +5,8 @@ import { useApp, useNow, type LangMode } from "../app/state";
 import { T } from "../app/strings";
 import { Bi, useBiText } from "../components/Bi";
 import { Icon } from "../components/Icon";
-import { publishedQuestions } from "../content/questions";
+import { CONTENT } from "../app/content";
 import { TOPICS } from "../content/topics";
-import { VOCABULARY } from "../content/vocabulary";
 import { normalize } from "../lib/search";
 import { questionStatus, streakDays, topicStats } from "../lib/progress";
 
@@ -32,7 +31,7 @@ export function ProgressPage() {
   const { progress, settings } = useApp();
   const now = useNow();
   const label = useBiText();
-  const qs = publishedQuestions();
+  const qs = CONTENT.questions;
   const stats = topicStats(progress, qs, settings.masteryThreshold);
   const wrongIds = qs.filter((q) => questionStatus(progress.questions[q.id], settings.masteryThreshold) === "incorrect");
   const lastExams = [...progress.examHistory].reverse().slice(0, 5);
@@ -86,7 +85,7 @@ export function Vocabulary() {
   const label = useBiText();
   const [text, setText] = useState("");
   const n = normalize(text);
-  const list = VOCABULARY.filter((v) => !n || normalize(`${v.de} ${v.ckb} ${v.article ?? ""}`).includes(n));
+  const list = CONTENT.vocabulary.filter((v) => !n || normalize(`${v.de} ${v.ckb} ${v.article ?? ""}`).includes(n));
   return (
     <div>
       <header className="page-head"><h1><Bi t={T.nav.vocab} /></h1></header>

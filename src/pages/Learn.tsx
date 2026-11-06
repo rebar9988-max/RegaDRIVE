@@ -3,7 +3,9 @@ import { useApp } from "../app/state";
 import { T } from "../app/strings";
 import { Bi, useBiText } from "../components/Bi";
 import { Icon } from "../components/Icon";
-import { LESSONS, lessonById } from "../content/lessons";
+import { CONTENT } from "../app/content";
+const LESSONS = CONTENT.lessons;
+const lessonById = (id: string) => LESSONS.find((l) => l.id === id);
 import { NotFound } from "./Misc";
 
 export function Learn() {
@@ -12,6 +14,7 @@ export function Learn() {
   return (
     <div>
       <header className="page-head"><h1><Bi t={T.lessons} /></h1></header>
+      {LESSONS.length === 0 && <p className="notice"><Bi t={T.contentInReview} /></p>}
       <ul className="list" style={{ listStyle: "none", padding: 0, margin: 0 }}>
         {LESSONS.map((l) => {
           const done = progress.completedLessons.includes(l.id);

@@ -6,20 +6,26 @@ Each step below needs an explicit decision by the owner. None of them is done by
 1. In Cloudflare, confirm that `regaplatform.com` is a zone in the RegaDRIVE owner's account. Also confirm it serves no other application that would be replaced.
 2. Create a Cloudflare API token limited to *Workers Scripts: Edit* on that account (not a Rega24/R&L token). Store it as the GitHub secret `CLOUDFLARE_API_TOKEN`, and the account ID as `CLOUDFLARE_ACCOUNT_ID`.
 3. Add to `wrangler.jsonc`: `"routes": [{ "pattern": "www.regaplatform.com", "custom_domain": true }]`. Set the GitHub repository variable `REGAPLATFORM_DOMAIN_VERIFIED=true`.
-4. Run *Actions → Deploy to Cloudflare (manual)* on `main` with the confirmation `DEPLOY-REGADRIVE`.
-5. Verify `https://www.regaplatform.com/api/health` shows `database: "off"` and `payments: "off"`.
-6. Rollback: `npx wrangler rollback` (or Cloudflare dashboard → Workers → regadrive → Deployments).
+4. Content approval is required before the first deploy. The production build publishes only content that passed human review (see `docs/CONTENT_REVIEW.md`), and preflight blocks deployment with fewer than 30 approved questions.
+5. Run *Actions → Deploy to Cloudflare (manual)* on `main` with the confirmation `DEPLOY-REGADRIVE`. The workflow:
+   - runs the full CI on the exact commit, then `preflight --stage=deploy` with every gate fatal;
+   - runs `scripts/domain-check.mjs`, which refuses to overwrite a site that is not RegaDRIVE;
+   - records the last known-good version and deploys;
+   - runs `scripts/smoke.mjs` against the live domain;
+   - if the smoke test fails, rolls back automatically to the last known-good version and smoke-tests the rollback.
+6. Manual rollback: `npx wrangler deployments list` → `npx wrangler rollback <version-id> -m "reason"`. On the very first deploy no previous version exists; to undo it, remove the custom domain in the Cloudflare dashboard.
 
-## 2. AI providers (free tiers only)
-Each provider stays `NOT_CONFIGURED` until **all** of its values are set. Set secrets with `wrangler secret put` and vars in `wrangler.jsonc`:
-| Provider | Secret | Model var | Free confirmation |
-| --- | --- | --- | --- |
-| Gemini | `GEMINI_API_KEY` | `AI_GEMINI_MODEL` | `AI_GEMINI_FREE_TIER_CONFIRMED=true` (project without billing) |
-| Groq | `GROQ_API_KEY` | `AI_GROQ_MODEL` | `AI_GROQ_FREE_TIER_CONFIRMED=true` (free plan) |
-| OpenRouter | `OPENROUTER_API_KEY` | `AI_OPENROUTER_MODEL` (must end in `:free`) | enforced in code |
-| Workers AI | binding `AI` (present) | `AI_WORKERS_AI_MODEL` | `AI_WORKERS_AI_FREE_CONFIRMED=true` (Workers Free plan, daily allocation) |
+## 2. AI providers (free tiers only, fail closed)
+A provider can run only when **all** of these hold. The cost guard checks them before **every** request:
+- Global: `AI_ENABLED=true`, `AI_FREE_ONLY=true`, `AI_PAID_FALLBACK_ENABLED=false`, `AI_DAILY_COST_LIMIT_EUR=0`, `AI_DOMAIN_SCOPE=regadrive`. Any other value disables **all** providers.
+- A RegaDRIVE-only secret (`wrangler secret put`): `REGADRIVE_GEMINI_API_KEY`, `REGADRIVE_GROQ_API_KEY` or `REGADRIVE_OPENROUTER_API_KEY`. Never reuse a Rega24 or R&L key. Workers AI uses the `AI` binding.
+- A model var: `AI_GEMINI_MODEL`, `AI_GROQ_MODEL`, `AI_OPENROUTER_MODEL` (must end in `:free`) or `AI_WORKERS_AI_MODEL`.
+- A free-tier verification under 30 days old: `AI_<PROVIDER>_VERIFIED_ON=YYYY-MM-DD`. Set it **only** from the output of a passing run of
+  `node scripts/ai-verify.mjs [--confirm-gemini-no-billing] [--confirm-groq-free-plan] [--confirm-workers-free-plan]`.
+  The script checks that the model exists, that the price is zero (OpenRouter), that a real minimal test call works, and that rate-limit headers are returned (Groq). Billing state that no API exposes needs your explicit confirmation flag.
 
-Check the current model availability and free quotas on each provider's pricing page before you set a model. Status is visible at `/api/ai/status`. A provider shows `ACTIVE` only after a real successful call.
+Daily request caps are set below each provider's free limits (`worker/ai/gateway.ts` → `FREE_TIER_POLICY`). They can be lowered with `AI_DAILY_REQUESTS_PER_PROVIDER` but never raised.
+`/api/ai/status` reports ACTIVE, RATE_LIMITED, NOT_CONFIGURED, UNAVAILABLE or DISABLED for each provider. A provider is ACTIVE only after a real successful call.
 
 ## 3. Production database (D1)
 Prerequisites: a reviewed privacy policy, retention and deletion rules, and a working e-mail provider for verification.

@@ -3,7 +3,7 @@ import { useApp } from "../app/state";
 import { T } from "../app/strings";
 import { Bi } from "../components/Bi";
 import { QuestionCard } from "../components/QuestionCard";
-import { publishedQuestions } from "../content/questions";
+import { CONTENT } from "../app/content";
 import { buildMockExam } from "../lib/mockExam";
 import { KLASSE_B_RULES_2026, isAnswerCorrect, scoreExam, type ExamResult } from "../lib/shared/exam";
 import { recordAnswer } from "../lib/progress";
@@ -14,9 +14,11 @@ export function Exam() {
   const [answers, setAnswers] = useState<Record<string, string[]>>({});
   const [pos, setPos] = useState(0);
   const [result, setResult] = useState<ExamResult | null>(null);
-  const questions = useMemo(() => (seed === null ? [] : buildMockExam(publishedQuestions(), seed)), [seed]);
+  const questions = useMemo(() => (seed === null ? [] : buildMockExam(CONTENT.questions, seed)), [seed]);
   const session = `exam-${seed}`;
   const rules = KLASSE_B_RULES_2026;
+  const canRun = CONTENT.questions.filter((q) => q.categoryType === "Grundstoff").length >= rules.grundstoffCount
+    && CONTENT.questions.filter((q) => q.categoryType === "Zusatzstoff").length >= rules.zusatzstoffCount;
 
   const start = () => { setSeed(Date.now() >>> 0); setAnswers({}); setPos(0); setResult(null); };
   const submit = () => {
@@ -40,7 +42,8 @@ export function Exam() {
           <Bi t={{ ckb: `${rules.grundstoffCount} پرسیاری بنەڕەتی (Grundstoff) + ${rules.zusatzstoffCount} پرسیاری زیادە (Zusatzstoff). زۆرترین خاڵی هەڵەی ڕێگەپێدراو: ${rules.maxErrorPoints}. دوو پرسیاری ٥ خاڵی هەڵە = سەرکەوتوو نەبوون.`,
             de: `${rules.grundstoffCount} Grundstoff- + ${rules.zusatzstoffCount} Zusatzstofffragen. Höchstens ${rules.maxErrorPoints} Fehlerpunkte. Zwei falsche 5-Punkte-Fragen = nicht bestanden.` }} />
           <p className="small muted"><Bi t={{ ckb: "یاساکانی خاڵدان لەگەڵ سەرچاوەکان بەراورد کراون (وەشان: " + rules.version + "). کاتی فەرمی لەگەڵ قوتابخانەی شۆفێری یان TÜV/DEKRA دڵنیا بکەرەوە.", de: "Bewertungsregeln mit Quellen abgeglichen (Version: " + rules.version + "). Die amtliche Bearbeitungszeit bitte bei Fahrschule oder TÜV/DEKRA bestätigen." }} /></p>
-          <button type="button" className="btn btn-primary" onClick={start} data-testid="exam-start"><Bi t={T.startExam} /></button>
+          {!canRun && <p className="notice"><Bi t={T.contentInReview} /></p>}
+          <button type="button" className="btn btn-primary" onClick={start} disabled={!canRun} data-testid="exam-start"><Bi t={T.startExam} /></button>
         </section>
       </div>
     );

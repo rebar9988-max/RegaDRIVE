@@ -3,8 +3,7 @@ import { useApp, useNow } from "../app/state";
 import { T } from "../app/strings";
 import { Bi, useBiText } from "../components/Bi";
 import { Icon, type IconName } from "../components/Icon";
-import { LESSONS } from "../content/lessons";
-import { publishedQuestions } from "../content/questions";
+import { CONTENT } from "../app/content";
 import { topicById } from "../content/topics";
 import { dayKey, questionStatus, streakDays, weakTopics } from "../lib/progress";
 import type { Bilingual } from "../content/types";
@@ -19,7 +18,8 @@ const TILES: { href: string; icon: IconName; t: Bilingual; sub: Bilingual }[] = 
 export function Home() {
   const { progress, settings } = useApp();
   const label = useBiText();
-  const qs = publishedQuestions();
+  const qs = CONTENT.questions;
+  const LESSONS = CONTENT.lessons;
   const now = useNow();
   const today = progress.days[dayKey(now)] ?? 0;
   const goal = settings.dailyGoal;
@@ -27,7 +27,7 @@ export function Home() {
   const answered = qs.filter((q) => progress.questions[q.id]).length;
   const streak = streakDays(progress, now);
   const weak = weakTopics(progress, qs);
-  const nextLesson = LESSONS.find((l) => !progress.completedLessons.includes(l.id)) ?? LESSONS[0]!;
+  const nextLesson = LESSONS.find((l) => !progress.completedLessons.includes(l.id)) ?? LESSONS[0];
   const started = answered > 0 || progress.completedLessons.length > 0;
 
   return (
@@ -39,7 +39,7 @@ export function Home() {
           <p className="muted small"><Bi t={T.appTagline} /></p>
         </div>
         <div className="hero-actions">
-          <Link href={started ? "/practice" : `/learn/${nextLesson.id}`} className="btn btn-primary btn-block" data-testid="cta-continue">
+          <Link href={started || !nextLesson ? "/practice" : `/learn/${nextLesson.id}`} className="btn btn-primary btn-block" data-testid="cta-continue">
             <Bi t={started ? T.continueLearning : T.startLearning} />
           </Link>
         </div>
@@ -84,6 +84,7 @@ export function Home() {
       <div className="grid grid-2 section">
         <section className="card" aria-labelledby="next-title">
           <h2 id="next-title" className="section-title"><Bi t={T.nextLesson} /></h2>
+          {!nextLesson ? <p className="small muted"><Bi t={T.contentInReview} /></p> : (
           <Link href={`/learn/${nextLesson.id}`} className="card-link row" style={{ flexWrap: "nowrap" }}>
             <span className="tile-icon"><Icon name="book" /></span>
             <span className="stack" style={{ gap: 2, minWidth: 0, flex: 1 }}>
@@ -91,7 +92,7 @@ export function Home() {
               <span className="small muted num-block"><span className="num">{nextLesson.minutes}</span> {label(T.minutes)}</span>
             </span>
             <Icon name="arrow" className="flip-rtl" />
-          </Link>
+          </Link>)}
         </section>
         <section className="card" aria-labelledby="weak-title">
           <h2 id="weak-title" className="section-title"><Bi t={T.weakTopics} /></h2>
