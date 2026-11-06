@@ -23,32 +23,43 @@ jobs:
       TARGET_URL: https://www.regaplatform.com
       CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
       CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    timeout-minutes: 30
     steps:
+      - name: Require RegaDRIVE Cloudflare credentials
+        run: |
+          test -n "$CLOUDFLARE_API_TOKEN" || { echo "::error::Missing repository secret CLOUDFLARE_API_TOKEN (RegaDRIVE-only token)"; exit 1; }
+          test -n "$CLOUDFLARE_ACCOUNT_ID" || { echo "::error::Missing repository secret CLOUDFLARE_ACCOUNT_ID"; exit 1; }
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: 22
           cache: npm
-      - run: for i in 1 2 3; do npm ci && exit 0; sleep $((2 ** i * 2)); done; exit 1
-      - run: npx playwright install --with-deps chromium
-      - name: Require RegaDRIVE Cloudflare credentials
-        run: |
-          test -n "$CLOUDFLARE_API_TOKEN" || { echo "::error::Missing repository secret CLOUDFLARE_API_TOKEN (RegaDRIVE-only token)"; exit 1; }
-          test -n "$CLOUDFLARE_ACCOUNT_ID" || { echo "::error::Missing repository secret CLOUDFLARE_ACCOUNT_ID"; exit 1; }
+      - name: Install dependencies (bounded retry)
+        timeout-minutes: 5
+        run: for i in 1 2 3; do npm ci && exit 0; sleep $((2 ** i * 2)); done; exit 1
+      - name: Install Chromium for the live smoke test (bounded, time-limited)
+        timeout-minutes: 8
+        run: for i in 1 2 3; do timeout 150 npx playwright install --with-deps chromium && exit 0; echo "attempt $i failed or timed out"; sleep $((2 ** i * 2)); done; exit 1
       - name: Production build
+        timeout-minutes: 5
         run: npm run build
       - name: Preflight (all gates fatal)
+        timeout-minutes: 2
         run: node scripts/preflight.mjs --stage=deploy
       - name: Domain safety check (never overwrite an unrelated site)
+        timeout-minutes: 2
         run: node scripts/domain-check.mjs "$TARGET_URL"
       - name: Record last known-good version
+        timeout-minutes: 3
         id: lkg
         run: |
           npx wrangler deployments list --json > lkg.json 2>/dev/null || echo "[]" > lkg.json
           echo "version=$(node scripts/last-known-good.mjs < lkg.json)" >> "$GITHUB_OUTPUT"
       - name: Deploy
+        timeout-minutes: 5
         run: npx wrangler deploy --tag "${GITHUB_SHA::12}" --message "RegaDRIVE ${GITHUB_SHA::12}"
       - name: Live smoke test
+        timeout-minutes: 5
         id: smoke
         run: sleep 20 && node scripts/smoke.mjs "$TARGET_URL"
       - name: Automatic rollback to last known-good
