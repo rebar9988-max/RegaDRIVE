@@ -126,7 +126,7 @@ function Login({ to, onDone }: { to: string; onDone: () => void }) {
     <main className="dr-login">
       <div className="card">
         <img src="/brand/regadrive-logo.webp" width={96} height={96} alt="RegaDRIVE" />
-        <h1 style={{ fontSize: "1.3rem" }}>SUPER ADMIN · /dr</h1>
+        <h1 style={{ fontSize: "var(--fs-h1)" }}>SUPER ADMIN · /dr</h1>
         <p style={{ color: "var(--muted)" }}>کۆدی پارێزراو تەنها دەنێردرێت بۆ <bdi dir="ltr">{to || "Gmail ـی خاوەن"}</bdi>. ٥ خولەک کار دەکات.</p>
         <CodeForm purpose="login" onDone={onDone} />
       </div>
@@ -413,7 +413,7 @@ export function DrAdmin() {
       {stepUp && (
         <div className="dr-dialog-back">
           <div className="dr-dialog" role="dialog" aria-modal="true" aria-labelledby="dr-stepup-title">
-            <h2 id="dr-stepup-title" style={{ fontSize: "1.1rem" }}>پشتڕاستکردنەوەی دووبارە</h2>
+            <h2 id="dr-stepup-title" style={{ fontSize: "var(--fs-title)" }}>پشتڕاستکردنەوەی دووبارە</h2>
             <p style={{ color: "var(--muted)" }}>ئەم گۆڕانکارییە گرنگە. کۆدێکی نوێ بۆ Gmail ـەکەت دەنێردرێت.</p>
             <CodeForm purpose="step_up" onDone={() => void stepUp()} onCancel={() => setStepUp(null)} />
           </div>

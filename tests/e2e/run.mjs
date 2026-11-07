@@ -215,6 +215,35 @@ try {
     }
   });
 
+  await test("readable typography: content text >= 16px, body 18px, in all four languages; 200% text size keeps content", async () => {
+    for (const viewport of [{ width: 390, height: 844 }, { width: 1440, height: 900 }]) {
+      const ctx = await browser.newContext({ viewport });
+      const page = await ctx.newPage();
+      for (const lang of ["ckb", "kmr", "ar", "de"]) {
+        await page.goto(BASE);
+        await page.locator(`.language-switch button[lang=${lang}]`).click();
+        for (const path of ["/", "/practice", "/progress", "/learn"]) {
+          await page.goto(BASE + path);
+          await page.locator("main h1").waitFor();
+          await page.evaluate(() => document.fonts.ready);
+          const t = await page.evaluate(() => {
+            const small = []; const walker = document.createTreeWalker(document.querySelector("main"), NodeFilter.SHOW_TEXT);
+            while (walker.nextNode()) {
+              const el = walker.currentNode.parentElement; if (!walker.currentNode.textContent.trim() || el.closest(".sr-only,[aria-hidden=true],svg")) continue;
+              const fs = parseFloat(getComputedStyle(el).fontSize); if (fs < 16) small.push(`${fs}px "${walker.currentNode.textContent.trim().slice(0, 30)}"`);
+            }
+            return { small, body: parseFloat(getComputedStyle(document.body).fontSize) };
+          });
+          assert.equal(t.body, 18, "body text is 18px");
+          assert.deepEqual(t.small, [], `no content text below 16px on ${path} (${lang}, ${viewport.width}px)`);
+          await page.evaluate(() => { document.documentElement.style.fontSize = "200%"; });
+          assert.equal(await page.evaluate(() => document.querySelector("main").scrollWidth > innerWidth), false, `200% text fits on ${path} (${lang}, ${viewport.width}px)`);
+        }
+      }
+      await ctx.close();
+    }
+  });
+
   await test("purchase disabled, account unavailable, services show no invented data", async () => {
     const ctx = await browser.newContext({ viewport: { width: 1280, height: 900 } });
     const page = await ctx.newPage();
