@@ -1,7 +1,4 @@
 import { describe, expect, it } from "vitest";
-import { readdirSync, readFileSync, statSync } from "node:fs";
-import { join, relative } from "node:path";
-import { fileURLToPath } from "node:url";
 import ts from "typescript";
 import { QUESTIONS } from "../../src/content/questions";
 import { SIGNS } from "../../src/content/signs";
@@ -48,20 +45,18 @@ describe("Kurmanji and Arabic translations", () => {
   });
 
   it("every inline { ckb, de } literal in the app source also carries kmr and ar", () => {
-    const root = fileURLToPath(new URL("../../src", import.meta.url));
-    const files: string[] = [];
-    const walk = (d: string) => { for (const f of readdirSync(d)) { const p = join(d, f); if (statSync(p).isDirectory()) walk(p); else if (/\.tsx?$/.test(f)) files.push(p); } };
-    walk(root);
+    const sources = import.meta.glob<string>("../../src/**/*.{ts,tsx}", { query: "?raw", import: "default", eager: true });
+    expect(Object.keys(sources).length).toBeGreaterThan(30);
     const isText = (n: ts.Node) => ts.isStringLiteral(n) || ts.isNoSubstitutionTemplateLiteral(n) || ts.isTemplateExpression(n) || (ts.isBinaryExpression(n) && n.operatorToken.kind === ts.SyntaxKind.PlusToken);
     const bad: string[] = [];
-    for (const f of files) {
-      const src = ts.createSourceFile(f, readFileSync(f, "utf8"), ts.ScriptTarget.Latest, true, f.endsWith("x") ? ts.ScriptKind.TSX : ts.ScriptKind.TS);
+    for (const [f, code] of Object.entries(sources)) {
+      const src = ts.createSourceFile(f, code, ts.ScriptTarget.Latest, true, f.endsWith("x") ? ts.ScriptKind.TSX : ts.ScriptKind.TS);
       const visit = (n: ts.Node) => {
         if (ts.isObjectLiteralExpression(n)) {
           const props = new Map<string, ts.Expression>();
           for (const p of n.properties) if (ts.isPropertyAssignment(p) && ts.isIdentifier(p.name)) props.set(p.name.text, p.initializer);
           const ckb = props.get("ckb"), de = props.get("de");
-          if (ckb && de && isText(ckb) && isText(de) && !(props.has("kmr") && props.has("ar"))) bad.push(`${relative(root, f)}:${src.getLineAndCharacterOfPosition(n.getStart()).line + 1}`);
+          if (ckb && de && isText(ckb) && isText(de) && !(props.has("kmr") && props.has("ar"))) bad.push(`${f}:${src.getLineAndCharacterOfPosition(n.getStart()).line + 1}`);
         }
         ts.forEachChild(n, visit);
       };
