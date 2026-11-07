@@ -12,11 +12,27 @@ concurrency:
   group: deploy-production
   cancel-in-progress: false
 jobs:
-  ci:
+  # Release gate, before any CI minutes are spent: only the newest main, and never the commit already live.
+  guard:
     if: github.ref == 'refs/heads/main' && inputs.confirm == 'DEPLOY-REGADRIVE'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    outputs:
+      deploy: ${{ steps.live.outputs.deploy }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Only the newest main may be released
+        run: node scripts/check-current-release.mjs
+      - name: Never republish the commit production already serves
+        id: live
+        run: node scripts/check-not-already-live.mjs https://www.regaplatform.com
+  ci:
+    needs: guard
+    if: needs.guard.outputs.deploy == 'true'
     uses: ./.github/workflows/ci.yml
   deploy:
-    needs: ci   # green CI on this exact SHA is mandatory
+    needs: [guard, ci]   # green CI on this exact SHA is mandatory
+    if: needs.guard.outputs.deploy == 'true'
     runs-on: ubuntu-24.04
     environment: production
     env:
@@ -66,16 +82,26 @@ jobs:
       - name: Recheck main immediately before upload
         timeout-minutes: 1
         run: node scripts/check-current-release.mjs
+      - name: Recheck production does not already serve this commit
+        timeout-minutes: 1
+        id: fresh
+        run: node scripts/check-not-already-live.mjs "$TARGET_URL"
       - name: Deploy
+        if: steps.fresh.outputs.deploy == 'true'
         timeout-minutes: 5
         run: npx wrangler deploy --tag "${GITHUB_SHA::12}" --message "RegaDRIVE ${GITHUB_SHA::12}"
-      - name: Live smoke test
+      - name: Live smoke test (exact build ID and commit of this run)
+        if: steps.fresh.outputs.deploy == 'true'
         timeout-minutes: 5
         id: smoke
         run: |
           sleep 20
           export EXPECTED_BUILD_ID="$(node -p "require('./dist/build-info.json').buildId")"
+          export EXPECTED_COMMIT="$(node -p "require('./dist/build-info.json').commit")"
+          test "$EXPECTED_COMMIT" = "$GITHUB_SHA" || { echo "::error::built commit $EXPECTED_COMMIT != $GITHUB_SHA"; exit 1; }
           node scripts/smoke.mjs "$TARGET_URL"
+          echo "### Live release verified" >> "$GITHUB_STEP_SUMMARY"
+          echo "$TARGET_URL serves build \`$EXPECTED_BUILD_ID\` from commit \`$GITHUB_SHA\`." >> "$GITHUB_STEP_SUMMARY"
       - name: Automatic rollback to last known-good
         if: failure() && steps.smoke.outcome == 'failure' && steps.lkg.outputs.version != ''
         run: |
