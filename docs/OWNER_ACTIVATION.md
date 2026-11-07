@@ -28,6 +28,7 @@ Daily request caps are set below each provider's free limits (`worker/ai/gateway
 `/api/ai/status` reports ACTIVE, RATE_LIMITED, NOT_CONFIGURED, UNAVAILABLE or DISABLED for each provider. A provider is ACTIVE only after a real successful call.
 
 ## 3. Production database (D1)
+Note (2026-11-07): `regadrive-db` is already bound as `DB` for the `/dr` owner control center only (`docs/DR_ADMIN.md`). The steps below are still required before any **student** data is stored.
 Prerequisites: a reviewed privacy policy, retention and deletion rules, and a working e-mail provider for verification.
 1. `wrangler d1 create regadrive` (a new, separate database).
 2. Add the `d1_databases` binding. Review `migrations/` and apply with `wrangler d1 migrations apply regadrive --remote`.

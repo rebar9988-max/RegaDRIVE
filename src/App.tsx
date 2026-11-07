@@ -12,6 +12,9 @@ import { About, Access, Account, More, NotFound, ProgressPage, Services, Setting
 // Owner import workbench: compiled in only when VITE_ADMIN_UI=true (production builds drop it entirely).
 const AdminImport = import.meta.env.VITE_ADMIN_UI === "true" ? lazy(() => import("./pages/AdminImport").then((m) => ({ default: m.AdminImport }))) : null;
 
+// Owner control center (/dr): its own chunk, outside the student shell. Access is enforced by the Worker.
+const DrAdmin = lazy(() => import("./pages/DrAdmin").then((m) => ({ default: m.DrAdmin })));
+
 function route(path: string) {
   const p = path.replace(/\/+$/, "") || "/";
   if (p === "/") return <Home />;
@@ -29,6 +32,7 @@ function route(path: string) {
 export function App() {
   const path = usePath();
   const { ready } = useApp();
+  if (path === "/dr" || path.startsWith("/dr/")) return <Suspense fallback={<div aria-busy="true" />}><DrAdmin /></Suspense>;
   // Wait for stored settings/progress so the first paint has the right language and no layout jump.
   return <Shell>{ready ? <div key={path}>{route(path)}</div> : <div className="splash" aria-busy="true"><img className="splash-logo" src="/brand/regadrive-logo.webp" width={112} height={112} alt="RegaDRIVE" /></div>}</Shell>;
 }
