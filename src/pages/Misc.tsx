@@ -180,9 +180,6 @@ export function Account() {
 }
 
 export function Access() {
-  const flags = useFlags();
-  const label = useBiText();
-  const price = flags?.lifetimePriceEur ?? 20;
   return (
     <div>
       <header className="page-head"><h1><Bi t={T.nav.access} /></h1></header>
