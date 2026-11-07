@@ -203,12 +203,18 @@ try {
     const ctx = await browser.newContext({ viewport: { width: 1280, height: 900 } });
     const page = await ctx.newPage();
     await page.goto(`${BASE}/access`);
-    assert.ok(await page.locator("[data-testid=buy]").isDisabled());
-    assert.ok((await page.textContent("[data-testid=purchase]")).includes("€20"));
+    assert.equal(await page.locator("[data-testid=buy]").count(), 0, "no inactive purchase action is presented");
+    assert.match(await page.textContent("[data-testid=purchase]"), /Derzeit kostenlos|ئێستا بەخۆڕاییە/);
+    assert.doesNotMatch(await page.textContent("[data-testid=purchase]"), /€20/, "no unapproved planned price is presented");
     assert.equal(await page.locator("input[autocomplete^=cc-], input[name*=card]").count(), 0, "no card fields");
     await page.goto(`${BASE}/services`);
     await page.click("form button[type=submit]");
     await page.locator("[data-testid=services-unavailable]").waitFor();
+    await page.goto(`${BASE}/about`);
+    await page.locator("#impressum").waitFor();
+    await page.locator("#privacy").waitFor();
+    assert.match(await page.locator("#privacy").textContent(), /Cloudflare/);
+    assert.equal(await page.locator("nav a[href='/about#impressum']").count(), 1);
     await ctx.close();
   });
 

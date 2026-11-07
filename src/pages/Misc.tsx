@@ -180,17 +180,13 @@ export function Account() {
 }
 
 export function Access() {
-  const flags = useFlags();
-  const label = useBiText();
-  const price = flags?.lifetimePriceEur ?? 20;
   return (
     <div>
       <header className="page-head"><h1><Bi t={T.nav.access} /></h1></header>
       <section className="card stack" data-testid="purchase">
-        <h2 dir="ltr" style={{ textAlign: "start" }}>Lifetime Access — €{price}</h2>
-        <Bi t={{ ckb: "پارەدانێکی یەکجارە بۆ هەمیشە. هیچ بەشداربوونی مانگانە، نوێکردنەوە یان تێچووی شاراوە نییە.", de: "Einmalzahlung für lebenslangen Zugang. Kein Abo, keine Verlängerung, keine versteckten Kosten." }} />
-        <p className="notice" role="note"><Bi t={{ ckb: "پارەدان هێشتا چالاک نییە. لە ئێستادا هەموو ناوەڕۆکی فێرکاری بەخۆڕاییە. هیچ زانیارییەکی کارتی بانکی کۆ ناکرێتەوە.", de: "Zahlungen sind noch nicht aktiviert. Alle Lerninhalte sind derzeit kostenlos. Es werden keine Kartendaten erfasst." }} /></p>
-        <button className="btn btn-primary" disabled aria-disabled="true" data-testid="buy">{label({ ckb: "کڕین (ناچالاک)", de: "Kaufen (deaktiviert)" })}</button>
+        <h2><Bi t={{ ckb: "ئێستا بەخۆڕاییە", de: "Derzeit kostenlos" }} /></h2>
+        <Bi t={{ ckb: "پارەدان و کڕین ناچالاکن؛ هیچ کڕینێک لەم ماڵپەڕەدا ناکرێت. هەر نرخێکی داهاتوو تەنها پلانە و تا چالاککردنی فەرمی پابەندکەر نییە.", de: "Zahlungen und Käufe sind deaktiviert. Auf dieser Website kann derzeit nichts gekauft werden. Ein möglicher künftiger Preis ist nur geplant und nicht verbindlich." }} />
+        <p className="notice" role="note"><Bi t={{ ckb: "هیچ زانیارییەکی کارتی بانکی لەم ماڵپەڕەدا کۆ ناکرێتەوە.", de: "Auf dieser Website werden keine Kartendaten erhoben." }} /></p>
       </section>
     </div>
   );
@@ -249,11 +245,19 @@ export function About() {
       <header className="page-head"><h1><Bi t={T.nav.about} /></h1></header>
       <div className="stack" style={{ gap: 16 }}>
         <section className="card stack"><h2 className="section-title"><Bi t={{ ckb: "دەربارە", de: "Über RegaDRIVE" }} /></h2><Bi t={T.notOfficial} /></section>
+        <section className="card stack" id="impressum">
+          <h2 className="section-title"><Bi t={{ ckb: "زانیاری دابینکەر · Impressum", de: "Anbieterinformationen · Impressum" }} /></h2>
+          <Bi t={{ ckb: "زانیاریی ناساندنی دابینکەر و ناونیشانی پەیوەندی لەم وەشانەدا پشتڕاست نەکراونەتەوە. زانیارییە ناتەواوەکان پڕ ناکرێنەوە بە گومان یان داهێنان.", de: "Anbieteridentität und ladungsfähige Kontaktanschrift sind für diese Fassung noch nicht verifiziert. Fehlende Angaben werden nicht vermutet oder erfunden." }} />
+          <p className="notice" role="note"><Bi t={{ ckb: "ئەم بەشە ئاگادارکردنەوەیە و جێگرەوەی Impressum ـی تەواو نییە. ماڵپەڕ پێویستی بە ناوی یاسایی دابینکەر، ناونیشانی تەواو و ڕێگای پەیوەندیی پشتڕاستکراوە هەیە.", de: "Dieser Hinweis ist kein vollständiges Impressum. Erforderlich sind die verifizierte Anbieterbezeichnung, eine vollständige Anschrift und ein bestätigter direkter Kontaktweg." }} /></p>
+        </section>
+        <section className="card stack" id="privacy">
+          <h2 className="section-title"><Bi t={{ ckb: "تایبەتمەندی و داتا", de: "Datenschutz und Daten" }} /></h2>
+          <Bi t={{ ckb: "پێشکەوتنی فێربوون و ڕێکخستنەکان لە بیرگەی ناوخۆی وێبگەڕەکەت (IndexedDB) پاشەکەوت دەکرێن؛ ئەم پێشکەوتنە بۆ ڕاژەکار نانێردرێت. بۆ پێشاندانی ماڵپەڕ و API، داواکارییە تەکنیکییەکان لە Cloudflare تێدەپەڕن و دەتوانن داتای پەیوەندیی پێویست لەگەڵ خۆیان هەڵبگرن.", de: "Lernfortschritt und Einstellungen werden lokal im Browser (IndexedDB) gespeichert und nicht an den Server synchronisiert. Für Website und API laufen technische Anfragen über Cloudflare und können erforderliche Verbindungsdaten verarbeiten." }} />
+          <Bi t={{ ckb: "ئەگەر ڕوونکردنەوەی AI چالاک بێت، داواکارییەکە تەنها ناسنامەی پرسیارێکی پەسەندکراوی RegaDRIVE دەگرێت؛ دەقی ئازادی بەکارهێنەر و زانیاریی پرۆفایل نانێردرێت. دابینکەری AI دەتوانێت ناوەڕۆکی ئەو پرسیارە بۆ وەڵامدانەوە وەربگرێت.", de: "Wenn die KI-Erklärung aktiviert ist, enthält die Anfrage nur die ID einer freigegebenen RegaDRIVE-Frage; freier Nutzereingabetext und Profildaten werden nicht gesendet. Der KI-Anbieter kann den Inhalt dieser Frage zur Antwortverarbeitung erhalten." }} />
+          <p className="small muted"><Bi t={{ ckb: "ئەم زانیارییە لە پشکنینی کۆدەوە کورتکراوەتەوە و هێشتا پێداچوونەوەی یاسایی و پشتڕاستکردنەوەی دابینکەر، بنەمای یاسایی و ماوەی پاراستنی داتا پێویستە؛ بەمەش بە تەنها ئاگادارکردنەوەی یاسایی تەواو نابێت.", de: "Diese Zusammenfassung beruht auf einer Codeprüfung. Eine rechtliche Prüfung sowie die Verifizierung der Anbieter, Rechtsgrundlagen und Speicherfristen stehen noch aus; sie ist allein keine vollständige Datenschutzerklärung." }} /></p>
+        </section>
         <section className="card stack"><h2 className="section-title"><Bi t={{ ckb: "مافی بڵاوکردنەوە", de: "Urheberrecht" }} /></h2><Bi t={T.copyright} />
-          <Bi t={{ ckb: "پرسیارەکان، وانەکان و وەرگێڕانەکان ناوەڕۆکی ڕەسەنی RegaDRIVE ـن. نیشانەکانی هاتووچۆ شێوەی سادەکراوی نیشانە فەرمییەکانی StVO ـن.", de: "Fragen, Lektionen und Übersetzungen sind eigene Inhalte von RegaDRIVE. Verkehrszeichen sind vereinfachte Darstellungen der amtlichen StVO-Zeichen." }} /></section>
-        <section className="card stack"><h2 className="section-title"><Bi t={{ ckb: "تایبەتمەندی", de: "Datenschutz" }} /></h2>
-          <Bi t={{ ckb: "هیچ ڕیکلام، هیچ شوێنپێهەڵگرتن و هیچ فرۆشتنی داتا نییە. پێشکەوتن تەنها لە ئامێرەکەتدا دەمێنێتەوە.", de: "Keine Werbung, kein Tracking, kein Datenverkauf. Der Fortschritt bleibt auf deinem Gerät." }} />
-          <p className="small muted"><Bi t={{ ckb: "تێبینی: ئەم دەقە پێداچوونەوەی یاسایی بۆ نەکراوە.", de: "Hinweis: Dieser Text wurde noch nicht rechtlich geprüft." }} /></p></section>
+          <Bi t={{ ckb: "پرسیارەکان و وانەکان ناوەڕۆکی ڕەسەنی RegaDRIVE ـن. نیشانەکانی هاتووچۆ شێوەی سادەکراوی نیشانە فەرمییەکانی StVO ـن.", de: "Fragen und Lektionen sind eigene RegaDRIVE-Inhalte. Verkehrszeichen sind vereinfachte Darstellungen amtlicher StVO-Zeichen." }} /></section>
       </div>
     </div>
   );

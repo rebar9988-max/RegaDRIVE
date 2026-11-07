@@ -54,7 +54,7 @@ export function Shell({ children }: { children: ReactNode }) {
         </div>
       </header>
       <div className="layout">
-        <nav className="sidenav" aria-label={label(T.nav.more)}>
+        <nav className="sidenav" aria-label={label({ ckb: "ڕێنیشاندەری سەرەکی", de: "Hauptnavigation" })}>
           {[...TABS, ...MORE_LINKS.filter((l) => !TABS.some((t) => t.href === l.href))].map((l) => (
             <Link key={l.href} href={l.href} className="navlink" aria-current={isActive(path, l.href) ? "page" : undefined}>
               <Icon name={l.icon} /><Bi t={l.t} />
@@ -65,6 +65,11 @@ export function Shell({ children }: { children: ReactNode }) {
           {CONTENT_MODE === "preview" && <div className="notice small" role="note" data-testid="preview-banner" style={{ marginBottom: 16 }}><Bi t={T.previewBanner} /></div>}
           {saveError && <div className="notice small" role="alert" style={{ marginBottom: 16 }}><Bi t={T.saveError} /></div>}
           {children}
+          <nav className="row small muted" aria-label={label({ ckb: "بەستەرە یاساییەکان", de: "Rechtliche Informationen" })} style={{ justifyContent: "center", flexWrap: "wrap", gap: 16, padding: "16px 0" }}>
+            <Link href="/about#impressum">{label({ ckb: "زانیاری دابینکەر", de: "Impressum" })}</Link>
+            <Link href="/about#privacy">{label({ ckb: "تایبەتمەندی", de: "Datenschutz" })}</Link>
+            <Link href="/about">{label(T.nav.about)}</Link>
+          </nav>
           <footer className="feature-strip" aria-label={label({ ckb: "تایبەتمەندییەکان", de: "Funktionen" })}>
             {[
               { icon: "book" as const, ckb: "کوردی سۆرانی و ئەڵمانی", de: "RTL / LTR" },
@@ -75,7 +80,7 @@ export function Shell({ children }: { children: ReactNode }) {
           </footer>
         </main>
       </div>
-      <nav className="tabbar" aria-label={label(T.nav.home)}>
+      <nav className="tabbar" aria-label={label({ ckb: "ڕێنیشاندەری سەرەکی", de: "Hauptnavigation" })}>
         {TABS.map((t) => {
           const active = isActive(path, t.href);
           return (

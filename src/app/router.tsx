@@ -5,7 +5,12 @@ export function navigate(to: string) {
   if (to === location.pathname + location.search) return;
   history.pushState(null, "", to);
   listeners.forEach((l) => l());
-  window.scrollTo(0, 0);
+  const hash = new URL(to, location.origin).hash.slice(1);
+  if (hash) {
+    window.setTimeout(() => document.getElementById(decodeURIComponent(hash))?.scrollIntoView(), 0);
+  } else {
+    window.scrollTo(0, 0);
+  }
 }
 export function usePath(): string {
   const [path, setPath] = useState(() => location.pathname);
