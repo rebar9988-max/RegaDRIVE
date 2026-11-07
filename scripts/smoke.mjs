@@ -3,6 +3,7 @@
 import assert from "node:assert/strict";
 import { chromium, devices } from "playwright";
 import { mkdirSync } from "node:fs";
+import { assertLiveBuild } from "./lib/deploy-identity.mjs";
 import { retry, isNetworkError } from "./lib/retry.mjs";
 
 mkdirSync("test-results", { recursive: true });
@@ -25,7 +26,15 @@ await check("health: regadrive, production content, DB off, payments off", async
   const h = await (await get("/api/health")).json();
   assert.equal(h.app, "regadrive"); assert.equal(h.contentMode, "production"); assert.equal(h.database, "off"); assert.equal(h.payments, "off");
 });
-await check("build is a production content build", async () => assert.equal((await (await get("/build-info.json")).json()).contentMode, "production"));
+await check("live build matches the expected production release", async () => {
+  const info = await (await get("/build-info.json", { cache: "no-store" })).json();
+  if (process.env.EXPECTED_BUILD_ID || process.env.GITHUB_ACTIONS === "true") {
+    assertLiveBuild(info, process.env.EXPECTED_BUILD_ID);
+  } else {
+    assert.equal(info.contentMode, "production");
+    console.log(`Live build: ${info.buildId} (standalone smoke; expected identity not supplied)`);
+  }
+});
 await check("all payment/database flags OFF", async () => {
   const f = await (await get("/api/flags")).json();
   for (const k of ["paymentsEnabled", "checkoutEnabled", "livePaymentWebhooksEnabled", "purchaseRequired", "databaseProductionEnabled", "aiPaidFallbackEnabled"]) assert.equal(f[k], false, k);
@@ -78,6 +87,7 @@ try {
         .catch(() => { throw new Error("official logo did not load within 15 s"); });
       assert.equal(await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth), 0, "no horizontal overflow");
       assert.equal(await page.locator("[data-testid=preview-banner]").count(), 0, "no preview banner in production");
+      await page.screenshot({ path: `test-results/smoke-home-${name}.png`, fullPage: true });
       await page.goto(`${base}/practice`);
       await page.waitForSelector("main#main > div:not([aria-busy])");
       const cards = await page.locator("[data-testid=question-card]").count();

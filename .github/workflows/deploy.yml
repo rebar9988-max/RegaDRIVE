@@ -30,6 +30,9 @@ jobs:
           test -n "$CLOUDFLARE_API_TOKEN" || { echo "::error::Missing repository secret CLOUDFLARE_API_TOKEN (RegaDRIVE-only token)"; exit 1; }
           test -n "$CLOUDFLARE_ACCOUNT_ID" || { echo "::error::Missing repository secret CLOUDFLARE_ACCOUNT_ID"; exit 1; }
       - uses: actions/checkout@v4
+      - name: Reject superseded deployment runs
+        timeout-minutes: 1
+        run: node scripts/check-current-release.mjs
       - uses: actions/setup-node@v4
         with:
           node-version: 22
@@ -60,13 +63,19 @@ jobs:
         run: |
           npx wrangler deployments list --json > lkg.json 2>/dev/null || echo "[]" > lkg.json
           echo "version=$(node scripts/last-known-good.mjs < lkg.json)" >> "$GITHUB_OUTPUT"
+      - name: Recheck main immediately before upload
+        timeout-minutes: 1
+        run: node scripts/check-current-release.mjs
       - name: Deploy
         timeout-minutes: 5
         run: npx wrangler deploy --tag "${GITHUB_SHA::12}" --message "RegaDRIVE ${GITHUB_SHA::12}"
       - name: Live smoke test
         timeout-minutes: 5
         id: smoke
-        run: sleep 20 && node scripts/smoke.mjs "$TARGET_URL"
+        run: |
+          sleep 20
+          export EXPECTED_BUILD_ID="$(node -p "require('./dist/build-info.json').buildId")"
+          node scripts/smoke.mjs "$TARGET_URL"
       - name: Automatic rollback to last known-good
         if: failure() && steps.smoke.outcome == 'failure' && steps.lkg.outputs.version != ''
         run: |
