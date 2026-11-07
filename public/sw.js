@@ -1,7 +1,7 @@
 /* RegaDRIVE service worker. VERSION is replaced at build time. Never caches /api/* (private or dynamic). */
 const VERSION = "__BUILD_ID__";
 const CACHE = `regadrive-${VERSION}`;
-const SHELL = ["/", "/manifest.webmanifest", "/brand/regadrive-logo.webp", "/brand/regadrive-emblem.webp", "/favicon.png", "/icons/icon-192.png"];
+const SHELL = ["/", "/manifest.webmanifest", "/brand/regadrive-logo.svg", "/brand/regadrive-emblem.webp", "/favicon.png", "/icons/icon-192.png"];
 
 self.addEventListener("install", (event) => {
   event.waitUntil(caches.open(CACHE).then((c) => c.addAll(SHELL)).then(() => self.skipWaiting()));
