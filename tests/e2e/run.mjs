@@ -214,7 +214,7 @@ try {
     await page.locator("#impressum").waitFor();
     await page.locator("#privacy").waitFor();
     assert.match(await page.locator("#privacy").textContent(), /Cloudflare/);
-    assert.equal(await page.locator("footer a[href='/about#impressum']").count(), 1);
+    assert.equal(await page.locator("nav a[href='/about#impressum']").count(), 1);
     await ctx.close();
   });
 
