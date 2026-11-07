@@ -8,8 +8,9 @@
  */
 import type { D1Like } from "./db";
 import { invalidateOverrides, loadOverrides } from "./db";
-import { FEATURES, featureByKey, resolveFeatures, type FeatureState } from "./features";
+import { featureByKey, resolveFeatures, type FeatureState } from "./features";
 import type { Flags } from "../../src/lib/shared/flags";
+import { equal, sha256Hex } from "../lib/crypto";
 
 export interface DrEnv {
   DB?: D1Like;
@@ -33,11 +34,11 @@ export interface DrContext {
 }
 export interface DrDeps { now?: number; send?: MailSender; context?: () => DrContext }
 
-export const CODE_TTL_MS = 5 * 60_000;
-export const MAX_CODE_ATTEMPTS = 5;
-export const SESSION_ABSOLUTE_MS = 8 * 3600_000;
-export const SESSION_IDLE_MS = 30 * 60_000;
-export const STEP_UP_MS = 10 * 60_000;
+const CODE_TTL_MS = 5 * 60_000;
+const MAX_CODE_ATTEMPTS = 5;
+const SESSION_ABSOLUTE_MS = 8 * 3600_000;
+const SESSION_IDLE_MS = 30 * 60_000;
+const STEP_UP_MS = 10 * 60_000;
 const SESSION_COOKIE = "__Host-dr_s";
 const CHALLENGE_COOKIE = "__Host-dr_c";
 const RATE = {
@@ -73,15 +74,11 @@ function readCookie(req: Request, name: string): string | null {
   return null;
 }
 
-export async function sha256Hex(s: string): Promise<string> {
-  const d = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(s));
-  return [...new Uint8Array(d)].map((b) => b.toString(16).padStart(2, "0")).join("");
-}
 function randomHex(bytes: number): string {
   return [...crypto.getRandomValues(new Uint8Array(bytes))].map((b) => b.toString(16).padStart(2, "0")).join("");
 }
 /** Uniform 6-digit code (rejection sampling, no modulo bias). */
-export function sixDigitCode(): string {
+function sixDigitCode(): string {
   const buf = new Uint32Array(1);
   for (;;) {
     crypto.getRandomValues(buf);
@@ -89,19 +86,13 @@ export function sixDigitCode(): string {
     if (v < 4_294_000_000) return String(v % 1_000_000).padStart(6, "0");
   }
 }
-function equal(a: string, b: string): boolean {
-  if (a.length !== b.length) return false;
-  let x = 0;
-  for (let i = 0; i < a.length; i++) x |= a.charCodeAt(i) ^ b.charCodeAt(i);
-  return x === 0;
-}
-export function maskEmail(e: string): string {
+function maskEmail(e: string): string {
   const [u, d] = e.split("@");
   if (!u || !d) return "•••";
   return `${u.slice(0, 2)}${"•".repeat(Math.max(3, u.length - 2))}@${d}`;
 }
 
-export const resendSender: MailSender = async (key, msg) => {
+const resendSender: MailSender = async (key, msg) => {
   try {
     const r = await fetch("https://api.resend.com/emails", {
       method: "POST",
@@ -367,5 +358,3 @@ export async function handleDr(req: Request, env: DrEnv, deps: DrDeps = {}): Pro
   await audit(actor, `${req.method} ${path}`, "denied", { reason: "unknown route" });
   return reply({ error: "NOT_FOUND" }, 404);
 }
-
-export const DR_FEATURE_KEYS = FEATURES.map((f) => f.key);

@@ -86,7 +86,7 @@ const openAiText = (j: Record<string, unknown>): string => {
   return choices?.[0]?.message?.content ?? "";
 };
 
-export const ADAPTERS: Record<ProviderId, Adapter> = {
+const ADAPTERS: Record<ProviderId, Adapter> = {
   gemini: {
     id: "gemini",
     configured: (e, now) => first(
