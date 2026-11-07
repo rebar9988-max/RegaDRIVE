@@ -411,6 +411,7 @@ textarea.input { min-height: 120px; }
   border-inline-end-color: rgb(255 255 255 / 8%);
 }
 .navlink { color: #c3ccda; border-radius: 16px; }
+.sidenav .navlink .de { color: #b7c1d0; }
 .navlink:hover { background: rgb(255 255 255 / 8%); color: #fff; }
 .navlink[aria-current='page'] {
   background: linear-gradient(115deg, #dc344b, #a91831);
