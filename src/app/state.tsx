@@ -1,10 +1,10 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { kv } from "../lib/storage";
-import { emptyProgress, MASTERY_THRESHOLD_DEFAULT, type ProgressState } from "../lib/progress";
+import { emptyProgress, type ProgressState } from "../lib/progress";
+import { langDir } from "./i18n";
+import { defaultSettings, normalizeSettings, type Settings } from "./settings";
 
-export type LangMode = "bi" | "ckb" | "de";
-export interface Settings { langMode: LangMode; masteryThreshold: number; dailyGoal: number }
-const defaultSettings: Settings = { langMode: "bi", masteryThreshold: MASTERY_THRESHOLD_DEFAULT, dailyGoal: 10 };
+export type { Settings } from "./settings";
 
 interface Ctx {
   ready: boolean;
@@ -27,9 +27,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const loaded = useRef(false);
 
   useEffect(() => {
-    Promise.all([kv.get<Settings>("settings"), kv.get<ProgressState>("progress")])
+    Promise.all([kv.get<unknown>("settings"), kv.get<ProgressState>("progress")])
       .then(([s, p]) => {
-        if (s) setSettingsState({ ...defaultSettings, ...s });
+        if (s) setSettingsState(normalizeSettings(s));
         if (p && p.version === 1) setProgress({ ...emptyProgress(), ...p });
       })
       .catch(() => setSaveError(true))
@@ -47,10 +47,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     const root = document.documentElement;
-    root.lang = settings.langMode === "de" ? "de" : "ckb";
-    root.dir = settings.langMode === "de" ? "ltr" : "rtl";
-    root.classList.toggle("mode-de", settings.langMode === "de");
-  }, [settings.langMode]);
+    root.lang = settings.lang;
+    // The layout never mirrors: it stays right-to-left in every language. Latin-script languages
+    // only switch their own text direction (see .text-ltr in app.css).
+    root.dir = "rtl";
+    root.classList.toggle("text-ltr", langDir(settings.lang) === "ltr");
+  }, [settings.lang]);
 
   const setSettings = useCallback((s: Partial<Settings>) => setSettingsState((prev) => ({ ...prev, ...s })), []);
   const update = useCallback((fn: (p: ProgressState) => ProgressState) => setProgress(fn), []);

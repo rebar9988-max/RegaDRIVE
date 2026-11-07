@@ -3,8 +3,12 @@ export type QuestionPoints = 2 | 3 | 4 | 5;
 export type SourceType = "original" | "licensed_official";
 export type ReviewStatus = "draft" | "pending" | "approved";
 
-/** Every learner-facing text exists in Kurdish Sorani (ckb, RTL) and German (de, LTR). */
-export interface Bilingual { ckb: string; de: string }
+/**
+ * Every learner-facing text exists in Kurdish Sorani (ckb, RTL) and German (de, LTR).
+ * Built-in content also carries Kurdish Kurmanji (kmr, Latin, LTR) and Arabic (ar, RTL);
+ * imported items without them fall back to German (see src/app/i18n.ts).
+ */
+export interface Bilingual { ckb: string; de: string; kmr?: string; ar?: string }
 
 export interface QuestionMetadata {
   questionCode: string | null;
@@ -66,4 +70,4 @@ export interface TrafficSign {
   group: "danger" | "priority" | "prohibition" | "mandatory" | "information";
 }
 
-export interface VocabularyEntry { id: string; de: string; article?: "der" | "die" | "das"; ckb: string; note?: Bilingual }
+export interface VocabularyEntry { id: string; de: string; article?: "der" | "die" | "das"; ckb: string; kmr?: string; ar?: string; note?: Bilingual }

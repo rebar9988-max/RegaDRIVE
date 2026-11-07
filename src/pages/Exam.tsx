@@ -41,8 +41,12 @@ export function Exam() {
         <section className="card stack">
           <p className="notice" role="note"><Bi t={T.simulationNotice} /></p>
           <Bi t={{ ckb: `${rules.grundstoffCount} پرسیاری بنەڕەتی (Grundstoff) + ${rules.zusatzstoffCount} پرسیاری زیادە (Zusatzstoff). زۆرترین خاڵی هەڵەی ڕێگەپێدراو: ${rules.maxErrorPoints}. دوو پرسیاری ٥ خاڵی هەڵە = سەرکەوتوو نەبوون.`,
-            de: `${rules.grundstoffCount} Grundstoff- + ${rules.zusatzstoffCount} Zusatzstofffragen. Höchstens ${rules.maxErrorPoints} Fehlerpunkte. Zwei falsche 5-Punkte-Fragen = nicht bestanden.` }} />
-          <p className="small muted"><Bi t={{ ckb: "یاساکانی خاڵدان لەگەڵ سەرچاوەکان بەراورد کراون (وەشان: " + rules.version + "). کاتی فەرمی لەگەڵ قوتابخانەی شۆفێری یان TÜV/DEKRA دڵنیا بکەرەوە.", de: "Bewertungsregeln mit Quellen abgeglichen (Version: " + rules.version + "). Die amtliche Bearbeitungszeit bitte bei Fahrschule oder TÜV/DEKRA bestätigen." }} /></p>
+            de: `${rules.grundstoffCount} Grundstoff- + ${rules.zusatzstoffCount} Zusatzstofffragen. Höchstens ${rules.maxErrorPoints} Fehlerpunkte. Zwei falsche 5-Punkte-Fragen = nicht bestanden.`,
+            kmr: `${rules.grundstoffCount} pirsên bingehîn (Grundstoff) + ${rules.zusatzstoffCount} pirsên zêde (Zusatzstoff). Herî zêde ${rules.maxErrorPoints} xalên şaş. Du pirsên 5 xalî yên şaş = ne serkeftî.`,
+            ar: `أسئلة أساسية (Grundstoff): ${rules.grundstoffCount} + أسئلة إضافية (Zusatzstoff): ${rules.zusatzstoffCount}. الحد الأقصى لنقاط الخطأ: ${rules.maxErrorPoints}. الخطأ في سؤالين من فئة 5 نقاط = راسب.` }} />
+          <p className="small muted"><Bi t={{ ckb: "یاساکانی خاڵدان لەگەڵ سەرچاوەکان بەراورد کراون (وەشان: " + rules.version + "). کاتی فەرمی لەگەڵ قوتابخانەی شۆفێری یان TÜV/DEKRA دڵنیا بکەرەوە.", de: "Bewertungsregeln mit Quellen abgeglichen (Version: " + rules.version + "). Die amtliche Bearbeitungszeit bitte bei Fahrschule oder TÜV/DEKRA bestätigen.",
+            kmr: "Qaîdeyên xaldanê bi çavkaniyan re hatine berhevkirin (guherto: " + rules.version + "). Dema fermî ya ezmûnê ji kerema xwe li dibistana ajotinê an li TÜV/DEKRA piştrast bike.",
+            ar: "قواعد التقييم مطابقة للمصادر (الإصدار: " + rules.version + "). يرجى التأكد من مدة الامتحان الرسمية لدى مدرسة القيادة أو TÜV/DEKRA." }} /></p>
           {!canRun && <p className="notice"><Bi t={T.contentInReview} /></p>}
           <button type="button" className="btn btn-primary" onClick={start} disabled={!canRun} data-testid="exam-start"><Bi t={T.startExam} /></button>
         </section>

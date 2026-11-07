@@ -9,7 +9,7 @@ export function Signs() {
     <div>
       <header className="page-head">
         <h1><Bi t={T.nav.signs} /></h1>
-        <p className="small muted"><Bi t={{ ckb: "وێنەکان شێوەی سادەکراوی نیشانە فەرمییەکانن. ژمارەی StVO لە ژێر هەر نیشانەیەکدایە.", de: "Vereinfachte Darstellungen der amtlichen Zeichen. Die StVO-Nummer steht unter jedem Zeichen." }} /></p>
+        <p className="small muted"><Bi t={{ ckb: "وێنەکان شێوەی سادەکراوی نیشانە فەرمییەکانن. ژمارەی StVO لە ژێر هەر نیشانەیەکدایە.", de: "Vereinfachte Darstellungen der amtlichen Zeichen. Die StVO-Nummer steht unter jedem Zeichen.", kmr: "Wêne şiklên sadekirî yên nîşaneyên fermî ne. Hejmara StVO di bin her nîşaneyê de ye.", ar: "رسوم مبسّطة للإشارات الرسمية. رقم StVO مكتوب أسفل كل إشارة." }} /></p>
       </header>
       {SIGNS.length === 0 && <p className="notice"><Bi t={T.contentInReview} /></p>}
       <div className="signs-grid">

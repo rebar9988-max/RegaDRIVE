@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react";
 import { Link } from "../app/router";
 import { MORE_LINKS } from "../app/Shell";
-import { useApp, useNow, type LangMode } from "../app/state";
+import { useApp, useNow } from "../app/state";
+import { LANGS, langDir, vocabMeaning } from "../app/i18n";
 import { T } from "../app/strings";
 import { Bi, useBiText } from "../components/Bi";
 import { ProgressRing } from "../components/ProgressRing";
@@ -42,9 +43,9 @@ export function ProgressPage() {
   return (
     <div>
       <header className="page-head page-head-center"><h1><Bi t={T.nav.progress} /></h1>
-        <p className="small muted"><Bi t={{ ckb: "پێشکەوتن تەنها لەسەر ئەم ئامێرە پاشەکەوت دەکرێت.", de: "Der Fortschritt wird nur auf diesem Gerät gespeichert." }} /></p></header>
+        <p className="small muted"><Bi t={{ ckb: "پێشکەوتن تەنها لەسەر ئەم ئامێرە پاشەکەوت دەکرێت.", de: "Der Fortschritt wird nur auf diesem Gerät gespeichert.", kmr: "Pêşketin tenê li ser vê amûrê tê tomarkirin.", ar: "يُحفظ التقدّم على هذا الجهاز فقط." }} /></p></header>
       <section className="card progress-summary">
-        <div className="progress-summary-copy"><h2><Bi t={{ ckb: "پێشکەوتنی گشتی", de: "Dein Lernfortschritt" }} /></h2><p className="small muted"><Bi t={{ ckb: `${mastered} لە ${qs.length} پرسیار فێربووە`, de: `${mastered} von ${qs.length} Fragen gemeistert` }} /></p></div>
+        <div className="progress-summary-copy"><h2><Bi t={{ ckb: "پێشکەوتنی گشتی", de: "Dein Lernfortschritt", kmr: "Pêşketina giştî", ar: "تقدّمك في التعلّم" }} /></h2><p className="small muted"><Bi t={{ ckb: `${mastered} لە ${qs.length} پرسیار فێربووە`, de: `${mastered} von ${qs.length} Fragen gemeistert`, kmr: `${mastered} ji ${qs.length} pirsan hatin fêrbûn`, ar: `الأسئلة المتقنة: ${mastered} من ${qs.length}` }} /></p></div>
         <ProgressRing value={percent} label={label(T.mastered)} />
       </section>
       <div className="grid grid-3 progress-stats">
@@ -52,16 +53,16 @@ export function ProgressPage() {
         <div className="card stat stat-danger"><span className="stat-icon"><Icon name="sign" /></span><span className="stat-value">{wrongIds.length}</span><span className="stat-label"><Bi t={T.incorrectF} /></span></div>
         <div className="card stat stat-warning"><span className="stat-icon"><Icon name="trophy" /></span><span className="stat-value">{progress.examHistory.length}</span><span className="stat-label"><Bi t={T.mockExam} /></span></div>
       </div>
-      <section className="card readiness-card"><h2 className="section-title"><Bi t={{ ckb: "ئاستی فێربوونی پرسیارەکان", de: "Stand deines Fragentrainings" }} /><span className="badge" dir="ltr">{percent}%</span></h2><div className="progressbar" role="progressbar" aria-label={label(T.mastered)} aria-valuemin={0} aria-valuemax={100} aria-valuenow={percent}><span style={{ width: `${percent}%` }} /></div></section>
+      <section className="card readiness-card"><h2 className="section-title"><Bi t={{ ckb: "ئاستی فێربوونی پرسیارەکان", de: "Stand deines Fragentrainings", kmr: "Asta fêrbûna pirsan", ar: "مستوى تدريبك على الأسئلة" }} /><span className="badge" dir="ltr">{percent}%</span></h2><div className="progressbar" role="progressbar" aria-label={label(T.mastered)} aria-valuemin={0} aria-valuemax={100} aria-valuenow={percent}><span style={{ width: `${percent}%` }} /></div></section>
       <div className="row small muted progress-secondary"><Icon name="flame" /><span>{streakDays(progress, now)} {label(T.streak)}</span><span className="spacer" /><Icon name="bookmark" /><span>{progress.bookmarks.length} {label(T.bookmarked)}</span></div>
       <div className="q-actions">
         <Link href="/practice?status=incorrect" className="btn btn-primary"><Bi t={T.reviewMistakes} /></Link>
         <Link href="/practice?bookmarks=1" className="btn btn-secondary">{label(T.bookmarksOnly)}</Link>
       </div>
       <div className="topic-insights">
-        {[{ weak: false, title: { ckb: "بابەتە بەهێزەکان", de: "Deine Stärken" } }, { weak: true, title: T.weakTopics }].map(({ weak, title }) => {
+        {[{ weak: false, title: { ckb: "بابەتە بەهێزەکان", de: "Deine Stärken", kmr: "Mijarên bihêz", ar: "نقاط قوتك" } }, { weak: true, title: T.weakTopics }].map(({ weak, title }) => {
           const topics = TOPICS.filter((t) => { const stat = stats.get(t.id); return stat && (weak ? wrongIds.some((q) => q.topicId === t.id) : stat.total > 0 && stat.mastered === stat.total); });
-          return <section className="card topic-insight" key={String(weak)}><span className={`insight-icon ${weak ? "warning" : "success"}`}><Icon name={weak ? "sign" : "check"} /></span><div><h2 className="section-title"><Bi t={title} /></h2>{topics.length ? <div className="chip-row">{topics.map((t) => <Link key={t.id} href={`/practice?topic=${t.id}`} className="chip"><Bi t={t.title} /></Link>)}</div> : <p className="small muted"><Bi t={{ ckb: "دوای ڕاهێنان ئەنجامەکان لێرە دەبینیت.", de: "Nach dem Üben siehst du hier deine Ergebnisse." }} /></p>}</div></section>;
+          return <section className="card topic-insight" key={String(weak)}><span className={`insight-icon ${weak ? "warning" : "success"}`}><Icon name={weak ? "sign" : "check"} /></span><div><h2 className="section-title"><Bi t={title} /></h2>{topics.length ? <div className="chip-row">{topics.map((t) => <Link key={t.id} href={`/practice?topic=${t.id}`} className="chip"><Bi t={t.title} /></Link>)}</div> : <p className="small muted"><Bi t={{ ckb: "دوای ڕاهێنان ئەنجامەکان لێرە دەبینیت.", de: "Nach dem Üben siehst du hier deine Ergebnisse.", kmr: "Piştî rahênanê tu encamên xwe li vir dibînî.", ar: "بعد التدريب سترى نتائجك هنا." }} /></p>}</div></section>;
         })}
       </div>
       <section className="section">
@@ -99,21 +100,25 @@ export function ProgressPage() {
 
 export function Vocabulary() {
   const label = useBiText();
+  const { settings } = useApp();
   const [text, setText] = useState("");
   const n = normalize(text);
-  const list = CONTENT.vocabulary.filter((v) => !n || normalize(`${v.de} ${v.ckb} ${v.article ?? ""}`).includes(n));
+  const list = CONTENT.vocabulary.filter((v) => !n || normalize(`${v.de} ${v.ckb} ${v.kmr ?? ""} ${v.ar ?? ""} ${v.article ?? ""}`).includes(n));
   return (
     <div>
       <header className="page-head"><h1><Bi t={T.nav.vocab} /></h1></header>
       <label className="sr-only" htmlFor="v-search">{label(T.search)}</label>
       <input id="v-search" className="input" type="search" value={text} onChange={(e) => setText(e.target.value)} placeholder={label(T.search)} style={{ marginBottom: 16 }} />
       <div className="card" style={{ padding: 0 }}>
-        {list.map((v) => (
+        {list.map((v) => {
+          const m = vocabMeaning(v, settings.lang);
+          return (
           <div key={v.id} className="vocab-row">
-            <span lang="ckb" dir="rtl">{v.ckb}</span>
+            <span lang={m.lang} dir={langDir(m.lang)}>{m.text}</span>
             <span className="vocab-de" lang="de">{v.article && <small>{v.article} </small>}<strong>{v.de}</strong></span>
           </div>
-        ))}
+          );
+        })}
         {list.length === 0 && <p className="muted" style={{ padding: 16 }}><Bi t={T.noResults} /></p>}
       </div>
     </div>
@@ -128,26 +133,26 @@ export function Services() {
   return (
     <div>
       <header className="page-head"><h1><Bi t={T.nav.services} /></h1>
-        <p className="small muted"><Bi t={{ ckb: "خولی یارمەتی یەکەم، پشکنینی چاو و قوتابخانەی شۆفێری.", de: "Erste-Hilfe-Kurs, Sehtest und Fahrschulen." }} /></p></header>
+        <p className="small muted"><Bi t={{ ckb: "خولی یارمەتی یەکەم، پشکنینی چاو و قوتابخانەی شۆفێری.", de: "Erste-Hilfe-Kurs, Sehtest und Fahrschulen.", kmr: "Kursa alîkariya yekem, testa çavan û dibistanên ajotinê.", ar: "دورة الإسعافات الأولية وفحص النظر ومدارس تعليم القيادة." }} /></p></header>
       <form className="card stack" onSubmit={(e) => { e.preventDefault(); setSearched(true); }}>
         <label className="stack" style={{ gap: 4 }}>
-          <span className="small muted">{label({ ckb: "جۆری خزمەتگوزاری", de: "Kategorie" })}</span>
+          <span className="small muted">{label({ ckb: "جۆری خزمەتگوزاری", de: "Kategorie", kmr: "Cureyê xizmetê", ar: "الفئة" })}</span>
           <select className="input" value={cat} onChange={(e) => setCat(e.target.value)}>
-            <option value="erste-hilfe">{label({ ckb: "خولی یارمەتی یەکەم", de: "Erste-Hilfe-Kurs" })}</option>
-            <option value="sehtest">{label({ ckb: "پشکنینی چاو", de: "Sehtest" })}</option>
-            <option value="fahrschule">{label({ ckb: "قوتابخانەی شۆفێری", de: "Fahrschule" })}</option>
+            <option value="erste-hilfe">{label({ ckb: "خولی یارمەتی یەکەم", de: "Erste-Hilfe-Kurs", kmr: "Kursa alîkariya yekem", ar: "دورة الإسعافات الأولية" })}</option>
+            <option value="sehtest">{label({ ckb: "پشکنینی چاو", de: "Sehtest", kmr: "Testa çavan", ar: "فحص النظر" })}</option>
+            <option value="fahrschule">{label({ ckb: "قوتابخانەی شۆفێری", de: "Fahrschule", kmr: "Dibistana ajotinê", ar: "مدرسة تعليم القيادة" })}</option>
           </select>
         </label>
         <label className="stack" style={{ gap: 4 }}>
-          <span className="small muted">{label({ ckb: "شار یان کۆدی پۆستە (PLZ)", de: "Stadt oder PLZ" })}</span>
+          <span className="small muted">{label({ ckb: "شار یان کۆدی پۆستە (PLZ)", de: "Stadt oder PLZ", kmr: "Bajar an koda postê (PLZ)", ar: "المدينة أو الرمز البريدي (PLZ)" })}</span>
           <input className="input" value={city} onChange={(e) => setCity(e.target.value)} autoComplete="postal-code" />
         </label>
-        <button className="btn btn-primary" type="submit">{label({ ckb: "گەڕان", de: "Suchen" })}</button>
+        <button className="btn btn-primary" type="submit">{label({ ckb: "گەڕان", de: "Suchen", kmr: "Lê bigere", ar: "بحث" })}</button>
       </form>
       {searched && (
         <div className="notice section" role="status" data-testid="services-unavailable">
           <Bi t={{ ckb: "زانیاری پشتڕاستکراوی ڕاستەوخۆ بۆ ئەم ناوچەیە لە ئێستادا بەردەست نییە. RegaDRIVE هیچ ناو، نرخ یان کاتێکی دروستکراو پیشان نادات. تکایە ڕاستەوخۆ لەگەڵ شارەوانی، قوتابخانەی شۆفێری یان دابینکەرانی خولی یارمەتی یەکەم پەیوەندی بکە.",
-            de: "Für diese Suche liegen derzeit keine verifizierten Live-Daten vor. RegaDRIVE zeigt keine erfundenen Anbieter, Preise oder Termine. Bitte wende dich direkt an Fahrschulen, Optiker oder Erste-Hilfe-Anbieter vor Ort." }} />
+            de: "Für diese Suche liegen derzeit keine verifizierten Live-Daten vor. RegaDRIVE zeigt keine erfundenen Anbieter, Preise oder Termine. Bitte wende dich direkt an Fahrschulen, Optiker oder Erste-Hilfe-Anbieter vor Ort.", kmr: "Ji bo vê lêgerînê niha agahiyên rasterast ên piştrastkirî tune ne. RegaDRIVE tu navên pêşkêşkaran, biha an demên çêkirî nîşan nade. Ji kerema xwe rasterast bi dibistanên ajotinê, optîkeran an pêşkêşkarên kursa alîkariya yekem ên herêmî re têkilî dayne.", ar: "لا تتوفر حاليًا بيانات مباشرة موثّقة لهذا البحث. لا يعرض RegaDRIVE مزوّدين أو أسعارًا أو مواعيد مختلَقة. يرجى التواصل مباشرة مع مدارس القيادة أو محلات النظارات أو مزوّدي دورات الإسعافات الأولية في منطقتك." }} />
         </div>
       )}
     </div>
@@ -170,9 +175,9 @@ export function Account() {
       <section className="card stack" data-testid="account-unavailable">
         <img className="account-logo" src="/brand/regadrive-logo.webp" alt="RegaDRIVE" width={112} height={112} />
         <Bi t={{ ckb: "هەژماری قوتابی (تۆمارکردن، چوونەژوورەوە، پشتڕاستکردنەوەی ئیمەیڵ) ئامادەکراوە، بەڵام هێشتا چالاک نییە، چونکە داتابەیسی بەرهەمهێنان بە ئەنقەست کوژاوەتەوە.",
-          de: "Schülerkonten (Registrierung, Anmeldung, E-Mail-Bestätigung) sind vorbereitet, aber noch nicht aktiv, weil die Produktionsdatenbank bewusst ausgeschaltet ist." }} />
-        <Bi t={{ ckb: "هەموو پێشکەوتنەکەت بە سەلامەتی لەسەر ئەم ئامێرە پاشەکەوت دەکرێت.", de: "Dein gesamter Lernfortschritt wird sicher auf diesem Gerät gespeichert." }} />
-        <button className="btn btn-primary" disabled aria-disabled="true">{label({ ckb: "تۆمارکردن (بەم زووانە)", de: "Registrieren (bald verfügbar)" })}</button>
+          de: "Schülerkonten (Registrierung, Anmeldung, E-Mail-Bestätigung) sind vorbereitet, aber noch nicht aktiv, weil die Produktionsdatenbank bewusst ausgeschaltet ist.", kmr: "Hesabên xwendekaran (tomarbûn, têketin, piştrastkirina e-nameyê) amade ne, lê hê ne çalak in, ji ber ku databasa hilberînê bi qestî girtî ye.", ar: "حسابات الطلاب (التسجيل وتسجيل الدخول وتأكيد البريد الإلكتروني) جاهزة، لكنها غير مفعّلة بعد لأن قاعدة بيانات الإنتاج متوقفة عمدًا." }} />
+        <Bi t={{ ckb: "هەموو پێشکەوتنەکەت بە سەلامەتی لەسەر ئەم ئامێرە پاشەکەوت دەکرێت.", de: "Dein gesamter Lernfortschritt wird sicher auf diesem Gerät gespeichert.", kmr: "Hemû pêşketina te bi ewlehî li ser vê amûrê tê tomarkirin.", ar: "يُحفظ كل تقدّمك في التعلّم بأمان على هذا الجهاز." }} />
+        <button className="btn btn-primary" disabled aria-disabled="true">{label({ ckb: "تۆمارکردن (بەم زووانە)", de: "Registrieren (bald verfügbar)", kmr: "Tomar bibe (di demeke nêzîk de)", ar: "التسجيل (قريبًا)" })}</button>
         <p className="small muted" dir="ltr" style={{ textAlign: "start" }}>DATABASE_PRODUCTION_ENABLED = {String(flags?.databaseProductionEnabled ?? false)}</p>
       </section>
     </div>
@@ -188,9 +193,9 @@ export function Access() {
       <header className="page-head"><h1><Bi t={T.nav.access} /></h1></header>
       <section className="card stack" data-testid="purchase">
         <h2 dir="ltr" style={{ textAlign: "start" }}>Lifetime Access — €{price}</h2>
-        <Bi t={{ ckb: "پارەدانێکی یەکجارە بۆ هەمیشە. هیچ بەشداربوونی مانگانە، نوێکردنەوە یان تێچووی شاراوە نییە.", de: "Einmalzahlung für lebenslangen Zugang. Kein Abo, keine Verlängerung, keine versteckten Kosten." }} />
-        <p className="notice" role="note"><Bi t={{ ckb: "پارەدان هێشتا چالاک نییە. لە ئێستادا هەموو ناوەڕۆکی فێرکاری بەخۆڕاییە. هیچ زانیارییەکی کارتی بانکی کۆ ناکرێتەوە.", de: "Zahlungen sind noch nicht aktiviert. Alle Lerninhalte sind derzeit kostenlos. Es werden keine Kartendaten erfasst." }} /></p>
-        <button className="btn btn-primary" disabled aria-disabled="true" data-testid="buy">{label({ ckb: "کڕین (ناچالاک)", de: "Kaufen (deaktiviert)" })}</button>
+        <Bi t={{ ckb: "پارەدانێکی یەکجارە بۆ هەمیشە. هیچ بەشداربوونی مانگانە، نوێکردنەوە یان تێچووی شاراوە نییە.", de: "Einmalzahlung für lebenslangen Zugang. Kein Abo, keine Verlängerung, keine versteckten Kosten.", kmr: "Dravdaneke yekcarî ji bo gihîştina heta hetayê. Ne abonetî, ne nûkirin, ne lêçûnên veşartî.", ar: "دفعة واحدة لوصول مدى الحياة. بلا اشتراك ولا تجديد ولا تكاليف خفية." }} />
+        <p className="notice" role="note"><Bi t={{ ckb: "پارەدان هێشتا چالاک نییە. لە ئێستادا هەموو ناوەڕۆکی فێرکاری بەخۆڕاییە. هیچ زانیارییەکی کارتی بانکی کۆ ناکرێتەوە.", de: "Zahlungen sind noch nicht aktiviert. Alle Lerninhalte sind derzeit kostenlos. Es werden keine Kartendaten erfasst.", kmr: "Dravdan hê ne çalak e. Niha hemû naveroka fêrbûnê belaş e. Tu agahiyên kartê nayên berhevkirin.", ar: "المدفوعات غير مفعّلة بعد. كل محتوى التعلّم مجاني حاليًا. لا تُجمع أي بيانات بطاقات." }} /></p>
+        <button className="btn btn-primary" disabled aria-disabled="true" data-testid="buy">{label({ ckb: "کڕین (ناچالاک)", de: "Kaufen (deaktiviert)", kmr: "Bikire (neçalak)", ar: "شراء (معطّل)" })}</button>
       </section>
     </div>
   );
@@ -200,20 +205,24 @@ export function Settings() {
   const { settings, setSettings, resetProgress, progress } = useApp();
   const label = useBiText();
   const [confirm, setConfirm] = useState(false);
-  const modes: [LangMode, { ckb: string; de: string }][] = [
-    ["bi", { ckb: "دوو زمانە (کوردی + ئەڵمانی)", de: "Zweisprachig (Kurdisch + Deutsch)" }],
-    ["ckb", { ckb: "تەنها کوردی", de: "Nur Kurdisch" }],
-    ["de", { ckb: "تەنها ئەڵمانی", de: "Nur Deutsch" }],
-  ];
   return (
     <div>
       <header className="page-head"><h1><Bi t={T.nav.settings} /></h1></header>
       <section className="card stack">
-        <h2 className="section-title"><Bi t={{ ckb: "زمان", de: "Sprache" }} /></h2>
-        <div className="chip-row" role="radiogroup" aria-label="Language mode">
-          {modes.map(([m, t]) => (
-            <button key={m} type="button" role="radio" aria-checked={settings.langMode === m}
-              className="chip" onClick={() => setSettings({ langMode: m })} data-testid={`mode-${m}`}>{label(t)}</button>
+        <h2 className="section-title"><Bi t={{ ckb: "زمان", de: "Sprache", kmr: "Ziman", ar: "اللغة" }} /></h2>
+        <div className="chip-row" role="radiogroup" aria-label={label({ ckb: "زمان", de: "Sprache", kmr: "Ziman", ar: "اللغة" })}>
+          {LANGS.map((l) => (
+            <button key={l.id} type="button" role="radio" aria-checked={settings.lang === l.id} lang={l.id} dir={langDir(l.id)}
+              className="chip" onClick={() => setSettings({ lang: l.id })} data-testid={`lang-${l.id}`}>{l.native}</button>
+          ))}
+        </div>
+        <h3 className="section-title"><Bi t={{ ckb: "دەقی ئەڵمانی لە ژێرەوە", de: "Deutschen Originaltext darunter zeigen", kmr: "Nivîsa almanî ya orîjînal li jêr", ar: "إظهار النص الألماني الأصلي أسفله" }} /></h3>
+        <div className="chip-row" role="radiogroup" aria-label={label({ ckb: "دەقی ئەڵمانی", de: "Deutscher Text", kmr: "Nivîsa almanî", ar: "النص الألماني" })}>
+          {([true, false] as const).map((on) => (
+            <button key={String(on)} type="button" role="radio" className="chip" disabled={settings.lang === "de"}
+              aria-checked={settings.lang !== "de" && settings.withGerman === on} onClick={() => setSettings({ withGerman: on })} data-testid={`with-german-${on ? "on" : "off"}`}>
+              {label(on ? { ckb: "پیشان بدە", de: "Anzeigen", kmr: "Nîşan bide", ar: "إظهار" } : { ckb: "پیشان مەدە", de: "Ausblenden", kmr: "Veşêre", ar: "إخفاء" })}
+            </button>
           ))}
         </div>
       </section>
@@ -222,22 +231,22 @@ export function Settings() {
         <div className="chip-row">
           {[5, 10, 20, 30].map((n) => <button key={n} type="button" className="chip" aria-pressed={settings.dailyGoal === n} dir="ltr" onClick={() => setSettings({ dailyGoal: n })}>{n}</button>)}
         </div>
-        <h2 className="section-title"><Bi t={{ ckb: "پێوەری فێربوون (وەڵامی ڕاستی بەدوایەک)", de: "Meisterschwelle (richtige Antworten in Folge)" }} /></h2>
+        <h2 className="section-title"><Bi t={{ ckb: "پێوەری فێربوون (وەڵامی ڕاستی بەدوایەک)", de: "Meisterschwelle (richtige Antworten in Folge)", kmr: "Pîvana fêrbûnê (bersivên rast li pey hev)", ar: "عتبة الإتقان (إجابات صحيحة متتالية)" }} /></h2>
         <div className="chip-row">
           {[2, 3, 4, 5].map((n) => <button key={n} type="button" className="chip" aria-pressed={settings.masteryThreshold === n} dir="ltr" onClick={() => setSettings({ masteryThreshold: n })}>{n}</button>)}
         </div>
       </section>
       <section className="card stack section">
-        <h2 className="section-title"><Bi t={{ ckb: "تایبەتمەندی و داتا", de: "Datenschutz und Daten" }} /></h2>
-        <Bi t={{ ckb: "داتای فێربوونت تەنها لە وێبگەڕەکەت (IndexedDB) دایە. هیچ شتێک بۆ ڕاژەکار نانێردرێت.", de: "Deine Lerndaten liegen nur in deinem Browser (IndexedDB). Nichts wird an einen Server gesendet." }} />
+        <h2 className="section-title"><Bi t={{ ckb: "تایبەتمەندی و داتا", de: "Datenschutz und Daten", kmr: "Nepenî û dane", ar: "الخصوصية والبيانات" }} /></h2>
+        <Bi t={{ ckb: "داتای فێربوونت تەنها لە وێبگەڕەکەت (IndexedDB) دایە. هیچ شتێک بۆ ڕاژەکار نانێردرێت.", de: "Deine Lerndaten liegen nur in deinem Browser (IndexedDB). Nichts wird an einen Server gesendet.", kmr: "Daneyên fêrbûna te tenê di gerokê te de ne (IndexedDB). Tiştek ji serverê re nayê şandin.", ar: "بيانات تعلّمك موجودة في متصفحك فقط (IndexedDB). لا يُرسل أي شيء إلى الخادم." }} />
         <button type="button" className="btn btn-secondary" onClick={() => {
           const blob = new Blob([JSON.stringify({ settings, exportedAt: new Date().toISOString(), progress }, null, 2)], { type: "application/json" });
           const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = "regadrive-export.json"; a.click(); URL.revokeObjectURL(a.href);
-        }}>{label({ ckb: "هەناردەکردنی داتا", de: "Daten exportieren" })}</button>
+        }}>{label({ ckb: "هەناردەکردنی داتا", de: "Daten exportieren", kmr: "Daneyan derxîne", ar: "تصدير البيانات" })}</button>
         {!confirm
-          ? <button type="button" className="btn btn-secondary" onClick={() => setConfirm(true)}>{label({ ckb: "سڕینەوەی هەموو پێشکەوتن", de: "Gesamten Fortschritt löschen" })}</button>
-          : <div className="row"><button type="button" className="btn btn-primary" onClick={() => { resetProgress(); setConfirm(false); }}>{label({ ckb: "بەڵێ، بیسڕەوە", de: "Ja, löschen" })}</button>
-              <button type="button" className="btn btn-secondary" onClick={() => setConfirm(false)}>{label({ ckb: "پاشگەزبوونەوە", de: "Abbrechen" })}</button></div>}
+          ? <button type="button" className="btn btn-secondary" onClick={() => setConfirm(true)}>{label({ ckb: "سڕینەوەی هەموو پێشکەوتن", de: "Gesamten Fortschritt löschen", kmr: "Hemû pêşketinê jê bibe", ar: "حذف كل التقدّم" })}</button>
+          : <div className="row"><button type="button" className="btn btn-primary" onClick={() => { resetProgress(); setConfirm(false); }}>{label({ ckb: "بەڵێ، بیسڕەوە", de: "Ja, löschen", kmr: "Erê, jê bibe", ar: "نعم، احذف" })}</button>
+              <button type="button" className="btn btn-secondary" onClick={() => setConfirm(false)}>{label({ ckb: "پاشگەزبوونەوە", de: "Abbrechen", kmr: "Betal bike", ar: "إلغاء" })}</button></div>}
       </section>
     </div>
   );
@@ -248,12 +257,12 @@ export function About() {
     <div>
       <header className="page-head"><h1><Bi t={T.nav.about} /></h1></header>
       <div className="stack" style={{ gap: 16 }}>
-        <section className="card stack"><h2 className="section-title"><Bi t={{ ckb: "دەربارە", de: "Über RegaDRIVE" }} /></h2><Bi t={T.notOfficial} /></section>
-        <section className="card stack"><h2 className="section-title"><Bi t={{ ckb: "مافی بڵاوکردنەوە", de: "Urheberrecht" }} /></h2><Bi t={T.copyright} />
-          <Bi t={{ ckb: "پرسیارەکان، وانەکان و وەرگێڕانەکان ناوەڕۆکی ڕەسەنی RegaDRIVE ـن. نیشانەکانی هاتووچۆ شێوەی سادەکراوی نیشانە فەرمییەکانی StVO ـن.", de: "Fragen, Lektionen und Übersetzungen sind eigene Inhalte von RegaDRIVE. Verkehrszeichen sind vereinfachte Darstellungen der amtlichen StVO-Zeichen." }} /></section>
-        <section className="card stack"><h2 className="section-title"><Bi t={{ ckb: "تایبەتمەندی", de: "Datenschutz" }} /></h2>
-          <Bi t={{ ckb: "هیچ ڕیکلام، هیچ شوێنپێهەڵگرتن و هیچ فرۆشتنی داتا نییە. پێشکەوتن تەنها لە ئامێرەکەتدا دەمێنێتەوە.", de: "Keine Werbung, kein Tracking, kein Datenverkauf. Der Fortschritt bleibt auf deinem Gerät." }} />
-          <p className="small muted"><Bi t={{ ckb: "تێبینی: ئەم دەقە پێداچوونەوەی یاسایی بۆ نەکراوە.", de: "Hinweis: Dieser Text wurde noch nicht rechtlich geprüft." }} /></p></section>
+        <section className="card stack"><h2 className="section-title"><Bi t={{ ckb: "دەربارە", de: "Über RegaDRIVE", kmr: "Derbarê RegaDRIVE", ar: "حول RegaDRIVE" }} /></h2><Bi t={T.notOfficial} /></section>
+        <section className="card stack"><h2 className="section-title"><Bi t={{ ckb: "مافی بڵاوکردنەوە", de: "Urheberrecht", kmr: "Mafê nivîskariyê", ar: "حقوق النشر" }} /></h2><Bi t={T.copyright} />
+          <Bi t={{ ckb: "پرسیارەکان، وانەکان و وەرگێڕانەکان ناوەڕۆکی ڕەسەنی RegaDRIVE ـن. نیشانەکانی هاتووچۆ شێوەی سادەکراوی نیشانە فەرمییەکانی StVO ـن.", de: "Fragen, Lektionen und Übersetzungen sind eigene Inhalte von RegaDRIVE. Verkehrszeichen sind vereinfachte Darstellungen der amtlichen StVO-Zeichen.", kmr: "Pirs, ders û werger naveroka xweser a RegaDRIVE ne. Nîşaneyên trafîkê şiklên sadekirî yên nîşaneyên fermî yên StVO ne.", ar: "الأسئلة والدروس والترجمات محتوى أصلي من RegaDRIVE. إشارات المرور رسوم مبسّطة لإشارات StVO الرسمية." }} /></section>
+        <section className="card stack"><h2 className="section-title"><Bi t={{ ckb: "تایبەتمەندی", de: "Datenschutz", kmr: "Nepenî", ar: "الخصوصية" }} /></h2>
+          <Bi t={{ ckb: "هیچ ڕیکلام، هیچ شوێنپێهەڵگرتن و هیچ فرۆشتنی داتا نییە. پێشکەوتن تەنها لە ئامێرەکەتدا دەمێنێتەوە.", de: "Keine Werbung, kein Tracking, kein Datenverkauf. Der Fortschritt bleibt auf deinem Gerät.", kmr: "Ne reklam, ne şopandin, ne firotina daneyan. Pêşketin li ser amûra te dimîne.", ar: "لا إعلانات ولا تتبّع ولا بيع للبيانات. يبقى التقدّم على جهازك." }} />
+          <p className="small muted"><Bi t={{ ckb: "تێبینی: ئەم دەقە پێداچوونەوەی یاسایی بۆ نەکراوە.", de: "Hinweis: Dieser Text wurde noch nicht rechtlich geprüft.", kmr: "Têbînî: ev nivîs hê ji aliyê qanûnî ve nehatiye kontrolkirin.", ar: "ملاحظة: لم تتم مراجعة هذا النص قانونيًا بعد." }} /></p></section>
       </div>
     </div>
   );
@@ -263,7 +272,7 @@ export function NotFound() {
   const label = useBiText();
   return (
     <div className="card stack">
-      <h1><Bi t={{ ckb: "ئەم پەڕەیە نەدۆزرایەوە", de: "Seite nicht gefunden" }} /></h1>
+      <h1><Bi t={{ ckb: "ئەم پەڕەیە نەدۆزرایەوە", de: "Seite nicht gefunden", kmr: "Rûpel nehat dîtin", ar: "الصفحة غير موجودة" }} /></h1>
       <Link href="/" className="btn btn-primary">{label(T.nav.home)}</Link>
     </div>
   );

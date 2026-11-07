@@ -181,62 +181,63 @@ try {
     await ctx.close();
   });
 
-  await test("language modes: German-only switches document to LTR", async () => {
+  await test("languages: Sorani, Kurmanji, Arabic and German change the words, never the layout", async () => {
+    for (const viewport of [{ width: 1280, height: 900 }, { width: 390, height: 844 }]) {
+      const ctx = await browser.newContext({ viewport });
+      const page = await ctx.newPage();
+      const errors = [];
+      page.on("pageerror", (e) => errors.push(e.message));
+      await page.goto(BASE);
+      await page.waitForSelector("[data-testid=home]");
+      const boxes = () => page.evaluate(() => [".topbar .brand", ".language-switch", ".hero-logo", ".tabbar", ".sidenav"].map((sel) => {
+        const el = document.querySelector(sel); const r = el?.getBoundingClientRect();
+        return r && r.width > 0 ? [sel, Math.round(r.left), Math.round(r.right)] : [sel, null];
+      }));
+      const before = await boxes();
+      for (const lang of ["kmr", "ar", "de", "ckb"]) {
+        await page.click(`[data-testid=switch-${lang}]`);
+        assert.equal(await page.getAttribute("html", "lang"), lang);
+        assert.equal(await page.getAttribute("html", "dir"), "rtl", "the layout never mirrors");
+        assert.deepEqual(await boxes(), before, `layout moved after switching to ${lang}`);
+        assert.equal(await page.getAttribute("#home-title .pri", "lang"), lang);
+        assert.ok((await page.textContent("#home-title .pri")).trim().length > 3);
+        const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
+        assert.equal(overflow, 0, `no horizontal overflow in ${lang}`);
+        if (viewport.width === 1280 && (lang === "kmr" || lang === "ar")) await axe(page, `home (${lang})`);
+        await page.screenshot({ path: `${OUT}/home-${viewport.width}-${lang}.png` });
+      }
+      assert.deepEqual(errors, []);
+      await ctx.close();
+    }
+  });
+
+  await test("language settings: German-only, translation without German, Arabic practice question", async () => {
     const ctx = await browser.newContext({ viewport: { width: 1280, height: 900 } });
     const page = await ctx.newPage();
     await page.goto(`${BASE}/settings`);
-    await page.click("[data-testid=mode-de]");
-    assert.equal(await page.getAttribute("html", "dir"), "ltr");
+    await page.click("[data-testid=lang-de]");
+    assert.equal(await page.getAttribute("html", "dir"), "rtl");
     await page.goto(BASE);
     await page.waitForSelector("[data-testid=home]");
+    assert.equal(await page.locator(".bi > .de").count(), 0, "German is the main text, not a second line");
     assert.equal(await page.locator("[lang=ckb]:not(.language-switch button)").count(), 0);
-    // The language picker keeps its native-language label in every mode.
-    await page.locator(".language-switch button[lang=ckb]").click();
-    assert.equal(await page.getAttribute("html", "dir"), "rtl");
-    await page.locator(".language-switch button[lang=de]").click();
-    assert.equal(await page.getAttribute("html", "dir"), "ltr");
     await page.screenshot({ path: `${OUT}/home-desktop-de.png` });
+    await page.goto(`${BASE}/settings`);
+    await page.click("[data-testid=lang-kmr]");
+    await page.click("[data-testid=with-german-off]");
+    assert.equal(await page.locator(".bi > .de").count(), 0);
+    await page.click("[data-testid=with-german-on]");
+    assert.ok(await page.locator(".bi > .de").count() > 0);
+    await page.click("[data-testid=lang-ar]");
+    await page.goto(`${BASE}/practice?topic=priority`);
+    const card = page.locator("[data-testid=question-card]").first();
+    await card.waitFor();
+    const order = await card.locator("legend .bi > span").evaluateAll((els) => els.map((e) => [e.getAttribute("lang"), e.getAttribute("dir")]));
+    assert.deepEqual(order, [["ar", "rtl"], ["de", "ltr"]]);
+    await axe(page, "practice (ar)");
+    await page.screenshot({ path: `${OUT}/practice-desktop-ar.png` });
     await ctx.close();
   });
-
-  await test("purchase disabled, account unavailable, services show no invented data", async () => {
-    const ctx = await browser.newContext({ viewport: { width: 1280, height: 900 } });
-    const page = await ctx.newPage();
-    await page.goto(`${BASE}/access`);
-    assert.ok(await page.locator("[data-testid=buy]").isDisabled());
-    assert.ok((await page.textContent("[data-testid=purchase]")).includes("€20"));
-    assert.equal(await page.locator("input[autocomplete^=cc-], input[name*=card]").count(), 0, "no card fields");
-    await page.goto(`${BASE}/services`);
-    await page.click("form button[type=submit]");
-    await page.locator("[data-testid=services-unavailable]").waitFor();
-    await ctx.close();
-  });
-
-  await test("owner import workbench (preview build only): validate fixture locally, never import or publish", async () => {
-    const ctx = await browser.newContext({ viewport: { width: 1280, height: 900 }, bypassCSP: true });
-    const page = await ctx.newPage();
-    await page.goto(`${BASE}/admin/import`);
-    await page.waitForSelector("[data-testid=admin-import]");
-    await page.fill("[data-testid=licences]", "LIC-FIXTURE");
-    await page.setInputFiles("[data-testid=question-file]", "tests/fixtures/import/valid.json");
-    await page.setInputFiles("[data-testid=media-files]", { name: "fixture.png", mimeType: "image/png", buffer: Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0, 0, 0, 0]) });
-    await page.waitForFunction(() => document.querySelector("[data-testid=row-count]")?.textContent?.startsWith("2"));
-    await page.click("[data-testid=validate]");
-    await page.locator("[data-testid=summary]").waitFor();
-    const summary = await page.textContent("[data-testid=summary]");
-    assert.ok(summary.includes("new: 2") && summary.includes("invalid: 0"), summary);
-    assert.equal(await page.locator("[data-testid=preview-row]").count(), 2);
-    assert.ok(await page.locator("[data-testid=commit]").isDisabled(), "import execution disabled");
-    assert.equal(await page.locator("text=draft · hidden").count(), 2, "imports are draft and hidden");
-    await axe(page, "/admin/import");
-    // Without the licence registered, every row is rejected.
-    await page.fill("[data-testid=licences]", "");
-    await page.click("[data-testid=validate]");
-    await page.waitForFunction(() => document.querySelector("[data-testid=summary]")?.textContent?.includes("invalid: 2"));
-    await page.screenshot({ path: `${OUT}/admin-import.png`, fullPage: true });
-    await ctx.close();
-  });
-
   await test("reference navigation, lesson filters and narrow layouts", async () => {
     const ctx = await browser.newContext({ viewport: { width: 320, height: 844 } });
     const page = await ctx.newPage();

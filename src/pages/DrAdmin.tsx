@@ -339,7 +339,10 @@ export function DrAdmin() {
       </Card>);
       case "languages": return (<Card title="زمانەکان" en="Languages">
         <div className="dr-row"><div className="dr-row-label"><strong>کوردیی سۆرانی</strong><small>ckb · RTL · سەرەکی</small></div><Badge ok>ON</Badge></div>
+        <div className="dr-row"><div className="dr-row-label"><strong>Kurdî (Kurmancî)</strong><small>kmr · LTR · کرمانجی</small></div><Badge ok>ON</Badge></div>
+        <div className="dr-row"><div className="dr-row-label"><strong>العربية</strong><small>ar · RTL · عەرەبی</small></div><Badge ok>ON</Badge></div>
         <div className="dr-row"><div className="dr-row-label"><strong>Deutsch</strong><small>de · LTR · دووەم</small></div><Badge ok>ON</Badge></div>
+        <Note>دیزاین لە هەموو زمانەکاندا وەک خۆی دەمێنێتەوە (ڕاست بۆ چەپ)؛ تەنها دەقەکان دەگۆڕێن.</Note>
       </Card>);
       case "payments": return (<Card title="سیستەمی پارەدان" en="Payments">
         <Note>🟡 پارەدان ئامادەیە بەڵام LOCKED ـە. تەنها بە بڕیاری خۆت و هەنگاوەکانی docs/OWNER_ACTIVATION.md §4 دەکرێتەوە؛ ئەم پانێڵە ناتوانێت پارەدان چالاک بکات.</Note>

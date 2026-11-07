@@ -1,4 +1,4 @@
-import type { Question } from "../content/types";
+import type { Bilingual, Question } from "../content/types";
 import { VOCABULARY } from "../content/vocabulary";
 import { topicById } from "../content/topics";
 import { questionStatus, type ProgressState } from "./progress";
@@ -14,25 +14,27 @@ export interface QuestionFilter {
 }
 export const defaultFilter = (): QuestionFilter => ({ text: "", status: "all", points: [], category: "all", topicId: "all", bookmarkedOnly: false });
 
-/** Normalizes Arabic-script variants so Sorani search is forgiving (ي/ی, ك/ک, ه/ە, diacritics, digits). */
+/** Normalizes script variants so Sorani, Arabic and Kurmanji search is forgiving (ي/ى/ی, ك/ک, ة/ە, hamza and diacritics, ê/î/û/ç/ş, digits). */
 export function normalize(s: string): string {
   return s
     .toLowerCase()
     .normalize("NFKD")
     .replace(/[ً-ٰٟ]/g, "")
-    .replace(/ي/g, "ی").replace(/ك/g, "ک").replace(/ة/g, "ە")
+    .replace(/[يى]/g, "ی").replace(/ك/g, "ک").replace(/ة/g, "ە")
     .replace(/[٠-٩]/g, (d) => String(d.charCodeAt(0) - 0x0660))
     .replace(/[̀-ͯ]/g, "")
     .replace(/ß/g, "ss")
     .trim();
 }
 
+const texts = (t: Bilingual) => [t.ckb, t.de, t.kmr ?? "", t.ar ?? ""];
+
 export function haystack(q: Question): string {
-  const vocab = q.vocabularyIds.map((id) => VOCABULARY.find((v) => v.id === id)).filter(Boolean).map((v) => `${v!.de} ${v!.ckb}`);
+  const vocab = q.vocabularyIds.map((id) => VOCABULARY.find((v) => v.id === id)).filter(Boolean).map((v) => `${v!.de} ${v!.ckb} ${v!.kmr ?? ""} ${v!.ar ?? ""}`);
   const topic = topicById(q.topicId);
   return normalize([
-    q.prompt.ckb, q.prompt.de, ...q.options.flatMap((o) => [o.text.ckb, o.text.de]),
-    q.explanation.ckb, q.explanation.de, topic?.title.ckb, topic?.title.de, ...vocab, q.questionCode ?? "",
+    ...texts(q.prompt), ...q.options.flatMap((o) => texts(o.text)),
+    ...texts(q.explanation), ...(topic ? texts(topic.title) : []), ...vocab, q.questionCode ?? "",
   ].join(" "));
 }
 

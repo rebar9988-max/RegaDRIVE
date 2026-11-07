@@ -35,7 +35,7 @@ export function Shell({ children }: { children: ReactNode }) {
 
   return (
     <div className="app">
-      <a className="skip-link" href="#main">{label({ ckb: "بازدان بۆ ناوەڕۆک", de: "Zum Inhalt springen" })}</a>
+      <a className="skip-link" href="#main">{label({ ckb: "بازدان بۆ ناوەڕۆک", de: "Zum Inhalt springen", kmr: "Here naverokê", ar: "انتقل إلى المحتوى" })}</a>
       <header className="topbar">
         <div className="header-tools">
           <Link href="/account" className="icon-button" aria-label={label(T.nav.account)}><Icon name="user" /></Link>
@@ -48,8 +48,8 @@ export function Shell({ children }: { children: ReactNode }) {
         <div className="header-tools">
           {!online && <span className="offline-pill" role="status" data-testid="offline-pill">{label(T.offline)}</span>}
           <details className="notification-menu">
-            <summary className="icon-button" aria-label={label({ ckb: "ئاگادارییەکان", de: "Hinweise" })}><Icon name="bell" /></summary>
-            <div className="notification-panel"><Bi t={{ ckb: "فێربوون لە هەنگاوێکی بچووکەوە دەست پێ دەکات. ئامانجی ڕۆژانەت لە پەڕەی سەرەکی ببینە.", de: "Lernen beginnt mit einem kleinen Schritt. Dein Tagesziel findest du auf der Startseite." }} /><Link href="/">{label(T.nav.home)}</Link></div>
+            <summary className="icon-button" aria-label={label({ ckb: "ئاگادارییەکان", de: "Hinweise", kmr: "Agahdarî", ar: "تنبيهات" })}><Icon name="bell" /></summary>
+            <div className="notification-panel"><Bi t={{ ckb: "فێربوون لە هەنگاوێکی بچووکەوە دەست پێ دەکات. ئامانجی ڕۆژانەت لە پەڕەی سەرەکی ببینە.", de: "Lernen beginnt mit einem kleinen Schritt. Dein Tagesziel findest du auf der Startseite.", kmr: "Fêrbûn bi gaveke biçûk dest pê dike. Armanca xwe ya rojane li rûpela destpêkê bibîne.", ar: "يبدأ التعلّم بخطوة صغيرة. ستجد هدفك اليومي في الصفحة الرئيسية." }} /><Link href="/">{label(T.nav.home)}</Link></div>
           </details>
         </div>
       </header>
@@ -65,12 +65,12 @@ export function Shell({ children }: { children: ReactNode }) {
           {CONTENT_MODE === "preview" && <div className="notice small" role="note" data-testid="preview-banner" style={{ marginBottom: 16 }}><Bi t={T.previewBanner} /></div>}
           {saveError && <div className="notice small" role="alert" style={{ marginBottom: 16 }}><Bi t={T.saveError} /></div>}
           {children}
-          <footer className="feature-strip" aria-label={label({ ckb: "تایبەتمەندییەکان", de: "Funktionen" })}>
+          <footer className="feature-strip" aria-label={label({ ckb: "تایبەتمەندییەکان", de: "Funktionen", kmr: "Taybetmendî", ar: "الميزات" })}>
             {[
-              { icon: "book" as const, ckb: "کوردی سۆرانی و ئەڵمانی", de: "RTL / LTR" },
-              { icon: "wifi" as const, ckb: "فێربوون بەبێ ئینتەرنێت", de: "Offline nach dem ersten Besuch" },
-              { icon: "shield" as const, ckb: "پاراستن و نهێنیپارێزی", de: "Privacy & Security" },
-              { icon: "devices" as const, ckb: "بۆ مۆبایل و کۆمپیوتەر", de: "Responsive & PWA" },
+              { icon: "book" as const, ckb: "کوردی سۆرانی و ئەڵمانی", de: "RTL / LTR", kmr: "Soranî, kurmancî, erebî û almanî", ar: "الكردية والعربية والألمانية" },
+              { icon: "wifi" as const, ckb: "فێربوون بەبێ ئینتەرنێت", de: "Offline nach dem ersten Besuch", kmr: "Bê înternet fêr bibe", ar: "تعلّم بدون إنترنت" },
+              { icon: "shield" as const, ckb: "پاراستن و نهێنیپارێزی", de: "Privacy & Security", kmr: "Ewlehî û parastina nepeniyê", ar: "الأمان وحماية الخصوصية" },
+              { icon: "devices" as const, ckb: "بۆ مۆبایل و کۆمپیوتەر", de: "Responsive & PWA", kmr: "Ji bo mobîl û komputerê", ar: "للهاتف والكمبيوتر" },
             ].map((item) => <div className="feature-item" key={item.icon}><Icon name={item.icon} /><Bi t={item} /></div>)}
           </footer>
         </main>
