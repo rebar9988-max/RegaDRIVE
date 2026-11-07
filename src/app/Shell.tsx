@@ -72,7 +72,7 @@ export function Shell({ children }: { children: ReactNode }) {
           </nav>
           <footer className="feature-strip" aria-label={label({ ckb: "تایبەتمەندییەکان", de: "Funktionen", kmr: "Taybetmendî", ar: "الميزات" })}>
             {[
-              { icon: "book" as const, ckb: "کوردی سۆرانی و ئەڵمانی", de: "RTL / LTR", kmr: "Soranî, kurmancî, erebî û almanî", ar: "الكردية والعربية والألمانية" },
+              { icon: "book" as const, ckb: "کوردی، عەرەبی و ئەڵمانی", de: "Kurdisch, Arabisch, Deutsch", kmr: "Kurdî, erebî û almanî", ar: "الكردية والعربية والألمانية" },
               { icon: "wifi" as const, ckb: "فێربوون بەبێ ئینتەرنێت", de: "Offline nach dem ersten Besuch", kmr: "Bê înternet fêr bibe", ar: "تعلّم بدون إنترنت" },
               { icon: "shield" as const, ckb: "پاراستن و نهێنیپارێزی", de: "Privacy & Security", kmr: "Ewlehî û parastina nepeniyê", ar: "الأمان وحماية الخصوصية" },
               { icon: "devices" as const, ckb: "بۆ مۆبایل و کۆمپیوتەر", de: "Responsive & PWA", kmr: "Ji bo mobîl û komputerê", ar: "للهاتف والكمبيوتر" },

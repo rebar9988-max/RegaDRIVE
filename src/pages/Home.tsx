@@ -63,7 +63,7 @@ export function Home() {
               de: `${completed} von ${lessons.length} Lektionen abgeschlossen`,
               kmr: `${completed} ji ${lessons.length} dersan temam bûn`,
               ar: `الدروس المكتملة: ${completed} من ${lessons.length}`,
-            } : { ckb: "وانەکان لە پێداچوونەوەدان", de: "Lektionen werden fachlich geprüft", kmr: "Ders ji aliyê pisporan ve tên kontrolkirin", ar: "الدروس قيد مراجعة المختصين" }} /></p>
+            } : { ckb: "وانەکان لە پێداچوونەوەدان", de: "Lektionen werden fachlich geprüft", kmr: "Ders tên kontrolkirin", ar: "الدروس قيد مراجعة المختصين" }} /></p>
           </div>
           <ProgressRing value={percent} label={label(OVERALL)} />
           <Icon name="arrow" className="flip-rtl overview-arrow" />
