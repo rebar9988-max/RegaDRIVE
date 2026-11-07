@@ -255,6 +255,16 @@ try {
     assert.equal(await page.locator(".lesson-list > li").count(), all);
     await page.locator(".lesson-list a").first().click();
     await page.locator("[data-testid=lesson-done]").click();
+    // Wait until the progress write has reached IndexedDB before a full reload (the write is async).
+    await page.waitForFunction(() => new Promise((resolve) => {
+      const req = indexedDB.open("regadrive", 1);
+      req.onerror = () => resolve(false);
+      req.onsuccess = () => {
+        const get = req.result.transaction("kv", "readonly").objectStore("kv").get("progress");
+        get.onsuccess = () => { resolve((get.result?.completedLessons?.length ?? 0) > 0); req.result.close(); };
+        get.onerror = () => { resolve(false); req.result.close(); };
+      };
+    }));
     await page.goto(`${BASE}/learn`);
     await page.locator(".lesson-filters button").nth(3).click();
     assert.equal(await page.locator(".lesson-list > li").count(), 1);
