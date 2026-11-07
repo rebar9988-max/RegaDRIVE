@@ -68,6 +68,8 @@ button { cursor: pointer; }
 .bi > .de { direction: ltr; unicode-bidi: plaintext; color: var(--muted); font-size: .82em; font-weight: 500; line-height: 1.5; }
 [dir='rtl'] .bi > .de, [dir='rtl'] .bi > .pri { text-align: right; }
 [dir='ltr'] .bi > .pri { text-align: left; }
+.lang-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.bi > .ghost { visibility: hidden; user-select: none; pointer-events: none; }
 .bi.inline { flex-direction: row; flex-wrap: wrap; gap: 4px 8px; align-items: baseline; }
 .page-head { display: flex; flex-direction: column; gap: 8px; margin-bottom: 22px; }
 .page-head h1 { font-size: 1.4rem; line-height: 1.6; }
@@ -151,6 +153,8 @@ textarea.input { min-height: 120px; }
 .daily-goal .progressbar { margin-top: 9px; height: 5px; }
 .dashboard-aside { margin-top: 24px; display: grid; align-content: start; gap: 16px; }
 .dashboard-aside .section { margin-top: 0; }
+/* Same height in every language, so the cards below never move up or down. */
+.dashboard-aside > .card { min-height: 11rem; }
 .compact-stats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
 .stat { display: flex; flex-direction: column; align-items: center; text-align: center; gap: 8px; padding: 16px 10px; position: relative; }
 .stat .bi > .pri, .stat .bi > .de { text-align: center; }
@@ -158,6 +162,8 @@ textarea.input { min-height: 120px; }
 .stat-icon svg { width: 28px; height: 28px; }
 .stat-value { direction: ltr; font: 800 1.5rem/1.2 var(--font-de); }
 .stat-label { font-size: .74rem; }
+/* Reserve two lines so short and long labels give every language the same card height. */
+.stat-label .bi > .pri, .progress-actions .btn .bi > .pri { line-height: 1.4; min-height: 2.8em; display: flex; align-items: center; justify-content: center; }
 .stat-success .stat-icon { color: var(--success-ink); }
 .stat-danger .stat-icon { color: var(--danger-ink); }
 .stat-warning .stat-icon { color: var(--warning-ink); }

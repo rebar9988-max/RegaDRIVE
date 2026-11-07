@@ -190,9 +190,10 @@ try {
       page.on("pageerror", (e) => errors.push(e.message));
       await page.goto(BASE);
       await page.waitForSelector("[data-testid=home]");
-      const boxes = () => page.evaluate(() => [".topbar .brand", ".language-switch", ".hero-logo", ".tabbar", ".sidenav"].map((sel) => {
+      // Horizontal edges and vertical positions: nothing may move sideways or up and down.
+      const boxes = () => page.evaluate(() => [".topbar .brand", ".language-switch", ".hero-logo", ".tabbar", ".sidenav", ".overview-card", ".learning-cta", ".home-menu"].map((sel) => {
         const el = document.querySelector(sel); const r = el?.getBoundingClientRect();
-        return r && r.width > 0 ? [sel, Math.round(r.left), Math.round(r.right)] : [sel, null];
+        return r && r.width > 0 ? [sel, Math.round(r.left), Math.round(r.right), Math.round(r.top + scrollY), Math.round(r.height)] : [sel, null];
       }));
       const before = await boxes();
       for (const lang of ["kmr", "ar", "de", "ckb"]) {
@@ -267,7 +268,7 @@ try {
     assert.equal(await page.getAttribute("html", "dir"), "rtl");
     await page.goto(BASE);
     await page.waitForSelector("[data-testid=home]");
-    assert.equal(await page.locator(".bi > .de").count(), 0, "German is the main text, not a second line");
+    assert.equal(await page.locator(".bi > .de:not(.ghost)").count(), 0, "German is the main text, not a second line");
     assert.equal(await page.locator("[lang=ckb]:not(.language-switch button)").count(), 0);
     await page.screenshot({ path: `${OUT}/home-desktop-de.png` });
     await page.goto(`${BASE}/settings`);

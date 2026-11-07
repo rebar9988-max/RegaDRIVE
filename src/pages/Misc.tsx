@@ -55,7 +55,7 @@ export function ProgressPage() {
       </div>
       <section className="card readiness-card"><h2 className="section-title"><Bi t={{ ckb: "ئاستی فێربوونی پرسیارەکان", de: "Stand deines Fragentrainings", kmr: "Asta fêrbûna pirsan", ar: "مستوى تدريبك على الأسئلة" }} /><span className="badge" dir="ltr">{percent}%</span></h2><div className="progressbar" role="progressbar" aria-label={label(T.mastered)} aria-valuemin={0} aria-valuemax={100} aria-valuenow={percent}><span style={{ width: `${percent}%` }} /></div></section>
       <div className="row small muted progress-secondary"><Icon name="flame" /><span>{streakDays(progress, now)} {label(T.streak)}</span><span className="spacer" /><Icon name="bookmark" /><span>{progress.bookmarks.length} {label(T.bookmarked)}</span></div>
-      <div className="q-actions">
+      <div className="q-actions progress-actions">
         <Link href="/practice?status=incorrect" className="btn btn-primary"><Bi t={T.reviewMistakes} /></Link>
         <Link href="/practice?bookmarks=1" className="btn btn-secondary">{label(T.bookmarksOnly)}</Link>
       </div>
@@ -206,13 +206,13 @@ export function Settings() {
       <header className="page-head"><h1><Bi t={T.nav.settings} /></h1></header>
       <section className="card stack">
         <h2 className="section-title"><Bi t={{ ckb: "زمان", de: "Sprache", kmr: "Ziman", ar: "اللغة" }} /></h2>
-        <div className="chip-row" role="radiogroup" aria-label={label({ ckb: "زمان", de: "Sprache", kmr: "Ziman", ar: "اللغة" })}>
+        <div className="chip-row lang-grid" role="radiogroup" aria-label={label({ ckb: "زمان", de: "Sprache", kmr: "Ziman", ar: "اللغة" })}>
           {LANGS.map((l) => (
             <button key={l.id} type="button" role="radio" aria-checked={settings.lang === l.id} lang={l.id} dir={langDir(l.id)}
               className="chip" onClick={() => setSettings({ lang: l.id })} data-testid={`lang-${l.id}`}>{l.native}</button>
           ))}
         </div>
-        <h3 className="section-title"><Bi t={{ ckb: "دەقی ئەڵمانی لە ژێرەوە", de: "Deutschen Originaltext darunter zeigen", kmr: "Nivîsa almanî ya orîjînal li jêr", ar: "إظهار النص الألماني الأصلي أسفله" }} /></h3>
+        <h3 className="section-title"><Bi t={{ ckb: "دەقی ئەڵمانی لە ژێرەوە", de: "Deutsch darunter zeigen", kmr: "Nivîsa almanî ya orîjînal li jêr", ar: "إظهار النص الألماني الأصلي أسفله" }} /></h3>
         <div className="chip-row" role="radiogroup" aria-label={label({ ckb: "دەقی ئەڵمانی", de: "Deutscher Text", kmr: "Nivîsa almanî", ar: "النص الألماني" })}>
           {([true, false] as const).map((on) => (
             <button key={String(on)} type="button" role="radio" className="chip" disabled={settings.lang === "de"}
@@ -227,7 +227,7 @@ export function Settings() {
         <div className="chip-row">
           {[5, 10, 20, 30].map((n) => <button key={n} type="button" className="chip" aria-pressed={settings.dailyGoal === n} dir="ltr" onClick={() => setSettings({ dailyGoal: n })}>{n}</button>)}
         </div>
-        <h2 className="section-title"><Bi t={{ ckb: "پێوەری فێربوون (وەڵامی ڕاستی بەدوایەک)", de: "Meisterschwelle (richtige Antworten in Folge)", kmr: "Pîvana fêrbûnê (bersivên rast li pey hev)", ar: "عتبة الإتقان (إجابات صحيحة متتالية)" }} /></h2>
+        <h2 className="section-title"><Bi t={{ ckb: "پێوەری فێربوون (وەڵامی ڕاستی بەدوایەک)", de: "Meisterschwelle (Treffer in Folge)", kmr: "Pîvana fêrbûnê (rast li pey hev)", ar: "عتبة الإتقان (إجابات صحيحة متتالية)" }} /></h2>
         <div className="chip-row">
           {[2, 3, 4, 5].map((n) => <button key={n} type="button" className="chip" aria-pressed={settings.masteryThreshold === n} dir="ltr" onClick={() => setSettings({ masteryThreshold: n })}>{n}</button>)}
         </div>

@@ -11,10 +11,14 @@ export function Bi({ t, as: Tag = "div", className = "", inline = false }: { t: 
   const { settings } = useApp();
   const p = pick(t, settings.lang);
   const withDe = settings.withGerman && p.lang !== "de";
+  // German as the main language has no second line. An invisible placeholder keeps the same
+  // height as in Sorani, Kurmanji and Arabic, so nothing jumps up or down when switching.
+  const ghost = settings.withGerman && p.lang === "de" && !inline;
   return (
     <Tag className={`bi${inline ? " inline" : ""} ${className}`.trim()}>
       <span className="pri" lang={p.lang} dir={langDir(p.lang)}>{p.text}</span>
       {withDe && <span className="de" lang="de" dir="ltr">{t.de}</span>}
+      {ghost && <span className="de ghost" aria-hidden="true" dir="ltr">{t.de}</span>}
     </Tag>
   );
 }
