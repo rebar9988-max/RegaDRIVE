@@ -254,7 +254,22 @@ try {
     await page.locator(".lesson-filters button").nth(2).click();
     assert.equal(await page.locator(".lesson-list > li").count(), all);
     await page.locator(".lesson-list a").first().click();
+    const completedLessonId = decodeURIComponent(new URL(page.url()).pathname.split("/").pop());
     await page.locator("[data-testid=lesson-done]").click();
+    // A full navigation destroys the document. Wait for the asynchronous
+    // IndexedDB write, and fail if persistence never completes, before reload.
+    await page.waitForFunction((id) => new Promise((resolve, reject) => {
+      const request = indexedDB.open("regadrive");
+      request.onerror = () => reject(request.error);
+      request.onsuccess = () => {
+        const db = request.result;
+        const transaction = db.transaction("kv", "readonly");
+        const saved = transaction.objectStore("kv").get("progress");
+        saved.onsuccess = () => resolve(saved.result?.completedLessons?.includes(id) === true);
+        saved.onerror = () => reject(saved.error);
+        transaction.oncomplete = () => db.close();
+      };
+    }), completedLessonId, { timeout: 5000 });
     await page.goto(`${BASE}/learn`);
     await page.locator(".lesson-filters button").nth(3).click();
     assert.equal(await page.locator(".lesson-list > li").count(), 1);
