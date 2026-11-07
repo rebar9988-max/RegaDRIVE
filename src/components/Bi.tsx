@@ -1,21 +1,26 @@
 import type { ElementType } from "react";
 import type { Bilingual } from "../content/types";
 import { useApp } from "../app/state";
+import { langDir, pick } from "../app/i18n";
 
-/** Kurdish Sorani (RTL) first, German (LTR) directly below — or one language, per the learner's mode. */
+/**
+ * The learner's language first (Sorani, Kurmanji, Arabic or German), and the German original directly
+ * below it when "show German" is on. Each line carries its own lang/dir, so the page layout never mirrors.
+ */
 export function Bi({ t, as: Tag = "div", className = "", inline = false }: { t: Bilingual; as?: ElementType; className?: string; inline?: boolean }) {
   const { settings } = useApp();
-  const m = settings.langMode;
+  const p = pick(t, settings.lang);
+  const withDe = settings.withGerman && p.lang !== "de";
   return (
     <Tag className={`bi${inline ? " inline" : ""} ${className}`.trim()}>
-      {m !== "de" && <span className="ckb" lang="ckb" dir="rtl">{t.ckb}</span>}
-      {m !== "ckb" && <span className="de" lang="de" dir="ltr">{t.de}</span>}
+      <span className="pri" lang={p.lang} dir={langDir(p.lang)}>{p.text}</span>
+      {withDe && <span className="de" lang="de" dir="ltr">{t.de}</span>}
     </Tag>
   );
 }
 
-/** Plain-string helper for attributes (aria-label, title). */
+/** Plain-string helper for attributes (aria-label, title) and single-line labels. */
 export function useBiText() {
   const { settings } = useApp();
-  return (t: Bilingual) => (settings.langMode === "de" ? t.de : t.ckb);
+  return (t: Bilingual) => pick(t, settings.lang).text;
 }

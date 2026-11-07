@@ -1,6 +1,6 @@
 # RegaDRIVE
 
-RegaDRIVE is a modern Kurdish Sorani and German driving-theory learning app for Germany (Klasse B). It has lessons, traffic signs, practice questions, mock exams and progress tracking.
+RegaDRIVE is a modern driving-theory learning app for Germany (Klasse B) in Kurdish Sorani, Kurdish Kurmanji, Arabic and German. The layout stays the same in every language; only the text changes. It has lessons, traffic signs, practice questions, mock exams and progress tracking.
 
 > Independent educational platform. Not affiliated with TÜV, DEKRA, any driving school or licensing authority. All questions are **original practice questions** (`sourceType: "original"`, no official question code) and are marked *pending expert review*.
 

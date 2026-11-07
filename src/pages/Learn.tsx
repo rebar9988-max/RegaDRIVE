@@ -17,9 +17,9 @@ export function Learn() {
   const [filter, setFilter] = useState("all");
   const filters = [
     { id: "all", t: T.all },
-    { id: "available", t: { ckb: "بەردەست", de: "Verfügbar" } },
-    { id: "incomplete", t: { ckb: "ناتەواو", de: "Offen" } },
-    { id: "completed", t: { ckb: "تەواو", de: "Erledigt" } },
+    { id: "available", t: { ckb: "بەردەست", de: "Verfügbar", kmr: "Berdest", ar: "متاح" } },
+    { id: "incomplete", t: { ckb: "ناتەواو", de: "Offen", kmr: "Netemam", ar: "غير مكتمل" } },
+    { id: "completed", t: { ckb: "تەواو", de: "Erledigt", kmr: "Temam", ar: "مكتمل" } },
   ];
   // CONTENT already enforces publication rules. Every listed lesson is available.
   const lessons = LESSONS.filter((l) => {
@@ -29,7 +29,7 @@ export function Learn() {
   return (
     <div className="lesson-page">
       <header className="page-head page-head-center"><h1><Icon name="book" /><Bi t={T.lessons} /></h1></header>
-      <div className="chip-row lesson-filters" role="group" aria-label={label({ ckb: "فلتەری وانەکان", de: "Lektionen filtern" })}>
+      <div className="chip-row lesson-filters" role="group" aria-label={label({ ckb: "فلتەری وانەکان", de: "Lektionen filtern", kmr: "Fîltera dersan", ar: "تصفية الدروس" })}>
         {filters.map((f) => <button key={f.id} type="button" className="chip" aria-pressed={filter === f.id} onClick={() => setFilter(f.id)}>{label(f.t)}</button>)}
       </div>
       {LESSONS.length === 0 && <p className="notice"><Bi t={T.contentInReview} /></p>}
@@ -48,7 +48,7 @@ export function Learn() {
                 <span className="lesson-copy">
                   <span className="lesson-title"><span className="num">{LESSONS.indexOf(l) + 1}.</span><Bi t={l.title} /></span>
                   <span className="small muted lesson-description"><Bi t={l.summary} /></span>
-                  <span className="row small lesson-progress-label"><Icon name={done ? "check" : "target"} /><span>{label(done ? { ckb: "وانە تەواو کرا", de: "Lektion abgeschlossen" } : { ckb: `${mastered} لە ${questions.length} پرسیار فێربووە`, de: `${mastered} von ${questions.length} Fragen gemeistert` })}</span><span className="spacer" /><span className="muted" dir="ltr">{l.minutes} {label(T.minutes)}</span></span>
+                  <span className="row small lesson-progress-label"><Icon name={done ? "check" : "target"} /><span>{label(done ? { ckb: "وانە تەواو کرا", de: "Lektion abgeschlossen", kmr: "Ders temam bû", ar: "اكتمل الدرس" } : { ckb: `${mastered} لە ${questions.length} پرسیار فێربووە`, de: `${mastered} von ${questions.length} Fragen gemeistert`, kmr: `${mastered} ji ${questions.length} pirsan hatin fêrbûn`, ar: `الأسئلة المتقنة: ${mastered} من ${questions.length}` })}</span><span className="spacer" /><span className="muted" dir="ltr">{l.minutes} {label(T.minutes)}</span></span>
                   <span className="progressbar lesson-progress" role="progressbar" aria-label={label(l.title)} aria-valuemin={0} aria-valuemax={100} aria-valuenow={done ? 100 : questions.length ? Math.round(mastered / questions.length * 100) : 0}><span style={{ width: `${done ? 100 : questions.length ? mastered / questions.length * 100 : 0}%` }} /></span>
                 </span>
                 <Icon name="arrow" className="flip-rtl" />
@@ -83,7 +83,7 @@ export function LessonDetail({ id }: { id: string }) {
       <div className="q-actions">
         <button type="button" className={`btn ${done ? "btn-secondary" : "btn-success"}`} disabled={done}
           onClick={() => update((p) => ({ ...p, completedLessons: [...p.completedLessons, l.id] }))} data-testid="lesson-done">
-          {label(done ? { ckb: "تەواو کرا ✓", de: "Abgeschlossen ✓" } : { ckb: "وەک تەواوکراو نیشانی بکە", de: "Als erledigt markieren" })}
+          {label(done ? { ckb: "تەواو کرا ✓", de: "Abgeschlossen ✓", kmr: "Temam bû ✓", ar: "مكتمل ✓" } : { ckb: "وەک تەواوکراو نیشانی بکە", de: "Als erledigt markieren", kmr: "Wek temamkirî nîşan bike", ar: "وضع علامة كمكتمل" })}
         </button>
         <Link href={`/practice?topic=${l.topicId}`} className="btn btn-primary"><Bi t={T.practiceAll} /></Link>
         {next && <Link href={`/learn/${next.id}`} className="btn btn-secondary"><Bi t={T.nextLesson} /></Link>}

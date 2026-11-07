@@ -122,6 +122,8 @@ export async function handleApi(req: Request, env: Env, now = Date.now()): Promi
     let body: unknown;
     try { body = await req.json(); } catch { return json({ error: "BAD_REQUEST" }, 400); }
     const id = typeof body === "object" && body && "questionId" in body ? String((body as { questionId: unknown }).questionId).slice(0, 40) : "";
+    const reqLang = typeof body === "object" && body && "lang" in body ? (body as { lang: unknown }).lang : "ckb";
+    const lang = reqLang === "kmr" || reqLang === "ar" || reqLang === "de" ? reqLang : "ckb";
     const q = questionById(id);
     // Domain restriction: only reviewed RegaDRIVE content can be explained; free-text prompts are not accepted.
     if (!q) return json({ error: "UNKNOWN_CONTENT" }, 404);
@@ -132,6 +134,8 @@ export async function handleApi(req: Request, env: Env, now = Date.now()): Promi
       `Question (DE): ${q.prompt.de}`, `Question (CKB): ${q.prompt.ckb}`,
       `Correct answer(s) (DE): ${correct.map((o) => o.text.de).join(" | ")}`,
       `Reviewed explanation (DE): ${q.explanation.de}`, `Reviewed explanation (CKB): ${q.explanation.ckb}`,
+      ...((lang === "kmr" || lang === "ar") && q.explanation[lang] ? [`Reviewed explanation (${lang.toUpperCase()}): ${q.explanation[lang]}`] : []),
+      `Answer language: ${AI_LANG_NAMES[lang]}.`,
       "Explain this more simply in at most 5 short sentences.",
     ].join("\n");
     const r = await getGateway(aiEnv).complete({ system: SYSTEM_PROMPT, user, maxTokens: 350 });
@@ -150,6 +154,8 @@ function envForOrder(env: Env, order: string): Env {
   return orderCache.env;
 }
 
+const AI_LANG_NAMES = { ckb: "Kurdish Sorani (Arabic script)", kmr: "Kurdish Kurmanji (Latin script)", ar: "Arabic", de: "German" } as const;
+
 function contentSummary() {
   const prod = contentFor("production");
   const all = contentFor("preview");
@@ -159,7 +165,7 @@ function contentSummary() {
     total: { questions: all.questions.length, lessons: all.lessons.length, signs: all.signs.length, vocabulary: all.vocabulary.length },
     published: { questions: prod.questions.length, lessons: prod.lessons.length, signs: prod.signs.length, vocabulary: prod.vocabulary.length },
     questionReview: review,
-    languages: ["ckb", "de"],
+    languages: ["ckb", "kmr", "ar", "de"],
   };
 }
 

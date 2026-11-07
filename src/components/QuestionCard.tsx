@@ -7,6 +7,7 @@ import { isQuestionAnswerCorrect } from "../lib/answers";
 import { QuestionMedia } from "./QuestionMedia";
 import { recordAnswer, toggleBookmark } from "../lib/progress";
 import { useApp } from "../app/state";
+import { langDir } from "../app/i18n";
 import { T } from "../app/strings";
 import { Bi, useBiText } from "./Bi";
 import { SignIcon } from "./SignIcon";
@@ -58,12 +59,12 @@ export function QuestionCard({ question: q, mode, sessionId, index, total, selec
   return (
     <article className="card question-card" aria-labelledby={legendId} data-testid="question-card" data-qid={q.id}>
       {index !== undefined && total !== undefined && <>
-        <div className="question-heading"><strong><Bi t={mode === "practice" ? { ckb: "پرسیاری ڕاهێنان", de: "Übungsfrage" } : T.mockExam} /></strong><span className="question-counter" dir="ltr">{index + 1} / {total}</span>{mode === "practice" && <Link href="/" className="icon-button" aria-label={label({ ckb: "داخستنی ڕاهێنان", de: "Übung schließen" })}><Icon name="close" /></Link>}</div>
-        <div className="progressbar question-progress" role="progressbar" aria-label={label({ ckb: "ڕێڕەوی پرسیارەکان", de: "Fragenfortschritt" })} aria-valuemin={0} aria-valuemax={total} aria-valuenow={index + 1}><span style={{ width: `${(index + 1) / total * 100}%` }} /></div>
+        <div className="question-heading"><strong><Bi t={mode === "practice" ? { ckb: "پرسیاری ڕاهێنان", de: "Übungsfrage", kmr: "Pirsa rahênanê", ar: "سؤال تدريبي" } : T.mockExam} /></strong><span className="question-counter" dir="ltr">{index + 1} / {total}</span>{mode === "practice" && <Link href="/" className="icon-button" aria-label={label({ ckb: "داخستنی ڕاهێنان", de: "Übung schließen", kmr: "Rahênanê bigire", ar: "إغلاق التدريب" })}><Icon name="close" /></Link>}</div>
+        <div className="progressbar question-progress" role="progressbar" aria-label={label({ ckb: "ڕێڕەوی پرسیارەکان", de: "Fragenfortschritt", kmr: "Pêşketina pirsan", ar: "تقدّم الأسئلة" })} aria-valuemin={0} aria-valuemax={total} aria-valuenow={index + 1}><span style={{ width: `${(index + 1) / total * 100}%` }} /></div>
       </>}
       <div className="q-meta">
         {index !== undefined && total !== undefined && <span className="badge" dir="ltr">{index + 1} / {total}</span>}
-        {q.points !== null && <span className="badge"><Bi t={{ ckb: `${q.points} ${T.points.ckb}`, de: `${q.points} ${T.points.de}` }} inline /></span>}
+        {q.points !== null && <span className="badge"><Bi t={{ ckb: `${q.points} ${T.points.ckb}`, de: `${q.points} ${T.points.de}`, kmr: `${q.points} ${T.points.kmr}`, ar: `${q.points} ${T.points.ar}` }} inline /></span>}
         <span className="badge badge-outline">{q.categoryType}</span>
         {topic && <span className="badge badge-outline"><Bi t={topic.title} inline /></span>}
         <span className="spacer" />
@@ -102,7 +103,7 @@ export function QuestionCard({ question: q, mode, sessionId, index, total, selec
         <div className={`feedback ${correct ? "ok" : "bad"}`} role="status" data-testid="feedback">
           <div className="feedback-title"><Bi t={correct ? T.correct : T.incorrect} inline /></div>
           {isNumber && !correct && q.numericAnswer !== undefined && <p className="num-block"><Bi t={T.correctAnswers} inline />: <span className="num">{String(q.numericAnswer).replace(".", ",")}</span></p>}
-          <div className="explanation-heading"><Icon name="info" /><Bi t={{ ckb: "ڕوونکردنەوە", de: "Erklärung" }} /></div>
+          <div className="explanation-heading"><Icon name="info" /><Bi t={{ ckb: "ڕوونکردنەوە", de: "Erklärung", kmr: "Şirove", ar: "الشرح" }} /></div>
           <Bi t={q.explanation} />
           <AiExplain questionId={q.id} />
         </div>
@@ -126,7 +127,7 @@ export function QuestionCard({ question: q, mode, sessionId, index, total, selec
 }
 
 function AiExplain({ questionId }: { questionId: string }) {
-  const { online } = useApp();
+  const { online, settings } = useApp();
   const label = useBiText();
   const [state, setState] = useState<"idle" | "loading" | "done" | "unavailable">("idle");
   const [text, setText] = useState("");
@@ -134,7 +135,7 @@ function AiExplain({ questionId }: { questionId: string }) {
   const run = async () => {
     setState("loading");
     try {
-      const r = await fetch("/api/ai/explain", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ questionId }) });
+      const r = await fetch("/api/ai/explain", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ questionId, lang: settings.lang }) });
       const j = (await r.json()) as { text?: string };
       if (r.ok && j.text) { setText(j.text); setState("done"); } else setState("unavailable");
     } catch { setState("unavailable"); }
@@ -144,7 +145,7 @@ function AiExplain({ questionId }: { questionId: string }) {
       {state === "idle" && <button type="button" className="btn btn-secondary btn-sm" onClick={run}><Icon name="sparkle" />{label(T.explainAi)}</button>}
       {state === "loading" && <button type="button" className="btn btn-secondary btn-sm" aria-busy="true" disabled>{label(T.explainAi)}</button>}
       {state === "unavailable" && <p className="small muted" role="status"><Bi t={T.aiUnavailable} /></p>}
-      {state === "done" && <div className="notice small" role="status"><p style={{ whiteSpace: "pre-wrap" }}>{text}</p><p className="muted" style={{ marginTop: 8 }}><Bi t={T.aiNote} /></p></div>}
+      {state === "done" && <div className="notice small" role="status"><p style={{ whiteSpace: "pre-wrap" }} lang={settings.lang} dir={langDir(settings.lang)}>{text}</p><p className="muted" style={{ marginTop: 8 }}><Bi t={T.aiNote} /></p></div>}
     </div>
   );
 }

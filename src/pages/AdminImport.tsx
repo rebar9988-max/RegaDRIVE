@@ -9,17 +9,17 @@ import { csvToImport, jsonToImport, validateImport, type ImportPreview, type Imp
  * Everything runs locally in the browser: no upload, no database write, no publication.
  */
 const t = {
-  title: { ckb: "هاوردەکردنی ناوەڕۆک (تەنها خاوەن)", de: "Inhaltsimport (nur Inhaber)" },
-  local: { ckb: "هەموو پشکنینەکان لە وێبگەڕەکەتدا دەکرێن. هیچ شتێک نانێردرێت و هیچ شتێک بڵاو ناکرێتەوە.", de: "Alle Prüfungen laufen lokal im Browser. Nichts wird hochgeladen oder veröffentlicht." },
-  licences: { ckb: "ناسنامەی مۆڵەتە تۆمارکراوەکان", de: "Registrierte Lizenz-IDs" },
-  file: { ckb: "فایلی پرسیارەکان (JSON یان CSV)", de: "Fragendatei (JSON oder CSV)" },
-  media: { ckb: "وێنە و ڤیدیۆکان", de: "Bilder und Videos" },
-  validate: { ckb: "پشکنین و پێشبینین", de: "Prüfen und Vorschau" },
-  export: { ckb: "هەناردەکردنی JSON ـی ڕاستکراوە", de: "Korrigiertes JSON exportieren" },
-  commit: { ckb: "هاوردەکردن بۆ داتابەیس (ناچالاک)", de: "In Datenbank importieren (deaktiviert)" },
-  commitWhy: { ckb: "داتابەیسی بەرهەمهێنان کوژاوەیە. هاوردەکردن تەنها دوای ڕەزامەندی خاوەن چالاک دەبێت.", de: "Die Produktionsdatenbank ist ausgeschaltet. Der Import wird erst nach Freigabe durch den Inhaber aktiviert." },
-  manual: { ckb: "زیادکردنی دەستی", de: "Manuelle Eingabe" },
-  add: { ckb: "زیادکردن", de: "Hinzufügen" },
+  title: { ckb: "هاوردەکردنی ناوەڕۆک (تەنها خاوەن)", de: "Inhaltsimport (nur Inhaber)", kmr: "Anîna naverokê (tenê xwedî)", ar: "استيراد المحتوى (للمالك فقط)" },
+  local: { ckb: "هەموو پشکنینەکان لە وێبگەڕەکەتدا دەکرێن. هیچ شتێک نانێردرێت و هیچ شتێک بڵاو ناکرێتەوە.", de: "Alle Prüfungen laufen lokal im Browser. Nichts wird hochgeladen oder veröffentlicht.", kmr: "Hemû kontrol di gerokê te de tên kirin. Tiştek nayê barkirin an weşandin.", ar: "تجري كل عمليات الفحص محليًا في المتصفح. لا يُرفع أو يُنشر أي شيء." },
+  licences: { ckb: "ناسنامەی مۆڵەتە تۆمارکراوەکان", de: "Registrierte Lizenz-IDs", kmr: "Nasnameyên lîsansê yên tomarkirî", ar: "معرّفات التراخيص المسجّلة" },
+  file: { ckb: "فایلی پرسیارەکان (JSON یان CSV)", de: "Fragendatei (JSON oder CSV)", kmr: "Pelê pirsan (JSON an CSV)", ar: "ملف الأسئلة (JSON أو CSV)" },
+  media: { ckb: "وێنە و ڤیدیۆکان", de: "Bilder und Videos", kmr: "Wêne û vîdyo", ar: "الصور والفيديوهات" },
+  validate: { ckb: "پشکنین و پێشبینین", de: "Prüfen und Vorschau", kmr: "Kontrol û pêşdîtin", ar: "الفحص والمعاينة" },
+  export: { ckb: "هەناردەکردنی JSON ـی ڕاستکراوە", de: "Korrigiertes JSON exportieren", kmr: "JSON-a rastkirî derxîne", ar: "تصدير JSON المصحّح" },
+  commit: { ckb: "هاوردەکردن بۆ داتابەیس (ناچالاک)", de: "In Datenbank importieren (deaktiviert)", kmr: "Têxe databasê (neçalak)", ar: "استيراد إلى قاعدة البيانات (معطّل)" },
+  commitWhy: { ckb: "داتابەیسی بەرهەمهێنان کوژاوەیە. هاوردەکردن تەنها دوای ڕەزامەندی خاوەن چالاک دەبێت.", de: "Die Produktionsdatenbank ist ausgeschaltet. Der Import wird erst nach Freigabe durch den Inhaber aktiviert.", kmr: "Databasa hilberînê girtî ye. Anîn tenê piştî pejirandina xwedî çalak dibe.", ar: "قاعدة بيانات الإنتاج متوقفة. لن يُفعَّل الاستيراد إلا بعد موافقة المالك." },
+  manual: { ckb: "زیادکردنی دەستی", de: "Manuelle Eingabe", kmr: "Têketina bi destan", ar: "إدخال يدوي" },
+  add: { ckb: "زیادکردن", de: "Hinzufügen", kmr: "Zêde bike", ar: "إضافة" },
 };
 
 const emptyManual = () => ({ questionCode: "", catalogueVersion: "", licenseId: "", categoryType: "Grundstoff", points: "4", topicId: "priority", answerType: "choice", promptDe: "", promptCkb: "", a: "", aCkb: "", b: "", bCkb: "", c: "", cCkb: "", correct: "a", numeric: "", explDe: "", explCkb: "" });
