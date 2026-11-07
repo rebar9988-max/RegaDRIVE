@@ -1,15 +1,16 @@
 @font-face { font-family: 'Rega Arabic'; src: url('/fonts/noto-sans-arabic-arabic.woff2') format('woff2'); font-weight: 100 900; font-display: swap; unicode-range: U+0600-06FF,U+0750-077F,U+0870-089F,U+08A0-08FF,U+200C-200E,U+FB50-FDFF,U+FE70-FEFC; }
 @font-face { font-family: 'Rega Arabic'; src: url('/fonts/noto-sans-arabic-latin.woff2') format('woff2'); font-weight: 100 900; font-display: swap; unicode-range: U+0000-00FF,U+2000-206F,U+20AC; }
-/* RegaDRIVE — reference-led indigo / emerald app design system. */
+/* RegaDRIVE — Figma "RegaDRIVE — design board" (WtaodbNou5wSbDzYZGM7B7): violet / emerald app design system. */
 :root {
-  --primary: #4338ca; --primary-bright: #4f46e5; --primary-deep: #302078;
-  --primary-soft: #eeebff; --success: #10b981; --success-ink: #087443;
-  --success-bg: #e9fbf1; --warning: #f59e0b; --warning-ink: #965900;
-  --danger: #ef4444; --danger-ink: #b42332; --danger-bg: #fff0f1;
-  --white: #fff; --ink: #17213c; --muted: #58657c; --border: #e2e8f0;
-  --canvas: #f4f6fa; --track: #dce5e9; --radius-card: 18px; --radius-btn: 14px;
-  --radius-sm: 12px; --shadow-card: 0 4px 20px -2px rgb(15 23 42 / 6%);
-  --shadow-btn: 0 5px 14px rgb(67 56 202 / 22%);
+  --primary: #5127d7; --primary-bright: #5127d7; --primary-deep: #3a1aa6;
+  --primary-soft: #f1eeff; --success: #16b674; --success-ink: #087443;
+  --success-strong: #0b8f59; --success-bg: #e1faec; --warning: #f59e0b; --warning-ink: #965900;
+  --gold: #c78a00; --info-soft: #ddebfe;
+  --danger: #de1730; --danger-ink: #b42332; --danger-bg: #fbe2e5;
+  --white: #fff; --ink: #0c1034; --muted: #5d667b; --border: #e7e9f2;
+  --canvas: #f7f9fd; --track: #e7eaf2; --radius-card: 18px; --radius-btn: 14px;
+  --radius-sm: 12px; --shadow-card: 0 1px 3px rgb(12 16 52 / 4%);
+  --shadow-btn: 0 6px 16px rgb(81 39 215 / 24%);
   --focus: 0 0 0 3px var(--white), 0 0 0 5px var(--primary);
   --header-h: 76px; --tabbar-h: 72px; --content-max: 1180px;
   --font-ckb: 'Rega Arabic', 'Noto Sans Arabic', Tahoma, sans-serif;
@@ -314,4 +315,71 @@ textarea.input { min-height: 120px; }
   .lesson-progress-label .spacer, .lesson-progress-label > .muted { display: none; }
   .progress-stats .stat { padding: 12px 8px; gap: 5px; }
   .progress-stats .stat-value { font-size: 1.35rem; }
+}
+
+/* ── Figma design board alignment (Home, Lessons, Practice, Progress) ── */
+.app { background: var(--canvas); }
+.topbar { background: rgb(247 249 253 / 96%); border-bottom-color: var(--border); }
+.card { border-color: var(--border); }
+.card-link:hover { border-color: #c9bcf5; box-shadow: 0 6px 20px rgb(81 39 215 / 10%); }
+.btn-primary, .chip[aria-pressed='true'], .chip[aria-checked='true'] { background: var(--primary); border-color: var(--primary); }
+.btn-primary:hover:not(:disabled) { background: var(--primary-deep); }
+.btn-secondary { border-color: #c9bcf5; }
+.chip { border-color: var(--border); color: var(--ink); font-weight: 600; }
+.progressbar { background: var(--track); }
+.progressbar > span { background: var(--success); }
+/* Language selector: two separate pills, active one filled violet. */
+.language-switch { gap: 8px; padding: 0; background: transparent; border: 0; }
+.language-switch button { min-height: 44px; background: var(--white); border: 1px solid var(--border); color: var(--ink); }
+.language-switch button[aria-pressed='true'] { background: var(--primary); border-color: var(--primary); color: var(--white); box-shadow: var(--shadow-btn); }
+/* Progress ring: pale emerald track, emerald arc and value. */
+.ring-track { stroke: var(--success-bg); }
+.ring-fill { stroke: var(--success); }
+.progress-ring strong, .progress-ring .ring-value { color: var(--success-strong); }
+.overview-card .ring-track { fill: var(--success-bg); }
+/* Primary learning call to action. */
+.learning-cta { background: var(--primary); border-radius: 16px; }
+/* Home shortcut tiles. */
+.tile-icon { background: transparent; color: var(--primary); }
+.tile-trophy .tile-icon { background: transparent; color: var(--gold); }
+.tile > strong { color: var(--ink); }
+/* Daily goal. */
+.daily-goal { background: var(--success-bg); border-color: transparent; }
+.daily-goal-icon, .daily-goal-status { color: var(--success-ink); }
+/* Bottom tab bar: violet active icon + label, no filled background. */
+.tab { color: var(--muted); }
+.tab[aria-current='page'] { background: transparent; color: var(--primary); }
+.navlink[aria-current='page'] { background: var(--primary); }
+.feature-strip { background: linear-gradient(120deg, #2a1478, var(--primary-deep)); }
+/* Centered screen titles as in the four Figma screens. */
+.page-head-center { align-items: center; text-align: center; }
+.page-head-center h1 { display: block; font-size: 1.35rem; }
+.page-head-center h1 > svg { display: none; }
+.page-head-center .bi > .ckb, .page-head-center .bi > .de, [dir='rtl'] .page-head-center .bi > .de, [dir='ltr'] .page-head-center .bi > .ckb { text-align: center; }
+.lesson-filters { justify-content: center; }
+/* Lessons: 72px icon tile, emerald status and bar. */
+.lesson-thumbnail { width: 72px; height: 72px; border-radius: 16px; background: var(--primary-soft); color: var(--primary); }
+.lesson-row .lesson-progress-label { color: var(--success-ink); }
+/* Practice: answer states and explanation panel. */
+.option { border: 1.5px solid var(--border); border-radius: 14px; padding: 14px; }
+.option.is-selected { border-color: var(--primary); background: var(--primary-soft); }
+.option.is-correct { border-color: var(--success); background: var(--success-bg); }
+.option.is-wrong { border-color: var(--danger); background: var(--danger-bg); }
+.feedback { background: var(--primary-soft); border-color: transparent; border-radius: 16px; }
+.explanation-heading { color: var(--primary); }
+/* Progress: stat icons and readiness value. */
+.stat-value { color: var(--ink); }
+.stat-success .stat-icon { color: var(--success); }
+.stat-danger .stat-icon { color: var(--danger); }
+.stat-warning .stat-icon { color: var(--gold); }
+.readiness-card .badge { background: var(--success-bg); color: var(--success-ink); }
+.insight-icon.success { color: var(--success); }
+.insight-icon.warning { color: var(--warning); }
+@media (max-width: 719px) {
+  .lesson-row { grid-template-columns: auto minmax(0, 1fr); }
+  .lesson-row > .flip-rtl { display: none; }
+  .lesson-thumbnail { width: 64px; height: 64px; }
+}
+@media (max-width: 359px) {
+  .lesson-thumbnail { width: 52px; height: 52px; }
 }

@@ -28,7 +28,7 @@ export function Learn() {
   });
   return (
     <div className="lesson-page">
-      <header className="page-head"><h1><Icon name="book" /><Bi t={T.lessons} /></h1></header>
+      <header className="page-head page-head-center"><h1><Icon name="book" /><Bi t={T.lessons} /></h1></header>
       <div className="chip-row lesson-filters" role="group" aria-label={label({ ckb: "فلتەری وانەکان", de: "Lektionen filtern" })}>
         {filters.map((f) => <button key={f.id} type="button" className="chip" aria-pressed={filter === f.id} onClick={() => setFilter(f.id)}>{label(f.t)}</button>)}
       </div>

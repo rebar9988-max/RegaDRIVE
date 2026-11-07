@@ -36,7 +36,7 @@ export function Practice() {
   if (CONTENT.questions.length === 0) {
     return (
       <div className="practice-page">
-        <header className="page-head"><h1><Bi t={T.practiceAll} /></h1></header>
+        <header className="page-head page-head-center"><h1><Bi t={T.practiceAll} /></h1></header>
         <section className="card stack" data-testid="practice-in-review">
           <p className="notice"><Bi t={T.contentInReview} /></p>
           <p className="small muted"><Bi t={T.notOfficial} /></p>
@@ -46,7 +46,7 @@ export function Practice() {
   }
   return (
     <div className="practice-page">
-      <header className="page-head"><h1><Bi t={T.practiceAll} /></h1></header>
+      <header className="page-head page-head-center"><h1><Bi t={T.practiceAll} /></h1></header>
       <details className="practice-filters"><summary data-testid="practice-filter-toggle">{label(T.search)} · {label(T.topic)}</summary>
       <section className="stack" aria-label={label(T.search)}>
         <label className="sr-only" htmlFor="q-search">{label(T.search)}</label>
