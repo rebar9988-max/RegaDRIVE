@@ -212,6 +212,50 @@ try {
     }
   });
 
+  await test("purchase disabled, account unavailable, services show no invented data", async () => {
+    const ctx = await browser.newContext({ viewport: { width: 1280, height: 900 } });
+    const page = await ctx.newPage();
+    await page.goto(`${BASE}/access`);
+    assert.equal(await page.locator("[data-testid=buy]").count(), 0, "no inactive purchase action is presented");
+    assert.match(await page.textContent("[data-testid=purchase]"), /Derzeit kostenlos|ئێستا بەخۆڕاییە/);
+    assert.doesNotMatch(await page.textContent("[data-testid=purchase]"), /€20/, "no unapproved planned price is presented");
+    assert.equal(await page.locator("input[autocomplete^=cc-], input[name*=card]").count(), 0, "no card fields");
+    await page.goto(`${BASE}/services`);
+    await page.click("form button[type=submit]");
+    await page.locator("[data-testid=services-unavailable]").waitFor();
+    await page.goto(`${BASE}/about`);
+    await page.locator("#impressum").waitFor();
+    await page.locator("#privacy").waitFor();
+    assert.match(await page.locator("#privacy").textContent(), /Cloudflare/);
+    assert.equal(await page.locator("nav a[href='/about#impressum']").count(), 1);
+    await ctx.close();
+  });
+
+  await test("owner import workbench (preview build only): validate fixture locally, never import or publish", async () => {
+    const ctx = await browser.newContext({ viewport: { width: 1280, height: 900 }, bypassCSP: true });
+    const page = await ctx.newPage();
+    await page.goto(`${BASE}/admin/import`);
+    await page.waitForSelector("[data-testid=admin-import]");
+    await page.fill("[data-testid=licences]", "LIC-FIXTURE");
+    await page.setInputFiles("[data-testid=question-file]", "tests/fixtures/import/valid.json");
+    await page.setInputFiles("[data-testid=media-files]", { name: "fixture.png", mimeType: "image/png", buffer: Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0, 0, 0, 0]) });
+    await page.waitForFunction(() => document.querySelector("[data-testid=row-count]")?.textContent?.startsWith("2"));
+    await page.click("[data-testid=validate]");
+    await page.locator("[data-testid=summary]").waitFor();
+    const summary = await page.textContent("[data-testid=summary]");
+    assert.ok(summary.includes("new: 2") && summary.includes("invalid: 0"), summary);
+    assert.equal(await page.locator("[data-testid=preview-row]").count(), 2);
+    assert.ok(await page.locator("[data-testid=commit]").isDisabled(), "import execution disabled");
+    assert.equal(await page.locator("text=draft · hidden").count(), 2, "imports are draft and hidden");
+    await axe(page, "/admin/import");
+    // Without the licence registered, every row is rejected.
+    await page.fill("[data-testid=licences]", "");
+    await page.click("[data-testid=validate]");
+    await page.waitForFunction(() => document.querySelector("[data-testid=summary]")?.textContent?.includes("invalid: 2"));
+    await page.screenshot({ path: `${OUT}/admin-import.png`, fullPage: true });
+    await ctx.close();
+  });
+
   await test("language settings: German-only, translation without German, Arabic practice question", async () => {
     const ctx = await browser.newContext({ viewport: { width: 1280, height: 900 }, bypassCSP: true });
     const page = await ctx.newPage();
@@ -243,6 +287,7 @@ try {
     await page.screenshot({ path: `${OUT}/practice-desktop-ar.png` });
     await ctx.close();
   });
+
   await test("reference navigation, lesson filters and narrow layouts", async () => {
     const ctx = await browser.newContext({ viewport: { width: 320, height: 844 } });
     const page = await ctx.newPage();

@@ -8,7 +8,7 @@ export const T = {
     home: b("سەرەکی", "Start", "Destpêk", "الرئيسية"), learn: b("فێربوون", "Lernen", "Fêrbûn", "التعلّم"), practice: b("ڕاهێنان", "Üben", "Rahênan", "التدريب"),
     exam: b("تاقیکردنەوە", "Prüfung", "Ezmûn", "الامتحان"), more: b("زیاتر", "Mehr", "Zêdetir", "المزيد"), signs: b("نیشانەکان", "Verkehrszeichen", "Nîşaneyên trafîkê", "إشارات المرور"),
     progress: b("پێشکەوتن", "Fortschritt", "Pêşketin", "التقدّم"), vocab: b("وشەکان", "Vokabeln", "Peyv", "المفردات"), services: b("خزمەتگوزارییەکان", "Dienste", "Xizmet", "الخدمات"),
-    account: b("هەژمار", "Konto", "Hesab", "الحساب"), access: b("دەستگەیشتنی هەمیشەیی", "Lebenslanger Zugang", "Gihîştina hetahetayî", "وصول مدى الحياة"),
+    account: b("هەژمار", "Konto", "Hesab", "الحساب"), access: b("نرخ و دەستگەیشتن", "Preise & Zugang", "Biha û gihîştin", "الأسعار والوصول"),
     settings: b("ڕێکخستنەکان", "Einstellungen", "Mîheng", "الإعدادات"), about: b("دەربارە و یاسایی", "Über & Rechtliches", "Derbar û qanûnî", "حول التطبيق والأحكام"),
   },
   greeting: b("بەخێربێیت بۆ RegaDRIVE", "Willkommen bei RegaDRIVE", "Bi xêr hatî RegaDRIVE", "مرحبًا بك في RegaDRIVE"),
