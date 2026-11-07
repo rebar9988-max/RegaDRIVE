@@ -1,0 +1,25 @@
+name: QA screenshots (scratch)
+on:
+  push:
+    branches: [qa/figma-shots-src]
+permissions:
+  contents: write
+jobs:
+  shots:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: npm }
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - run: npm run build:preview
+      - run: node scripts/qa/shots.mjs
+      - name: Publish screenshots to scratch branch
+        run: |
+          cd qa-out
+          git init -q -b qa/figma-shots-out
+          git config user.name qa-bot; git config user.email qa-bot@users.noreply.github.com
+          git add -A; git commit -qm "QA screenshots for ${GITHUB_SHA}"
+          git push -f "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}" qa/figma-shots-out
