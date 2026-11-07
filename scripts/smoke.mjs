@@ -29,7 +29,7 @@ await check("health: regadrive, production content, DB off, payments off", async
 await check("live build matches the expected production release", async () => {
   const info = await (await get("/build-info.json", { cache: "no-store" })).json();
   if (process.env.EXPECTED_BUILD_ID || process.env.GITHUB_ACTIONS === "true") {
-    assertLiveBuild(info, process.env.EXPECTED_BUILD_ID);
+    assertLiveBuild(info, process.env.EXPECTED_BUILD_ID, process.env.EXPECTED_COMMIT || undefined);
   } else {
     assert.equal(info.contentMode, "production");
     console.log(`Live build: ${info.buildId} (standalone smoke; expected identity not supplied)`);

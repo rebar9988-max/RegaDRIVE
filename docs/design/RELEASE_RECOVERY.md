@@ -9,3 +9,11 @@ Fix: new deployment runs verify that GITHUB_SHA equals current remote main after
 Limit: GitHub reruns use the workflow definition from the original commit. Historical runs created before this guard still lack it; do not rerun those runs. Start a fresh deploy.yml workflow_dispatch from current main. The existing explicit rollback step remains unchanged for real smoke failures. No old runs, data or branch protections were deleted or bypassed.
 
 The latest main also includes the separately merged /dr control center; recovery builds from current main and preserves it. No redesign is rebuilt and no domain, payment or database activation is introduced.
+
+## No republishing of the live release (2026-11-07)
+
+`build-info.json` now carries the full `commit`. A `guard` job runs before CI: it rejects anything but the newest
+`main` and reads the live `build-info.json`. If production already serves that exact commit (full `commit`, or the
+short-SHA prefix of `buildId` for older builds), the run ends as **ALREADY_LIVE**: no CI, no build, no upload. The same
+check repeats immediately before upload. After upload the smoke test requires both the exact build ID and the commit.
+An unreachable or unidentifiable live build never blocks deploying the newest main.
