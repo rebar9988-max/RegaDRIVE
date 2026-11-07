@@ -7,7 +7,7 @@ export const T = {
     home: b("سەرەکی", "Start"), learn: b("فێربوون", "Lernen"), practice: b("ڕاهێنان", "Üben"),
     exam: b("تاقیکردنەوە", "Prüfung"), more: b("زیاتر", "Mehr"), signs: b("نیشانەکان", "Verkehrszeichen"),
     progress: b("پێشکەوتن", "Fortschritt"), vocab: b("وشەکان", "Vokabeln"), services: b("خزمەتگوزارییەکان", "Dienste"),
-    account: b("هەژمار", "Konto"), access: b("دەستگەیشتنی هەمیشەیی", "Lebenslanger Zugang"),
+    account: b("هەژمار", "Konto"), access: b("نرخ و دەستگەیشتن", "Preise & Zugang"),
     settings: b("ڕێکخستنەکان", "Einstellungen"), about: b("دەربارە و یاسایی", "Über & Rechtliches"),
   },
   greeting: b("بەخێربێیت بۆ RegaDRIVE", "Willkommen bei RegaDRIVE"),
