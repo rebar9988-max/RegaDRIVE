@@ -1,4 +1,6 @@
+/// <reference types="node" />
 import { describe, expect, it } from "vitest";
+import { execFileSync } from "node:child_process";
 import { emptyProgress, questionStatus, recordAnswer, streakDays, toggleBookmark, weakTopics } from "../../src/lib/progress";
 import { QUESTIONS } from "../../src/content/questions";
 
@@ -28,6 +30,20 @@ describe("progress", () => {
     s = recordAnswer(s, "c", "q1", true, T0);
     expect(streakDays(s, T0)).toBe(3);
     expect(streakDays(s, T0 + 3 * 86_400_000)).toBe(0);
+  });
+  it("counts local calendar days across both German daylight-saving changes", () => {
+    // A separate process fixes the timezone even when Vitest runs in worker threads.
+    const source = new URL("../../src/lib/progress.ts", import.meta.url).href;
+    const result = execFileSync(process.execPath, ["--experimental-strip-types", "--input-type=module", "-e", `
+      import { emptyProgress, streakDays } from ${JSON.stringify(source)};
+      const spring = { ...emptyProgress(), days: { '2026-03-28': 1, '2026-03-29': 1 } };
+      const autumn = { ...emptyProgress(), days: { '2026-10-24': 1, '2026-10-25': 1 } };
+      console.log(JSON.stringify([
+        streakDays(spring, new Date('2026-03-30T00:30:00').getTime()),
+        streakDays(autumn, new Date('2026-10-25T23:30:00').getTime()),
+      ]));
+    `], { env: { ...process.env, TZ: "Europe/Berlin" }, encoding: "utf8" });
+    expect(JSON.parse(result)).toEqual([2, 2]);
   });
   it("toggles bookmarks and finds weak topics", () => {
     let s = toggleBookmark(emptyProgress(), "x");
