@@ -190,6 +190,8 @@ try {
       page.on("pageerror", (e) => errors.push(e.message));
       await page.goto(BASE);
       await page.waitForSelector("[data-testid=home]");
+      // The preview-only test banner (never shown in production) has a different length per language.
+      await page.addStyleTag({ content: "[data-testid=preview-banner] { display: none !important; }" });
       // Horizontal edges and vertical positions: nothing may move sideways or up and down.
       const boxes = () => page.evaluate(() => [".topbar .brand", ".language-switch", ".hero-logo", ".tabbar", ".sidenav", ".overview-card", ".learning-cta", ".home-menu"].map((sel) => {
         const el = document.querySelector(sel); const r = el?.getBoundingClientRect();
