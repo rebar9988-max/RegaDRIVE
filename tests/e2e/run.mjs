@@ -183,7 +183,8 @@ try {
 
   await test("languages: Sorani, Kurmanji, Arabic and German change the words, never the layout", async () => {
     for (const viewport of [{ width: 1280, height: 900 }, { width: 390, height: 844 }]) {
-      const ctx = await browser.newContext({ viewport });
+      // bypassCSP only so the axe test script can be injected; the app itself keeps its strict CSP.
+      const ctx = await browser.newContext({ viewport, bypassCSP: true });
       const page = await ctx.newPage();
       const errors = [];
       page.on("pageerror", (e) => errors.push(e.message));
@@ -212,10 +213,13 @@ try {
   });
 
   await test("language settings: German-only, translation without German, Arabic practice question", async () => {
-    const ctx = await browser.newContext({ viewport: { width: 1280, height: 900 } });
+    const ctx = await browser.newContext({ viewport: { width: 1280, height: 900 }, bypassCSP: true });
     const page = await ctx.newPage();
+    // Settings are written to IndexedDB asynchronously; wait for the durable value before a full reload.
+    const saved = (lang) => page.waitForFunction((l) => new Promise((res) => { const r = indexedDB.open("regadrive"); r.onsuccess = () => { const g = r.result.transaction("kv").objectStore("kv").get("settings"); g.onsuccess = () => res(g.result?.lang === l); g.onerror = () => res(false); }; r.onerror = () => res(false); }), lang);
     await page.goto(`${BASE}/settings`);
     await page.click("[data-testid=lang-de]");
+    await saved("de");
     assert.equal(await page.getAttribute("html", "dir"), "rtl");
     await page.goto(BASE);
     await page.waitForSelector("[data-testid=home]");
@@ -229,6 +233,7 @@ try {
     await page.click("[data-testid=with-german-on]");
     assert.ok(await page.locator(".bi > .de").count() > 0);
     await page.click("[data-testid=lang-ar]");
+    await saved("ar");
     await page.goto(`${BASE}/practice?topic=priority`);
     const card = page.locator("[data-testid=question-card]").first();
     await card.waitFor();
