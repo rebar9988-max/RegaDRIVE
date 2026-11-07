@@ -34,5 +34,5 @@ export function App() {
   const { ready } = useApp();
   if (path === "/dr" || path.startsWith("/dr/")) return <Suspense fallback={<div aria-busy="true" />}><DrAdmin /></Suspense>;
   // Wait for stored settings/progress so the first paint has the right language and no layout jump.
-  return <Shell>{ready ? <div key={path}>{route(path)}</div> : <div className="splash" aria-busy="true"><img className="splash-logo" src="/brand/regadrive-logo.webp" width={112} height={112} alt="RegaDRIVE" /></div>}</Shell>;
+  return <Shell>{ready ? <div key={path}>{route(path)}</div> : <div className="splash" aria-busy="true"><img className="splash-logo" src="/brand/regadrive-logo.svg" width={112} height={112} alt="RegaDRIVE" /></div>}</Shell>;
 }

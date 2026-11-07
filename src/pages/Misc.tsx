@@ -173,7 +173,7 @@ export function Account() {
     <div>
       <header className="page-head"><h1><Bi t={T.nav.account} /></h1></header>
       <section className="card stack" data-testid="account-unavailable">
-        <img className="account-logo" src="/brand/regadrive-logo.webp" alt="RegaDRIVE" width={112} height={112} />
+        <img className="account-logo" src="/brand/regadrive-logo.svg" alt="RegaDRIVE" width={112} height={112} />
         <Bi t={{ ckb: "هەژماری قوتابی (تۆمارکردن، چوونەژوورەوە، پشتڕاستکردنەوەی ئیمەیڵ) ئامادەکراوە، بەڵام هێشتا چالاک نییە، چونکە داتابەیسی بەرهەمهێنان بە ئەنقەست کوژاوەتەوە.",
           de: "Schülerkonten (Registrierung, Anmeldung, E-Mail-Bestätigung) sind vorbereitet, aber noch nicht aktiv, weil die Produktionsdatenbank bewusst ausgeschaltet ist.", kmr: "Hesabên xwendekaran (tomarbûn, têketin, piştrastkirina e-nameyê) amade ne, lê hê ne çalak in, ji ber ku databasa hilberînê bi qestî girtî ye.", ar: "حسابات الطلاب (التسجيل وتسجيل الدخول وتأكيد البريد الإلكتروني) جاهزة، لكنها غير مفعّلة بعد لأن قاعدة بيانات الإنتاج متوقفة عمدًا." }} />
         <Bi t={{ ckb: "هەموو پێشکەوتنەکەت بە سەلامەتی لەسەر ئەم ئامێرە پاشەکەوت دەکرێت.", de: "Dein gesamter Lernfortschritt wird sicher auf diesem Gerät gespeichert.", kmr: "Hemû pêşketina te bi ewlehî li ser vê amûrê tê tomarkirin.", ar: "يُحفظ كل تقدّمك في التعلّم بأمان على هذا الجهاز." }} />
