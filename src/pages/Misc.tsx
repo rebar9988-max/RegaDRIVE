@@ -41,7 +41,7 @@ export function ProgressPage() {
   const lastExams = [...progress.examHistory].reverse().slice(0, 5);
   return (
     <div>
-      <header className="page-head"><h1><Bi t={T.nav.progress} /></h1>
+      <header className="page-head page-head-center"><h1><Bi t={T.nav.progress} /></h1>
         <p className="small muted"><Bi t={{ ckb: "پێشکەوتن تەنها لەسەر ئەم ئامێرە پاشەکەوت دەکرێت.", de: "Der Fortschritt wird nur auf diesem Gerät gespeichert." }} /></p></header>
       <section className="card progress-summary">
         <div className="progress-summary-copy"><h2><Bi t={{ ckb: "پێشکەوتنی گشتی", de: "Dein Lernfortschritt" }} /></h2><p className="small muted"><Bi t={{ ckb: `${mastered} لە ${qs.length} پرسیار فێربووە`, de: `${mastered} von ${qs.length} Fragen gemeistert` }} /></p></div>
