@@ -210,6 +210,11 @@ try {
     await page.goto(`${BASE}/services`);
     await page.click("form button[type=submit]");
     await page.locator("[data-testid=services-unavailable]").waitFor();
+    await page.goto(`${BASE}/about`);
+    await page.locator("#impressum").waitFor();
+    await page.locator("#privacy").waitFor();
+    assert.match(await page.locator("#privacy").textContent(), /Cloudflare/);
+    assert.equal(await page.locator("footer a[href='/about#impressum']").count(), 1);
     await ctx.close();
   });
 
