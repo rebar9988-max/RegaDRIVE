@@ -93,8 +93,16 @@ try {
       const cards = await page.locator("[data-testid=question-card]").count();
       if (cards > 0) assert.equal(await page.locator("[data-testid=question-card] legend .bi > span").first().getAttribute("dir"), "rtl");
       await page.goto(`${base}/settings`);
-      await page.click("[data-testid=mode-de]");
-      assert.equal(await page.getAttribute("html", "dir"), "ltr", "German LTR");
+      // Four languages; the layout never mirrors or moves, only the words change.
+      const layout = () => page.evaluate(() => [".topbar .brand", ".sidenav", ".tabbar"].map((s) => { const r = document.querySelector(s)?.getBoundingClientRect(); return r && r.width ? [Math.round(r.left), Math.round(r.right)] : null; }));
+      const before = await layout();
+      for (const lang of ["kmr", "ar", "de", "ckb"]) {
+        await page.click(`[data-testid=lang-${lang}]`);
+        assert.equal(await page.getAttribute("html", "lang"), lang);
+        assert.equal(await page.getAttribute("html", "dir"), "rtl", `layout stays RTL in ${lang}`);
+        assert.deepEqual(await layout(), before, `layout unchanged in ${lang}`);
+        assert.equal(await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth), 0, `no horizontal overflow in ${lang}`);
+      }
       await page.screenshot({ path: `test-results/smoke-${name}.png`, fullPage: true }).catch(() => {});
       assert.deepEqual(errors, [], `runtime errors: ${errors.join(" | ")}`);
       await ctx.close();
