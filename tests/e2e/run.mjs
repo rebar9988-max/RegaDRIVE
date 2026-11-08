@@ -181,6 +181,33 @@ try {
     await ctx.close();
   });
 
+  await test("typography: four languages, five widths, 200% text resize", async () => {
+    for (const width of [320, 375, 390, 768, 1440]) {
+      const ctx = await browser.newContext({ viewport: { width, height: 900 }, bypassCSP: true });
+      const page = await ctx.newPage();
+      for (const lang of ["ckb", "kmr", "ar", "de"]) {
+        await page.goto(BASE);
+        await page.click(`[data-testid=switch-${lang}]`);
+        for (const path of ["/", "/learn", "/practice", "/exam", "/vocabulary", "/progress", "/settings", "/about", "/dr"]) {
+          await page.goto(BASE + path);
+          await page.waitForSelector("h1");
+          await page.evaluate(() => document.fonts.ready);
+          for (const scale of [100, 200]) {
+            await page.evaluate((scale) => { document.documentElement.style.fontSize = scale + "%"; }, scale);
+            const problems = await page.evaluate(() => {
+              const small = [...document.querySelectorAll("main p, main button, main label, main .pri, main .de:not(.ghost)")].filter(el => el.getBoundingClientRect().width && parseFloat(getComputedStyle(el).fontSize) < 16).length;
+              return { overflow: document.documentElement.scrollWidth > innerWidth, small };
+            });
+            assert.deepEqual(problems, { overflow: false, small: 0 }, `${path} ${lang} ${width}px ${scale}%`);
+          }
+          await page.evaluate(() => { document.documentElement.style.fontSize = ""; });
+          if (path === "/") await page.screenshot({ path: `${OUT}/typography-${width}-${lang}.png`, fullPage: true });
+        }
+      }
+      await ctx.close();
+    }
+  });
+
   await test("languages: Sorani, Kurmanji, Arabic and German change the words, never the layout", async () => {
     for (const viewport of [{ width: 1280, height: 900 }, { width: 390, height: 844 }]) {
       // bypassCSP only so the axe test script can be injected; the app itself keeps its strict CSP.
