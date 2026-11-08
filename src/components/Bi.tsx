@@ -7,13 +7,13 @@ import { LANGS, langDir, pick } from "../app/i18n";
  * The learner's language first (Sorani, Kurmanji, Arabic or German), and the German original directly
  * below it when "show German" is on. Each line carries its own lang/dir, so the page layout never mirrors.
  */
-export function Bi({ t, as: Tag = "div", className = "", inline = false }: { t: Bilingual; as?: ElementType; className?: string; inline?: boolean }) {
+export function Bi({ t, as: Tag = "div", className = "", inline = false, primaryOnly = false }: { t: Bilingual; as?: ElementType; className?: string; inline?: boolean; primaryOnly?: boolean }) {
   const { settings } = useApp();
   const p = pick(t, settings.lang);
-  const withDe = settings.withGerman && p.lang !== "de";
+  const withDe = !primaryOnly && settings.withGerman && p.lang !== "de";
   // Invisible, inert translations share the primary grid cell, reserving the
   // tallest natural wrapping height across scripts without clipping resized text.
-  const ghost = settings.withGerman && p.lang === "de" && !inline;
+  const ghost = !primaryOnly && settings.withGerman && p.lang === "de" && !inline;
   return (
     <Tag className={`bi${inline ? " inline" : ""} ${className}`.trim()}>
       <span className="pri" lang={p.lang} dir={langDir(p.lang)}>{p.text}</span>

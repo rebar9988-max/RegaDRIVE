@@ -65,10 +65,10 @@ export function Shell({ children }: { children: ReactNode }) {
           {CONTENT_MODE === "preview" && <div className="notice small" role="note" data-testid="preview-banner" style={{ marginBottom: 16 }}><Bi t={T.previewBanner} /></div>}
           {saveError && <div className="notice small" role="alert" style={{ marginBottom: 16 }}><Bi t={T.saveError} /></div>}
           {children}
-          <nav className="row small muted" aria-label={label({ ckb: "بەستەرە یاساییەکان", de: "Rechtliche Informationen", kmr: "Agahiyên qanûnî", ar: "المعلومات القانونية" })} style={{ justifyContent: "center", flexWrap: "wrap", gap: 16, padding: "16px 0" }}>
-            <Link href="/about#impressum">{label({ ckb: "زانیاری دابینکەر", de: "Impressum", kmr: "Agahiyên pêşkêşkar (Impressum)", ar: "بيانات الناشر (Impressum)" })}</Link>
-            <Link href="/about#privacy">{label({ ckb: "تایبەتمەندی", de: "Datenschutz", kmr: "Nepenî", ar: "الخصوصية" })}</Link>
-            <Link href="/about">{label(T.nav.about)}</Link>
+          <nav className="legal-links small muted" aria-label={label({ ckb: "بەستەرە یاساییەکان", de: "Rechtliche Informationen", kmr: "Agahiyên qanûnî", ar: "المعلومات القانونية" })} style={{ justifyContent: "center", flexWrap: "wrap", gap: 16, padding: "16px 0" }}>
+            <Link href="/about#impressum"><Bi primaryOnly t={{ ckb: "زانیاری دابینکەر", de: "Impressum", kmr: "Agahiyên pêşkêşkar (Impressum)", ar: "بيانات الناشر (Impressum)" }} /></Link>
+            <Link href="/about#privacy"><Bi primaryOnly t={{ ckb: "تایبەتمەندی", de: "Datenschutz", kmr: "Nepenî", ar: "الخصوصية" }} /></Link>
+            <Link href="/about"><Bi primaryOnly t={T.nav.about} /></Link>
           </nav>
           <footer className="feature-strip" aria-label={label({ ckb: "تایبەتمەندییەکان", de: "Funktionen", kmr: "Taybetmendî", ar: "الميزات" })}>
             {[
@@ -85,7 +85,7 @@ export function Shell({ children }: { children: ReactNode }) {
           const active = isActive(path, t.href);
           return (
             <Link key={t.href} href={t.href} className="tab" aria-current={active ? "page" : undefined}>
-              <Icon name={t.icon} /><span>{label(t.t)}</span>
+              <Icon name={t.icon} /><Bi primaryOnly t={t.t} />
             </Link>
           );
         })}

@@ -523,3 +523,7 @@ button, label, input, select, textarea, .btn, .btn-sm, .chip,
 .bi-reserve [data-script='ckb'], .bi-reserve [data-script='ar'] { font-family: var(--font-ckb); }
 .bi-reserve [data-script='kmr'], .bi-reserve [data-script='de'] { font-family: var(--font-de); line-height: 1.6; }
 .bi > .de.ghost { line-height: 1.6; }
+
+.legal-links { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 12rem), 1fr)); text-align: center; }
+.legal-links a { min-height: 44px; }
+.tab .bi > .pri { text-align: center; }
