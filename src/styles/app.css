@@ -60,6 +60,7 @@ button { cursor: pointer; }
 .main { min-width: 0; width: 100%; max-width: var(--content-max); margin-inline: auto; padding: 16px 16px calc(var(--tabbar-h) + 24px + env(safe-area-inset-bottom)); }
 .tabbar { position: fixed; bottom: 0; inset-inline: 0; z-index: 35; display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); background: var(--white); border-top: 1px solid var(--border); padding: 7px 5px calc(7px + env(safe-area-inset-bottom)); min-height: var(--tabbar-h); box-shadow: 0 -3px 20px rgb(15 23 42 / 4%); }
 .tab { min-height: 52px; display: flex; flex-direction: column; justify-content: center; align-items: center; gap: 3px; text-decoration: none; color: var(--muted); font-size: 10px; font-weight: 600; text-align: center; border-radius: 12px; }
+.tab > span { max-width: 100%; overflow-wrap: anywhere; line-height: 1.2; }
 .tab svg { width: 24px; height: 24px; }
 .tab[aria-current='page'] { color: var(--primary); font-weight: 800; background: linear-gradient(180deg, var(--primary-soft), #fff); }
 .tab[aria-current='page'] svg { stroke-width: 2.4; }
@@ -121,6 +122,7 @@ textarea.input { min-height: 120px; }
 .language-switch button[aria-pressed='true'] { background: #087f72; color: var(--white); box-shadow: 0 2px 5px rgb(0 70 60 / 16%); }
 .language-switch img { width: 23px; height: 16px; object-fit: contain; }
 .welcome { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 16px; }
+.welcome > div { min-width: 0; overflow-wrap: anywhere; }
 .welcome h1 { font-size: 1.18rem; line-height: 1.6; font-weight: 850; }
 .welcome h1 .de { font-size: .65em; }
 .welcome .hero-logo { width: 64px; height: 64px; flex: none; object-fit: contain; }

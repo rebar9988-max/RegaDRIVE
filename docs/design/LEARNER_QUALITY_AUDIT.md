@@ -22,6 +22,7 @@ Scope: diagnose and fix functional/accessibility weaknesses while preserving the
 - Existing E2E continues to check bilingual learning, scoring, progress persistence, offline operation, equal layouts across languages and axe WCAG checks.
 - Focused visual check: no overflowing elements at 320px/200% text in ckb/kmr/ar/de. Screenshots and reports are in ignored `test-results/audit-zoom-*.png`, `audit-focused-ui.json`, `weakness-audit.json` and `pipeline-report.json`.
 - Initial development validation caught strict TypeScript index/test-environment typing issues; these were corrected before the full pipeline passed. No checks were disabled.
+- PR CI initially reproduced additional German text overflow at 320px/200% in the newly merged welcome card. Its text column now shrinks/wraps beside the logo, and bottom-navigation labels wrap within their own tabs. The enlarged-text regression also checks those containers; the failing assertion remains enforced.
 - No standalone formatter is configured; `git diff --check` passed.
 
 ## Preserved concurrent work

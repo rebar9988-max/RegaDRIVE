@@ -409,11 +409,11 @@ try {
       await page.locator(`[data-testid=switch-${lang}]`).click();
       await page.evaluate(() => document.fonts.ready);
       assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth), false, lang);
-      const clipped = await page.locator('.language-switch button, .home-tiles .bi').evaluateAll((els) => els.filter((el) => {
+      const clipped = await page.locator('.language-switch button, .home-tiles .bi, .welcome > div, .tab > span').evaluateAll((els) => els.filter((el) => {
         const r = el.getBoundingClientRect();
         return r.left < -1 || r.right > innerWidth + 1 || el.scrollWidth > el.clientWidth + 1;
       }).length);
-      assert.equal(clipped, 0, `language and tile labels are not clipped in ${lang}`);
+      assert.equal(clipped, 0, `language, tile, welcome and navigation labels are not clipped in ${lang}`);
       await page.screenshot({ path: `${OUT}/text-200-${lang}.png`, fullPage: true });
     }
     await ctx.close();
