@@ -338,6 +338,87 @@ try {
     await ctx.close();
   });
 
+  await test("practice queries follow links and browser history; malformed routes stay recoverable", async () => {
+    const ctx = await browser.newContext({ viewport: { width: 1280, height: 900 } });
+    const page = await ctx.newPage();
+    const errors = [];
+    page.on("pageerror", (e) => errors.push(e.message));
+    const topic = async () => {
+      await page.locator("[data-testid=practice-filter-toggle]").click();
+      return page.locator("[data-testid=topic-select]").inputValue();
+    };
+    await page.goto(`${BASE}/practice?topic=speed`);
+    assert.equal(await topic(), "speed");
+    await page.locator('.sidenav a[href="/practice"]').click();
+    assert.equal(await topic(), "all", "a general practice link clears the URL topic");
+    await page.goBack();
+    assert.equal(await topic(), "speed", "Back restores the topic from the URL");
+    await page.goForward();
+    assert.equal(await topic(), "all", "Forward restores the unfiltered session");
+    // Exercise a client-side malformed URL; the HTTP edge itself refuses invalid escapes.
+    await page.evaluate(() => {
+      history.pushState(null, "", "/learn/%E0%A4%A");
+      dispatchEvent(new PopStateEvent("popstate"));
+    });
+    await page.locator("main h1").waitFor();
+    assert.match(await page.locator("main h1").innerText(), /نەدۆزرایەوە|nicht gefunden/);
+    await page.locator('main a[href="/"]').first().click();
+    await page.locator("[data-testid=home]").waitFor();
+    await page.locator('nav a[href="/about#privacy"]').click();
+    await page.waitForFunction(() => Math.abs(document.getElementById("privacy").getBoundingClientRect().top - 90) < 3);
+    assert.equal(new URL(page.url()).hash, "#privacy");
+    // A repeated anchor should still scroll, without pushing duplicate history entries.
+    const length = await page.evaluate(() => history.length);
+    await page.evaluate(() => window.scrollTo(0, 0));
+    await page.locator('nav a[href="/about#privacy"]').click();
+    await page.waitForFunction(() => Math.abs(document.getElementById("privacy").getBoundingClientRect().top - 90) < 3);
+    assert.equal(await page.evaluate(() => history.length), length);
+    assert.deepEqual(errors, []);
+    await ctx.close();
+  });
+
+  await test("settings radio choices work with a keyboard", async () => {
+    const ctx = await browser.newContext({ viewport: { width: 390, height: 844 } });
+    const page = await ctx.newPage();
+    await page.goto(`${BASE}/settings`);
+    await page.locator('[data-testid=lang-ckb]').focus();
+    await page.keyboard.press("ArrowDown");
+    assert.equal(await page.locator('[data-testid=lang-kmr]').getAttribute("aria-checked"), "true");
+    assert.equal(await page.evaluate(() => document.activeElement?.getAttribute("data-testid")), "lang-kmr");
+    await page.keyboard.press("End");
+    assert.equal(await page.getAttribute("html", "lang"), "de");
+    assert.ok(await page.locator('[data-testid=with-german-on]').isDisabled());
+    await page.keyboard.press("Home");
+    assert.equal(await page.getAttribute("html", "lang"), "ckb");
+    assert.equal(await page.locator('[role=radiogroup]').first().locator('[role=radio][tabindex="0"]').count(), 1);
+    await page.locator('[data-testid=with-german-on]').focus();
+    await page.keyboard.press("ArrowRight");
+    assert.equal(await page.locator('[data-testid=with-german-off]').getAttribute("aria-checked"), "true");
+    await page.keyboard.press("Tab");
+    assert.notEqual(await page.evaluate(() => document.activeElement?.getAttribute("data-testid")), "with-german-on", "Tab leaves the radio group");
+    await ctx.close();
+  });
+
+  await test("200 percent text stays readable on a 320px screen in all four languages", async () => {
+    const ctx = await browser.newContext({ viewport: { width: 320, height: 844 } });
+    const page = await ctx.newPage();
+    await page.goto(BASE);
+    await page.locator('[data-testid=home]').waitFor();
+    await page.evaluate(() => { document.documentElement.style.fontSize = "200%"; });
+    for (const lang of ["ckb", "kmr", "ar", "de"]) {
+      await page.locator(`[data-testid=switch-${lang}]`).click();
+      await page.evaluate(() => document.fonts.ready);
+      assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth), false, lang);
+      const clipped = await page.locator('.language-switch button, .home-tiles .bi, .welcome > div, .tab > span').evaluateAll((els) => els.filter((el) => {
+        const r = el.getBoundingClientRect();
+        return r.left < -1 || r.right > innerWidth + 1 || el.scrollWidth > el.clientWidth + 1;
+      }).length);
+      assert.equal(clipped, 0, `language, tile, welcome and navigation labels are not clipped in ${lang}`);
+      await page.screenshot({ path: `${OUT}/text-200-${lang}.png`, fullPage: true });
+    }
+    await ctx.close();
+  });
+
   await test("/dr owner control center: sign-in page, fail-closed API, accessible on iPhone", async () => {
     const s = await (await fetch(`${BASE}/api/dr/session`)).json();
     assert.equal(s.authenticated, false);

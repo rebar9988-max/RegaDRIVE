@@ -68,9 +68,10 @@ export function toggleBookmark(state: ProgressState, id: string): ProgressState 
 /** Consecutive days (ending today or yesterday) with at least one answer. */
 export function streakDays(state: ProgressState, now: number): number {
   let n = 0;
-  let t = now;
-  if (!state.days[dayKey(t)]) t -= 86_400_000;
-  while (state.days[dayKey(t)]) { n++; t -= 86_400_000; }
+  const date = new Date(now);
+  // A local calendar day may contain 23 or 25 hours when daylight saving changes.
+  if (!state.days[dayKey(date.getTime())]) date.setDate(date.getDate() - 1);
+  while (state.days[dayKey(date.getTime())]) { n++; date.setDate(date.getDate() - 1); }
   return n;
 }
 

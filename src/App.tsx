@@ -1,5 +1,5 @@
 import { lazy, Suspense, type JSX } from "react";
-import { usePath } from "./app/router";
+import { decodeLocationPart, useRouteLocation } from "./app/router";
 import { Shell } from "./app/Shell";
 import { useApp } from "./app/state";
 import { Home } from "./pages/Home";
@@ -19,7 +19,10 @@ function route(path: string) {
   const p = path.replace(/\/+$/, "") || "/";
   if (p === "/") return <Home />;
   if (p === "/learn") return <Learn />;
-  if (p.startsWith("/learn/")) return <LessonDetail id={decodeURIComponent(p.slice(7))} />;
+  if (p.startsWith("/learn/")) {
+    const id = decodeLocationPart(p.slice(7));
+    return id === null ? <NotFound /> : <LessonDetail id={id} />;
+  }
   if (p === "/admin/import" && AdminImport) return <Suspense fallback={<div aria-busy="true" />}><AdminImport /></Suspense>;
   const map: Record<string, () => JSX.Element> = {
     "/signs": Signs, "/practice": Practice, "/exam": Exam, "/progress": ProgressPage, "/vocabulary": Vocabulary,
@@ -30,9 +33,10 @@ function route(path: string) {
 }
 
 export function App() {
-  const path = usePath();
+  const location = useRouteLocation();
+  const path = location.split("?")[0]!;
   const { ready } = useApp();
   if (path === "/dr" || path.startsWith("/dr/")) return <Suspense fallback={<div aria-busy="true" />}><DrAdmin /></Suspense>;
   // Wait for stored settings/progress so the first paint has the right language and no layout jump.
-  return <Shell>{ready ? <div key={path}>{route(path)}</div> : <div className="splash" aria-busy="true"><img className="splash-logo" src="/brand/regadrive-logo.svg" width={112} height={112} alt="RegaDRIVE" /></div>}</Shell>;
+  return <Shell>{ready ? <div key={location}>{route(path)}</div> : <div className="splash" aria-busy="true"><img className="splash-logo" src="/brand/regadrive-logo.svg" width={112} height={112} alt="RegaDRIVE" /></div>}</Shell>;
 }
