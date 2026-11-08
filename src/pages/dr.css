@@ -4,7 +4,7 @@
 .dr-top img { width: 40px; height: 40px; object-fit: contain; }
 .dr-top-title { flex: 1; min-width: 0; line-height: 1.2; }
 .dr-top-title strong { display: block; font: italic 800 1rem/1.1 var(--font-de); direction: ltr; text-align: start; }
-.dr-top-title strong span { color: #b90013; }
+.dr-top-title strong span { color: var(--primary); }
 .dr-top-title small { color: var(--muted); font-size: .75rem; }
 .dr-nav { position: sticky; top: 61px; z-index: 19; display: flex; gap: 6px; overflow-x: auto; padding: 10px 14px; background: var(--canvas); border-bottom: 1px solid var(--border); scrollbar-width: none; -webkit-overflow-scrolling: touch; }
 .dr-nav::-webkit-scrollbar { display: none; }
