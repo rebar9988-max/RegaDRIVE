@@ -41,7 +41,7 @@ export function ProgressPage() {
   const percent = qs.length ? Math.round(mastered / qs.length * 100) : 0;
   const lastExams = [...progress.examHistory].reverse().slice(0, 5);
   return (
-    <div>
+    <div className="rega-progress-premium">
       <header className="page-head page-head-center"><h1><Bi t={T.nav.progress} /></h1>
         <p className="small muted"><Bi t={{ ckb: "پێشکەوتن تەنها لەسەر ئەم ئامێرە پاشەکەوت دەکرێت.", de: "Der Fortschritt wird nur auf diesem Gerät gespeichert.", kmr: "Pêşketin tenê li ser vê amûrê tê tomarkirin.", ar: "يُحفظ التقدّم على هذا الجهاز فقط." }} /></p></header>
       <section className="card progress-summary">
