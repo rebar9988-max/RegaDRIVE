@@ -56,3 +56,14 @@ body:has(.dashboard) .card,body:has([data-testid="exam-running"]) .card,body:has
 body:has(.dashboard) .brand-name span,body:has([data-testid="exam-running"]) .brand-name span,body:has(.rega-progress-premium) .brand-name span {color:#ff922e}
 @media (prefers-reduced-motion:reduce){.dashboard .tile{transition:none}.dashboard .tile:hover{transform:none}}
 @media (max-width:480px){.dashboard .overview-card{border-radius:22px}.dashboard .tile{min-height:118px}}
+
+/* Ensure WCAG text contrast on the inherited light-green daily goal panel. */
+.dashboard .daily-goal {
+  background:linear-gradient(130deg,#173c35,#102b30)!important;
+  border:1px solid #357b70!important;
+  color:#f4fff9!important;
+}
+.dashboard .daily-goal .bi > .pri,
+.dashboard .daily-goal .bi > .de,
+.dashboard .daily-goal .small {color:#e0f5ed!important}
+.dashboard .daily-goal-icon,.dashboard .daily-goal-status {color:#74f1b9!important}
