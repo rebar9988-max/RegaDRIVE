@@ -1,6 +1,7 @@
 import { lazy, Suspense, type JSX } from "react";
 import { usePath } from "./app/router";
 import { Shell } from "./app/Shell";
+import { CountrySelection, ItalyPending } from "./app/CountrySelection";
 import { useApp } from "./app/state";
 import { Home } from "./pages/Home";
 import { Learn, LessonDetail } from "./pages/Learn";
@@ -31,8 +32,10 @@ function route(path: string) {
 
 export function App() {
   const path = usePath();
-  const { ready } = useApp();
+  const { ready, settings } = useApp();
   if (path === "/dr" || path.startsWith("/dr/")) return <Suspense fallback={<div aria-busy="true" />}><DrAdmin /></Suspense>;
+  if (ready && settings.country === null) return <CountrySelection />;
+  if (ready && settings.country === "IT") return <ItalyPending />;
   // Wait for stored settings/progress so the first paint has the right language and no layout jump.
   return <Shell>{ready ? <div key={path}>{route(path)}</div> : <div className="splash" aria-busy="true"><img className="splash-logo" src="/brand/regadrive-logo.svg" width={112} height={112} alt="RegaDRIVE" /></div>}</Shell>;
 }
