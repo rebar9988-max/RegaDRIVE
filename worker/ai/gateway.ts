@@ -1,3 +1,4 @@
+import type { D1Like } from "../dr/db";
 /**
  * RegaDRIVE AI gateway — four free-only provider adapters behind one fail-closed router.
  * A provider is eligible only when: AI is enabled, its own RegaDRIVE secret is set, a model is
@@ -34,7 +35,7 @@ export interface AiEnv {
   AI_OPENROUTER_VERIFIED_ON?: string;
   AI_WORKERS_AI_VERIFIED_ON?: string;
   AI?: { run(model: string, input: unknown): Promise<unknown> };
-  DB?: { prepare(sql: string): { bind(...values: unknown[]): { run(): Promise<unknown> } } };
+  DB?: D1Like;
 }
 
 export interface ChatRequest { system: string; user: string; maxTokens: number }
