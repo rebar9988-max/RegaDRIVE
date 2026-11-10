@@ -14,7 +14,13 @@ describe("zero-cost guard", () => {
   it("reports NOT_CONFIGURED for every provider without RegaDRIVE secrets and never calls the network", async () => {
     const f = vi.fn();
     const g = gw(base, f);
-    expect(g.status().map((s) => s.status)).toEqual(["NOT_CONFIGURED", "NOT_CONFIGURED", "NOT_CONFIGURED", "NOT_CONFIGURED"]);
+    expect(statusOf(g)).toMatchObject({
+      gemini: { status: "NOT_CONFIGURED" },
+      groq: { status: "NOT_CONFIGURED" },
+      openrouter: { status: "NOT_CONFIGURED" },
+      "workers-ai": { status: "NOT_CONFIGURED" },
+      freemodel: { status: "DISABLED" }, // not in the explicitly authorized provider order
+    });
     expect(await g.complete(req)).toEqual({ provider: null, error: "NO_FREE_PROVIDER_AVAILABLE" });
     expect(f).not.toHaveBeenCalled();
   });
