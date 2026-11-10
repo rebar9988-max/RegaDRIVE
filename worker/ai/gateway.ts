@@ -4,7 +4,7 @@
  * configured, and its zero-cost eligibility is confirmed (or, for OpenRouter, the model id ends in ":free").
  * There is never a paid fallback. Prompts are built server-side from reviewed content only.
  */
-export type ProviderId = "gemini" | "groq" | "openrouter" | "workers-ai";
+export type ProviderId = "gemini" | "groq" | "openrouter" | "workers-ai" | "freemodel";
 export type ProviderStatus = "ACTIVE" | "RATE_LIMITED" | "NOT_CONFIGURED" | "UNAVAILABLE" | "DISABLED";
 
 export interface AiEnv {
@@ -20,6 +20,10 @@ export interface AiEnv {
   REGADRIVE_GEMINI_API_KEY?: string;
   REGADRIVE_GROQ_API_KEY?: string;
   REGADRIVE_OPENROUTER_API_KEY?: string;
+  REGADRIVE_FREEMODEL_API_KEY?: string;
+  AI_FREEMODEL_MODEL?: string;
+  AI_FREEMODEL_VERIFIED_ON?: string;
+  AI_FREEMODEL_ZERO_COST_CONFIRMED?: string;
   AI_GEMINI_MODEL?: string;
   AI_GROQ_MODEL?: string;
   AI_OPENROUTER_MODEL?: string;
@@ -47,6 +51,7 @@ export const FREE_TIER_POLICY: Record<ProviderId, { dailyRequests: number; maxOu
   groq: { dailyRequests: 500, maxOutputTokens: 400, verificationMaxAgeDays: 30 },
   openrouter: { dailyRequests: 40, maxOutputTokens: 400, verificationMaxAgeDays: 30 },
   "workers-ai": { dailyRequests: 50, maxOutputTokens: 400, verificationMaxAgeDays: 30 },
+  freemodel: { dailyRequests: 20, maxOutputTokens: 300, verificationMaxAgeDays: 7 },
 };
 
 type Check = { ok: true } | { ok: false; reason: string };
@@ -87,6 +92,21 @@ const openAiText = (j: Record<string, unknown>): string => {
 };
 
 export const ADAPTERS: Record<ProviderId, Adapter> = {
+  freemodel: {
+    id: "freemodel",
+    configured: (e, now) => first(
+      need(e.REGADRIVE_FREEMODEL_API_KEY, "missing REGADRIVE_FREEMODEL_API_KEY"),
+      need(e.AI_FREEMODEL_MODEL, "missing AI_FREEMODEL_MODEL"),
+      need(e.AI_FREEMODEL_ZERO_COST_CONFIRMED === "true", "FreeModel zero-cost policy not independently confirmed"),
+      verificationFresh(e.AI_FREEMODEL_VERIFIED_ON, now, FREE_TIER_POLICY.freemodel.verificationMaxAgeDays),
+    ),
+    async call(e, r, f, signal) {
+      return openAiText(await postJson(f, "https://freemodel.in/v1/chat/completions", { authorization: `Bearer ${e.REGADRIVE_FREEMODEL_API_KEY}` }, {
+        model: e.AI_FREEMODEL_MODEL, max_tokens: r.maxTokens, temperature: 0.2,
+        messages: [{ role: "system", content: r.system }, { role: "user", content: r.user }],
+      }, signal));
+    },
+  },
   gemini: {
     id: "gemini",
     configured: (e, now) => first(
