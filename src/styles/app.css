@@ -492,3 +492,10 @@ textarea.input { min-height: 120px; }
 .country-cta{display:block;background:#069e4b;color:white;border-radius:999px;width:100%;padding:12px}
 .country-switch{border:1px solid #a8d3b8;border-radius:999px;background:#fff;color:#205541;padding:8px 14px;cursor:pointer;font:inherit}
 @media(max-width:450px){.country-options{gap:10px}.country-card{padding:16px 8px}.country-card strong{font-size:1.2rem}}
+
+/* WCAG 2.2 AA: ensure both bilingual daily-goal heading lines retain
+   readable contrast against the light success surface in every locale. */
+.daily-goal-copy > h2 .bi > .pri,
+.daily-goal-copy > h2 .bi > .de {
+  color: #174b38;
+}
