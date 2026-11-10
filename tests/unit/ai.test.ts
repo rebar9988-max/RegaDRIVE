@@ -96,3 +96,34 @@ describe("provider routing", () => {
     expect(body.provider).toEqual({ allow_fallbacks: false });
   });
 });
+
+
+describe("FreeModel durable quota fail-closed", () => {
+  it("never calls FreeModel if the D1 quota reservation fails", async () => {
+    const f = vi.fn();
+    const db = { prepare: vi.fn(() => ({ bind: () => ({ run: async () => { throw new Error("D1 unavailable"); } }) })) };
+    const env: AiEnv = {
+      ...base, DB: db, AI_PROVIDER_ORDER: "freemodel",
+      REGADRIVE_FREEMODEL_API_KEY: "test-only",
+      AI_FREEMODEL_MODEL: "test-model",
+      AI_FREEMODEL_ZERO_COST_CONFIRMED: "true",
+      AI_FREEMODEL_VERIFIED_ON: FRESH,
+    };
+    const result = await gw(env, f).complete(req);
+    expect(result).toEqual({ provider: null, error: "NO_FREE_PROVIDER_AVAILABLE" });
+    expect(f).not.toHaveBeenCalled();
+  });
+  it("rejects a monthly reservation with no remaining capacity", async () => {
+    const f = vi.fn();
+    const db = { prepare: vi.fn((sql: string) => ({ bind: () => ({ run: async () => ({ meta: { changes: sql.startsWith("UPDATE") ? 0 : 1 } }) }) })) };
+    const env: AiEnv = {
+      ...base, DB: db, AI_PROVIDER_ORDER: "freemodel",
+      REGADRIVE_FREEMODEL_API_KEY: "test-only",
+      AI_FREEMODEL_MODEL: "test-model",
+      AI_FREEMODEL_ZERO_COST_CONFIRMED: "true",
+      AI_FREEMODEL_VERIFIED_ON: FRESH,
+    };
+    expect(await gw(env, f).complete(req)).toEqual({ provider: null, error: "NO_FREE_PROVIDER_AVAILABLE" });
+    expect(f).not.toHaveBeenCalled();
+  });
+});
