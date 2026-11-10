@@ -2,8 +2,9 @@ import { MASTERY_THRESHOLD_DEFAULT } from "../lib/progress";
 import { isLang, type Lang } from "./i18n";
 
 /** lang: the learner's reading language. withGerman: show the German original under it (ignored when lang is "de"). */
-export interface Settings { lang: Lang; withGerman: boolean; masteryThreshold: number; dailyGoal: number }
-export const defaultSettings: Settings = { lang: "ckb", withGerman: true, masteryThreshold: MASTERY_THRESHOLD_DEFAULT, dailyGoal: 10 };
+export type CountryId = "DE" | "IT";
+export interface Settings { country: CountryId | null; lang: Lang; withGerman: boolean; masteryThreshold: number; dailyGoal: number }
+export const defaultSettings: Settings = { country: null, lang: "ckb", withGerman: true, masteryThreshold: MASTERY_THRESHOLD_DEFAULT, dailyGoal: 10 };
 
 /** Reads stored settings, including the earlier { langMode: "bi" | "ckb" | "de" } format. */
 export function normalizeSettings(stored: unknown): Settings {
@@ -11,6 +12,7 @@ export function normalizeSettings(stored: unknown): Settings {
   const s = stored as Partial<Settings> & { langMode?: unknown };
   const legacy = s.langMode === "de" ? { lang: "de" as const, withGerman: true } : s.langMode === "ckb" ? { lang: "ckb" as const, withGerman: false } : s.langMode === "bi" ? { lang: "ckb" as const, withGerman: true } : {};
   const out: Settings = { ...defaultSettings, ...legacy };
+  if (s.country === "DE" || s.country === "IT") out.country = s.country;
   if (isLang(s.lang)) out.lang = s.lang;
   if (typeof s.withGerman === "boolean") out.withGerman = s.withGerman;
   if (typeof s.masteryThreshold === "number") out.masteryThreshold = s.masteryThreshold;
