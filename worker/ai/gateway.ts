@@ -34,6 +34,7 @@ export interface AiEnv {
   AI_OPENROUTER_VERIFIED_ON?: string;
   AI_WORKERS_AI_VERIFIED_ON?: string;
   AI?: { run(model: string, input: unknown): Promise<unknown> };
+  DB?: { prepare(sql: string): { bind(...values: unknown[]): { run(): Promise<{ meta?: { changes?: number } }> } } };
 }
 
 export interface ChatRequest { system: string; user: string; maxTokens: number }
@@ -97,6 +98,7 @@ export const ADAPTERS: Record<ProviderId, Adapter> = {
     configured: (e, now) => first(
       need(e.REGADRIVE_FREEMODEL_API_KEY, "missing REGADRIVE_FREEMODEL_API_KEY"),
       need(e.AI_FREEMODEL_MODEL, "missing AI_FREEMODEL_MODEL"),
+      need(e.DB, "missing durable D1 quota database"),
       need(e.AI_FREEMODEL_ZERO_COST_CONFIRMED === "true", "FreeModel zero-cost policy not independently confirmed"),
       verificationFresh(e.AI_FREEMODEL_VERIFIED_ON, now, FREE_TIER_POLICY.freemodel.verificationMaxAgeDays),
     ),
@@ -202,6 +204,20 @@ export class AiGateway {
     return Number.isFinite(n) && n >= 0 ? Math.min(n, cap) : cap;
   }
 
+  /** Atomic D1 reservation across Workers isolates. Fail closed if unavailable. */
+  private async reserveFreeModel(): Promise<boolean> {
+    const db = this.env.DB;
+    if (!db) return false;
+    const month = new Date(this.now()).toISOString().slice(0, 7);
+    // Reserve an intentionally conservative 1000 tokens per call (input + output).
+    // 200 calls / 200k reserved tokens per month, well below the 1M upstream allowance.
+    try {
+      await db.prepare("INSERT OR IGNORE INTO ai_freemodel_monthly_quota (month, requests, reserved_tokens) VALUES (?, 0, 0)").bind(month).run();
+      const result = await db.prepare("UPDATE ai_freemodel_monthly_quota SET requests = requests + 1, reserved_tokens = reserved_tokens + 1000 WHERE month = ? AND requests < 200 AND reserved_tokens + 1000 <= 200000").bind(month).run();
+      return result.meta?.changes === 1;
+    } catch { return false; }
+  }
+
   /** Cost guard evaluated immediately before every provider request. */
   costGuard(id: ProviderId): Check {
     const g = globalCostGuard(this.env);
@@ -241,6 +257,7 @@ export class AiGateway {
       const h = this.h(id);
       for (let attempt = 0; attempt <= retries; attempt++) {
         if (!this.costGuard(id).ok) break; // fail closed before EVERY request
+        if (id === "freemodel" && !(await this.reserveFreeModel())) break;
         h.used += 1;
         const capped = { ...req, maxTokens: Math.min(req.maxTokens, FREE_TIER_POLICY[id].maxOutputTokens) };
         const ctrl = new AbortController();
