@@ -30,7 +30,7 @@ const isActive = (path: string, href: string) => (href === "/" ? path === "/" : 
 
 export function Shell({ children }: { children: ReactNode }) {
   const path = usePath();
-  const { online, saveError } = useApp();
+  const { online, saveError, settings, setSettings } = useApp();
   const label = useBiText();
 
   return (
@@ -46,6 +46,7 @@ export function Shell({ children }: { children: ReactNode }) {
           <span className="brand-name" lang="en">Rega<span>DRIVE</span></span>
         </Link>
         <div className="header-tools">
+          {settings.country && <button type="button" className="country-switch" onClick={() => setSettings({ country: null })} aria-label="گۆڕینی وڵات">{settings.country === "DE" ? "🇩🇪" : "🇮🇹"}</button>}
           {!online && <span className="offline-pill" role="status" data-testid="offline-pill">{label(T.offline)}</span>}
           <details className="notification-menu">
             <summary className="icon-button" aria-label={label({ ckb: "ئاگادارییەکان", de: "Hinweise", kmr: "Agahdarî", ar: "تنبيهات" })}><Icon name="bell" /></summary>
