@@ -34,7 +34,7 @@ export interface AiEnv {
   AI_OPENROUTER_VERIFIED_ON?: string;
   AI_WORKERS_AI_VERIFIED_ON?: string;
   AI?: { run(model: string, input: unknown): Promise<unknown> };
-  DB?: { prepare(sql: string): { bind(...values: unknown[]): { run(): Promise<{ meta?: { changes?: number } }> } } };
+  DB?: { prepare(sql: string): { bind(...values: unknown[]): { run(): Promise<unknown> } } };
 }
 
 export interface ChatRequest { system: string; user: string; maxTokens: number }
@@ -213,7 +213,7 @@ export class AiGateway {
     // 200 calls / 200k reserved tokens per month, well below the 1M upstream allowance.
     try {
       await db.prepare("INSERT OR IGNORE INTO ai_freemodel_monthly_quota (month, requests, reserved_tokens) VALUES (?, 0, 0)").bind(month).run();
-      const result = await db.prepare("UPDATE ai_freemodel_monthly_quota SET requests = requests + 1, reserved_tokens = reserved_tokens + 1000 WHERE month = ? AND requests < 200 AND reserved_tokens + 1000 <= 200000").bind(month).run();
+      const result = await db.prepare("UPDATE ai_freemodel_monthly_quota SET requests = requests + 1, reserved_tokens = reserved_tokens + 1000 WHERE month = ? AND requests < 200 AND reserved_tokens + 1000 <= 200000").bind(month).run() as { meta?: { changes?: number } };
       return result.meta?.changes === 1;
     } catch { return false; }
   }
