@@ -1,6 +1,23 @@
 import { describe, expect, it, vi } from "vitest";
 import { AiGateway, FREE_TIER_POLICY, globalCostGuard, verificationFresh, type AiEnv, type ProviderId, type ProviderStatus } from "../../worker/ai/gateway";
 
+import type { D1Like, D1Stmt } from "../../worker/dr/db";
+
+/** Complete structural D1 mock; quota tests only exercise bind/run. */
+function mockD1(run: (sql: string) => Promise<unknown>): D1Like {
+  return {
+    prepare(sql: string): D1Stmt {
+      const stmt: D1Stmt = {
+        bind: () => stmt,
+        first: async <T>() => null as T | null,
+        all: async <T>() => ({ results: [] as T[] }),
+        run: () => run(sql),
+      };
+      return stmt;
+    },
+  };
+}
+
 const NOW = Date.parse("2026-11-06T12:00:00Z");
 const FRESH = "2026-11-01";
 const base: AiEnv = { AI_ENABLED: "true", AI_FREE_ONLY: "true", AI_PAID_FALLBACK_ENABLED: "false", AI_DAILY_COST_LIMIT_EUR: "0", AI_DOMAIN_SCOPE: "regadrive", AI_PROVIDER_ORDER: "gemini,groq,openrouter,workers-ai", AI_MAX_RETRIES_PER_PROVIDER: "1" };
@@ -101,7 +118,7 @@ describe("provider routing", () => {
 describe("FreeModel durable quota fail-closed", () => {
   it("never calls FreeModel if the D1 quota reservation fails", async () => {
     const f = vi.fn();
-    const db = { prepare: vi.fn(() => ({ bind: () => ({ run: async () => { throw new Error("D1 unavailable"); } }) })) };
+    const db = mockD1(async () => { throw new Error("D1 unavailable"); });
     const env: AiEnv = {
       ...base, DB: db, AI_PROVIDER_ORDER: "freemodel",
       REGADRIVE_FREEMODEL_API_KEY: "test-only",
@@ -115,7 +132,7 @@ describe("FreeModel durable quota fail-closed", () => {
   });
   it("rejects a monthly reservation with no remaining capacity", async () => {
     const f = vi.fn();
-    const db = { prepare: vi.fn((sql: string) => ({ bind: () => ({ run: async () => ({ meta: { changes: sql.startsWith("UPDATE") ? 0 : 1 } }) }) })) };
+    const db = mockD1(async (sql) => ({ meta: { changes: sql.startsWith("UPDATE") ? 0 : 1 } }));
     const env: AiEnv = {
       ...base, DB: db, AI_PROVIDER_ORDER: "freemodel",
       REGADRIVE_FREEMODEL_API_KEY: "test-only",
