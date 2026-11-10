@@ -81,6 +81,7 @@ try {
       await page.waitForSelector("[data-testid=home]");
       assert.equal(await page.getAttribute("html", "dir"), "rtl");
       assert.equal(await page.getAttribute("html", "lang"), "ckb");
+      await page.locator(".hero-logo").evaluate(async (img) => { if (!img.complete) await new Promise((resolve) => { img.addEventListener("load", resolve, { once: true }); img.addEventListener("error", resolve, { once: true }); }); });
       const logoOk = await page.$eval(".hero-logo", (img) => img.complete && img.naturalWidth > 0);
       assert.ok(logoOk, "official logo loads");
       const emblemOk = await page.$eval(".brand img", (img) => img.complete && img.naturalWidth > 0);
