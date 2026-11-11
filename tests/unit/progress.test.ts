@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { emptyProgress, questionStatus, recordAnswer, streakDays, toggleBookmark, weakTopics } from "../../src/lib/progress";
+import { emptyProgress, questionStatus, readiness, recordAnswer, streakDays, toggleBookmark, weakTopics } from "../../src/lib/progress";
 import { QUESTIONS } from "../../src/content/questions";
 
 const T0 = new Date(2026, 10, 6, 12).getTime();
@@ -37,5 +37,29 @@ describe("progress", () => {
     const q = QUESTIONS[0]!;
     s = recordAnswer(s, "a", q.id, false, T0);
     expect(weakTopics(s, QUESTIONS)).toEqual([q.topicId]);
+  });
+});
+
+describe("exam readiness", () => {
+  const qs = QUESTIONS.slice(0, 10);
+  const master = (s: ReturnType<typeof emptyProgress>, ids: string[]) => {
+    for (const id of ids) for (const sid of ["a", "b", "c"]) s = recordAnswer(s, sid, id, true, T0);
+    return s;
+  };
+  const exam = (passed: boolean, at: number) => ({ at, passed, errorPoints: passed ? 0 : 20, totalPoints: 110, rulesVersion: "r" });
+
+  it("starts as not_started and becomes learning with the first answer", () => {
+    expect(readiness(emptyProgress(), qs)).toMatchObject({ level: "not_started", answeredPct: 0, masteredPct: 0 });
+    expect(readiness(recordAnswer(emptyProgress(), "s", qs[0]!.id, false, T0), qs)).toMatchObject({ level: "learning", answeredPct: 10 });
+  });
+  it("is ready only with 90 % mastered and the last three simulations passed", () => {
+    const s = master(emptyProgress(), qs.slice(0, 9).map((q) => q.id));
+    expect(readiness({ ...s, examHistory: [exam(true, 1), exam(true, 2), exam(true, 3)] }, qs)).toMatchObject({ level: "ready", masteredPct: 90, recentPassed: 3 });
+    expect(readiness({ ...s, examHistory: [exam(true, 1), exam(true, 2)] }, qs).level).toBe("almost");
+    expect(readiness({ ...s, examHistory: [exam(true, 1), exam(true, 2), exam(false, 3)] }, qs).level).toBe("learning");
+    expect(readiness({ ...s, examHistory: [exam(false, 0), exam(true, 1), exam(true, 2), exam(true, 3)] }, qs).level).toBe("ready");
+  });
+  it("mastery without a passed simulation is never called ready", () => {
+    expect(readiness(master(emptyProgress(), qs.map((q) => q.id)), qs).level).toBe("learning");
   });
 });

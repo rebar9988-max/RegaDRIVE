@@ -23,6 +23,8 @@ export interface ImportQuestion {
   licenseClasses: string[];
   topicId: string;
   answerType: AnswerType;
+  /** Optional editorial rating 1 (easy) – 3 (hard). */
+  difficulty?: number;
   prompt: { de: string; ckb?: string };
   options?: { id: string; de: string; ckb?: string }[];
   correct?: string[];
@@ -92,7 +94,7 @@ export function parseCsv(text: string): string[][] {
 
 export const CSV_COLUMNS = [
   "question_code", "catalogue_version", "source_type", "license_id", "category", "points", "license_classes", "topic_id",
-  "answer_type", "prompt_de", "prompt_ckb",
+  "answer_type", "difficulty", "prompt_de", "prompt_ckb",
   ...OPTION_IDS.flatMap((o) => [`option_${o}_de`, `option_${o}_ckb`]),
   "correct", "numeric_answer", "explanation_de", "explanation_ckb",
   "media_kind", "media_file", "media_alt_de", "media_alt_ckb", "media_poster_file", "vocabulary_ids",
@@ -124,6 +126,7 @@ export function csvToImport(text: string): ImportQuestion[] {
       licenseClasses: list(g("license_classes")),
       topicId: blank(g("topic_id")) ?? "",
       answerType,
+      difficulty: blank(g("difficulty")) !== undefined ? Number(g("difficulty")) : undefined,
       prompt: { de: g("prompt_de") ?? "", ckb: blank(g("prompt_ckb")) },
       options: answerType === "choice" ? options : options.length ? options : undefined,
       correct: list(g("correct")),
@@ -204,6 +207,7 @@ function validateRow(q: ImportQuestion, ctx: ImportContext): { errors: RowIssue[
   if (![2, 3, 4, 5].includes(q.points)) e("points", "must be 2, 3, 4 or 5");
   if (!Array.isArray(q.licenseClasses) || q.licenseClasses.length === 0) e("licenseClasses", "at least one licence class");
   else for (const c of q.licenseClasses) if (!(LICENSE_CLASSES as readonly string[]).includes(c)) e("licenseClasses", `unknown class '${c}'`);
+  if (q.difficulty !== undefined && q.difficulty !== null && ![1, 2, 3].includes(q.difficulty)) e("difficulty", "must be 1, 2 or 3 when given");
   if (!ctx.knownTopics.has(q.topicId)) e("topicId", `unknown topic '${q.topicId}'`);
 
   checkText(errors, "prompt.de", q.prompt?.de, MAX.prompt, "de", true);
@@ -269,6 +273,7 @@ function normalise(q: ImportQuestion, ctx: ImportContext, index: number): Questi
     reviewStatus: "draft",
     publicationStatus: "hidden",
     answerType: q.answerType,
+    difficulty: q.difficulty === 1 || q.difficulty === 2 || q.difficulty === 3 ? q.difficulty : undefined,
     prompt: bi(q.prompt.de, q.prompt.ckb),
     options: (q.options ?? []).map((o) => ({ id: o.id, text: bi(o.de, o.ckb) })),
     correct: q.answerType === "choice" ? [...(q.correct ?? [])] : [],

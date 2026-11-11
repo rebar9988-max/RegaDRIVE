@@ -93,3 +93,20 @@ describe("import validation", () => {
     expect((await validateImport(new Array(5001).fill(rows()[0]!), ctx())).fatal).toMatch(/too many rows/);
   });
 });
+
+describe("optional difficulty rating", () => {
+  it("accepts 1–3, keeps it on the question and leaves unrated questions unrated", async () => {
+    const p = await validateImport([{ ...rows()[0]!, difficulty: 2 }, rows()[1]!], ctx());
+    expect(p.summary.invalid).toBe(0);
+    expect(p.rows[0]!.question!.difficulty).toBe(2);
+    expect(p.rows[1]!.question!.difficulty).toBeUndefined();
+  });
+  it("rejects anything else", async () => {
+    expect(await errs(one({ difficulty: 4 }))).toContain("difficulty: must be 1, 2 or 3 when given");
+    expect(await errs(one({ difficulty: 1.5 }))).toContain("difficulty: must be 1, 2 or 3 when given");
+  });
+  it("reads the CSV column", () => {
+    const [q] = csvToImport("source_type,category,points,topic_id,prompt_de,difficulty\noriginal,Grundstoff,3,priority,Frage,3");
+    expect(q!.difficulty).toBe(3);
+  });
+});

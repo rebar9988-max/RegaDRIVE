@@ -27,6 +27,12 @@ export const KLASSE_B_RULES_2026: ExamRules = {
   verifiedOn: "2026-11-06",
 };
 
+/**
+ * Time limit of the RegaDRIVE practice simulation. This is a product setting, not an official rule:
+ * the learner is told to confirm the official working time with the driving school or TÜV/DEKRA.
+ */
+export const EXAM_SIMULATION_MINUTES = 45;
+
 export interface ScoredAnswer {
   questionId: string;
   points: number;

@@ -20,6 +20,9 @@ export interface QuestionMetadata {
   reviewStatus: ReviewStatus;
 }
 
+/** Editorial difficulty rating (1 easy – 3 hard). Optional: never guessed for items that were not rated. */
+export type QuestionDifficulty = 1 | 2 | 3;
+
 export interface AnswerOption { id: string; text: Bilingual }
 
 /** "choice": tick one or more options. "number": type a numeric answer (official catalogue has these too). */
@@ -47,6 +50,7 @@ export interface Question extends QuestionMetadata {
   /** Official catalogue release the licensed wording belongs to. */
   catalogueVersion?: string | null;
   licenseId?: string | null;
+  difficulty?: QuestionDifficulty;
   explanation: Bilingual;
   vocabularyIds: string[];
   signId?: string;

@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useApp } from "../app/state";
 import { T } from "../app/strings";
 import { Bi, useBiText } from "../components/Bi";
@@ -6,6 +6,12 @@ import { QuestionCard } from "../components/QuestionCard";
 import { CONTENT } from "../app/content";
 import { TOPICS } from "../content/topics";
 import { defaultFilter, filterQuestions, type QuestionFilter, type StatusFilter } from "../lib/search";
+import { questionStatus } from "../lib/progress";
+import { kv } from "../lib/storage";
+
+/** Where the learner stopped, per filter, so a long question bank can be continued after a reload. */
+const RESUME_KEY = "practice-resume";
+interface Resume { filter: string; questionId: string }
 
 const newSession = () => `p-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
 
@@ -17,7 +23,8 @@ export function Practice() {
     const f = defaultFilter();
     const topic = p.get("topic");
     if (topic && TOPICS.some((t) => t.id === topic)) f.topicId = topic;
-    if (p.get("status") === "incorrect") f.status = "incorrect";
+    const status = p.get("status");
+    if (status === "incorrect" || status === "unanswered" || status === "mastered") f.status = status;
     if (p.get("bookmarks") === "1") f.bookmarkedOnly = true;
     return f;
   });
@@ -29,8 +36,44 @@ export function Practice() {
     // eslint-disable-next-line react-hooks/exhaustive-deps -- intentionally recomputed only on filter/session change
     [filter, session],
   );
-  const set = (patch: Partial<QuestionFilter>) => { setFilter((f) => ({ ...f, ...patch })); setPos(0); setSession(newSession()); };
+  // Answers already checked in this session, so going back shows the checked question again instead of a blank one.
+  const [done, setDone] = useState<Record<string, string[]>>({});
+  const set = (patch: Partial<QuestionFilter>) => { setFilter((f) => ({ ...f, ...patch })); setPos(0); setDone({}); setSession(newSession()); };
   const q = list[pos];
+  const filterKey = JSON.stringify(filter);
+  const resumed = useRef<string | null>(null);
+
+  // Continue at the stored question for this filter (once per filter); afterwards remember every move.
+  useEffect(() => {
+    if (resumed.current === filterKey) return;
+    let alive = true;
+    kv.get<Resume>(RESUME_KEY).then((r) => {
+      if (!alive) return;
+      resumed.current = filterKey;
+      const i = r && r.filter === filterKey ? list.findIndex((x) => x.id === r.questionId) : -1;
+      if (i > 0) setPos(i);
+    }).catch(() => { resumed.current = filterKey; });
+    return () => { alive = false; };
+  }, [filterKey, list]);
+  useEffect(() => {
+    if (resumed.current === filterKey && q) kv.set(RESUME_KEY, { filter: filterKey, questionId: q.id } satisfies Resume).catch(() => undefined);
+  }, [filterKey, q]);
+
+  const status = (id: string) => questionStatus(progress.questions[id], settings.masteryThreshold);
+  const counts = {
+    all: CONTENT.questions.length,
+    unanswered: CONTENT.questions.filter((x) => status(x.id) === "unanswered").length,
+    incorrect: CONTENT.questions.filter((x) => status(x.id) === "incorrect").length,
+    bookmarks: CONTENT.questions.filter((x) => progress.bookmarks.includes(x.id)).length,
+  };
+  const plain = filter.text === "" && filter.points.length === 0 && filter.category === "all" && filter.topicId === "all";
+  const modes: { id: keyof typeof counts; t: typeof T.all; on: boolean; patch: Partial<QuestionFilter> }[] = [
+    { id: "all", t: T.allQuestions, on: plain && filter.status === "all" && !filter.bookmarkedOnly, patch: { ...defaultFilter() } },
+    { id: "unanswered", t: T.unanswered, on: filter.status === "unanswered" && !filter.bookmarkedOnly, patch: { ...defaultFilter(), status: "unanswered" } },
+    { id: "incorrect", t: T.incorrectF, on: filter.status === "incorrect" && !filter.bookmarkedOnly, patch: { ...defaultFilter(), status: "incorrect" } },
+    { id: "bookmarks", t: T.bookmarked, on: filter.bookmarkedOnly, patch: { ...defaultFilter(), bookmarkedOnly: true } },
+  ];
+  const jump = (value: string) => { const n = Number(value); if (Number.isInteger(n) && n >= 1 && n <= list.length) setPos(n - 1); };
   const statuses: [StatusFilter, typeof T.all][] = [["all", T.all], ["unanswered", T.unanswered], ["incorrect", T.incorrectF], ["mastered", T.masteredF]];
 
   if (CONTENT.questions.length === 0) {
@@ -47,6 +90,11 @@ export function Practice() {
   return (
     <div className="practice-page">
       <header className="page-head page-head-center"><h1><Bi t={T.practiceAll} /></h1></header>
+      <div className="chip-row practice-modes" role="group" aria-label={label(T.modes)} data-testid="practice-modes">
+        {modes.map((m) => (
+          <button key={m.id} type="button" className="chip" aria-pressed={m.on} onClick={() => set(m.patch)} data-testid={`mode-${m.id}`}>{label(m.t)} <span className="num" dir="ltr">({counts[m.id]})</span></button>
+        ))}
+      </div>
       <details className="practice-filters"><summary data-testid="practice-filter-toggle">{label(T.search)} · {label(T.topic)}</summary>
       <section className="stack" aria-label={label(T.search)}>
         <label className="sr-only" htmlFor="q-search">{label(T.search)}</label>
@@ -81,12 +129,19 @@ export function Practice() {
 
       {q ? (
         <QuestionCard key={`${session}-${q.id}`} question={q} mode="practice" sessionId={session} index={pos} total={list.length}
+          checkedAnswer={done[q.id]} onChecked={(ids) => setDone((d) => ({ ...d, [q.id]: ids }))}
           onNext={pos + 1 < list.length ? () => setPos(pos + 1) : undefined} />
       ) : (
         <p className="card muted"><Bi t={CONTENT.questions.length === 0 ? T.contentInReview : T.noResults} /></p>
       )}
-      {q && pos > 0 && (
-        <div className="q-actions"><button type="button" className="btn btn-secondary" onClick={() => setPos(pos - 1)}><Bi t={T.previous} /></button></div>
+      {q && list.length > 1 && (
+        <div className="q-actions practice-nav">
+          <button type="button" className="btn btn-secondary" disabled={pos === 0} onClick={() => setPos(pos - 1)} data-testid="practice-prev"><Bi t={T.previous} /></button>
+          <button type="button" className="btn btn-secondary" disabled={pos + 1 >= list.length} onClick={() => setPos(pos + 1)} data-testid="practice-skip"><Bi t={T.next} /></button>
+          <label className="jump"><span className="small muted">{label(T.goToQuestion)}</span>
+            <input className="input" type="number" inputMode="numeric" min={1} max={list.length} dir="ltr" key={pos} defaultValue={pos + 1}
+              onKeyDown={(e) => { if (e.key === "Enter") jump(e.currentTarget.value); }} onBlur={(e) => jump(e.currentTarget.value)} data-testid="jump" /></label>
+        </div>
       )}
     </div>
   );

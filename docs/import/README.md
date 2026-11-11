@@ -39,3 +39,27 @@ RegaDRIVE contains **no official exam content**. The owner imports licensed cont
 - The same code with changed German content, answers or media is an `update`. It creates a new version, which needs approval again.
 - Licensed German wording can never be edited in place; the database blocks it.
 - The same content under a different code produces a warning.
+
+## Catalogue coverage (target: 1,600 questions)
+
+`src/lib/shared/catalog.ts` (`catalogReport`) counts what really exists. The owner workbench shows it after every
+validation. The target of 1,600 is a planning number of the owner, not a statement about the official catalogue.
+
+- **valid** – records without a blocking issue (duplicate id / official number / content, broken answer key, missing
+  points or German text, referenced media file not attached, official content without licence, number or catalogue version).
+- **ready** – valid, no open warning (Sorani text, explanation, media alt text, video poster), `reviewStatus: approved`
+  and published. Only these may be shown to learners in production.
+- **missing** – `target − valid`. The bank is **complete only when `ready ≥ target`**; never report it as complete before.
+
+Optional field `difficulty` (JSON) / column `difficulty` (CSV): editorial rating 1 (easy) – 3 (hard). Leave it empty
+when a question was not rated; it is never guessed.
+
+## Media rules (images and short videos)
+
+- Only original RegaDRIVE media or media with a documented licence. No screenshots or illustrations from other apps,
+  books or the official catalogue without a licence record.
+- One consistent driver's-eye camera per scenario series, same proportions, 16:9, mirrors and road markings readable on
+  a phone. Images: WebP/JPEG/PNG ≤ 2 MB. Videos: MP4/WebM ≤ 25 MB, with a poster image; they never autoplay.
+- Every file is linked to its question in the import file and needs German alt text (Sorani before approval).
+- A qualified reviewer must confirm that the picture shows exactly the traffic situation of the question and does not
+  contradict the answer key (EDUCATIONAL_REVIEW in `docs/CONTENT_REVIEW.md`). Generated images are never trusted unchecked.

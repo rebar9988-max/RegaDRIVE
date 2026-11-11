@@ -212,6 +212,166 @@ try {
     await ctx.close();
   });
 
+  const stored = (page, key) => page.evaluate((k) => new Promise((res) => { const r = indexedDB.open("regadrive"); r.onsuccess = () => { const g = r.result.transaction("kv").objectStore("kv").get(k); g.onsuccess = () => res(g.result ?? null); }; }), key);
+  const noOverflow = async (page, what) => assert.equal(await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth), 0, `no horizontal overflow: ${what}`);
+
+  await test("question interaction: title, square checkboxes, change selection, green/red after checking, error points, back/next/jump, modes [iPhone]", async () => {
+    const ctx = await browser.newContext({ ...devices["iPhone 13"], bypassCSP: true });
+    const page = await ctx.newPage();
+    await page.goto(`${BASE}/practice?topic=priority`);
+    const card = page.locator("[data-testid=question-card]");
+    await card.waitFor();
+    assert.equal(await card.getAttribute("data-qid"), "rd-g-003");
+    // The question text comes first, the answers below it.
+    const y = async (sel) => (await page.locator(sel).first().boundingBox()).y;
+    assert.ok(await y("legend.q-prompt") < await y("[data-testid=option-a]"), "question title above the answers");
+    // Square checkbox, large enough to tap, empty before selection.
+    const box = await page.locator("[data-testid=option-a] input").evaluate((e) => { const r = e.getBoundingClientRect(); const c = getComputedStyle(e); return { w: r.width, h: r.height, radius: parseFloat(c.borderTopLeftRadius), tick: getComputedStyle(e, "::after").transform }; });
+    assert.equal(box.w, box.h, "checkbox is square");
+    assert.ok(box.w >= 24 && box.radius <= 8, `checkbox is a clear square: ${JSON.stringify(box)}`);
+    const optionHeight = (await page.locator("[data-testid=option-a]").boundingBox()).height;
+    assert.ok(optionHeight >= 44, "the whole answer row is a touch target");
+    // Tapping the answer text selects it; several can be selected and changed again before handing in.
+    await page.locator("[data-testid=option-a] .bi").first().tap();
+    await page.locator("[data-testid=option-b] input").check();
+    assert.ok(await page.locator("[data-testid=option-a] input").isChecked() && await page.locator("[data-testid=option-b] input").isChecked(), "multiple selection");
+    const tick = await page.locator("[data-testid=option-a] input").evaluate((e) => new Promise((res) => setTimeout(() => res(getComputedStyle(e, "::after").transform), 400)));
+    assert.notEqual(tick, box.tick, "a tick is drawn inside the selected checkbox");
+    await page.locator("[data-testid=option-b] input").uncheck();
+    assert.equal(await page.locator("[data-testid=option-b] input").isChecked(), false, "selection can be changed");
+    assert.equal(await page.locator("[data-testid=tag-correct], [data-testid=tag-wrong], [data-testid=feedback]").count(), 0, "nothing revealed before checking");
+    await page.locator("[data-testid=check]").click();
+    await page.locator("[data-testid=feedback].ok").waitFor();
+    assert.equal(await page.locator("[data-testid=option-a] [data-testid=tag-correct]").count(), 1, "correct answer labelled in words");
+    assert.equal(await page.locator("[data-testid=error-points]").count(), 0, "no error points for a correct answer");
+    await page.locator("[data-testid=next]").click();
+    // rd-g-004 has two correct answers: one right and one wrong selection must be shown green and red.
+    assert.equal(await card.getAttribute("data-qid"), "rd-g-004");
+    await page.locator("[data-testid=option-a] input").check();
+    await page.locator("[data-testid=option-c] input").check();
+    await page.locator("[data-testid=check]").click();
+    await page.locator("[data-testid=feedback].bad").waitFor();
+    assert.equal(await page.locator("[data-testid=tag-correct]").count(), 2, "both correct answers shown");
+    assert.equal(await page.locator("[data-testid=option-c] [data-testid=tag-wrong]").count(), 1, "wrong selection shown");
+    assert.ok(await page.locator("[data-testid=option-c]").evaluate((e) => e.classList.contains("is-wrong")) && await page.locator("[data-testid=option-b]").evaluate((e) => e.classList.contains("is-correct")));
+    assert.match(await page.textContent("[data-testid=error-points]"), /4/, "error points of the question are shown");
+    await axe(page, "practice answer revealed (iPhone)");
+    await noOverflow(page, "revealed question");
+    await page.screenshot({ path: `${OUT}/question-revealed-iphone.png`, fullPage: true });
+    // Going back shows the checked question again, not an empty one, and does not score it twice.
+    await page.locator("[data-testid=practice-prev]").click();
+    assert.equal(await card.getAttribute("data-qid"), "rd-g-003");
+    await page.locator("[data-testid=feedback].ok").waitFor();
+    assert.ok(await page.locator("[data-testid=option-a] input").isChecked());
+    assert.equal((await stored(page, "progress")).questions["rd-g-003"].attempts, 1);
+    // Jump to a question number.
+    await page.fill("[data-testid=jump]", "3");
+    await page.press("[data-testid=jump]", "Enter");
+    assert.equal(await page.textContent(".question-counter"), "3 / " + (await page.textContent(".question-counter")).split("/ ")[1]);
+    // Bookmark, then the learning modes: bookmarked, incorrect, unanswered, all.
+    await page.locator(".q-meta .chip").click();
+    const third = await card.getAttribute("data-qid");
+    await page.locator("[data-testid=mode-bookmarks]").click();
+    assert.equal(await card.getAttribute("data-qid"), third, "bookmarked mode shows the saved question");
+    assert.match(await page.textContent("[data-testid=mode-bookmarks]"), /\(1\)/);
+    await page.locator("[data-testid=mode-incorrect]").click();
+    assert.equal(await card.getAttribute("data-qid"), "rd-g-004", "incorrect mode shows the mistake");
+    await page.locator("[data-testid=mode-unanswered]").click();
+    const total = Number(/\((\d+)\)/.exec(await page.textContent("[data-testid=mode-all]"))[1]);
+    assert.match(await page.textContent("[data-testid=mode-unanswered]"), new RegExp(`\\(${total - 2}\\)`), "unanswered = all minus the two answered");
+    assert.ok(!["rd-g-003", "rd-g-004"].includes(await card.getAttribute("data-qid")));
+    // The position is kept across a reload.
+    await page.locator("[data-testid=mode-all]").click();
+    await page.locator("[data-testid=practice-skip]").click();
+    await page.locator("[data-testid=practice-skip]").click();
+    const here = await card.getAttribute("data-qid");
+    await page.waitForFunction(async (id) => await new Promise((res) => { const r = indexedDB.open("regadrive"); r.onsuccess = () => { const g = r.result.transaction("kv").objectStore("kv").get("practice-resume"); g.onsuccess = () => res(g.result?.questionId === id); }; }), here);
+    await page.goto(`${BASE}/practice`);
+    await page.locator(`[data-testid=question-card][data-qid=${here}]`).waitFor();
+    await ctx.close();
+  });
+
+  await test("exam: timer, question overview, flag, answers survive a reload, unanswered warning, full review [desktop + iPhone]", async () => {
+    for (const [name, opts] of [["desktop", { viewport: { width: 1280, height: 900 } }], ["iphone", devices["iPhone 13"]]]) {
+      const ctx = await browser.newContext({ ...opts, bypassCSP: true });
+      const page = await ctx.newPage();
+      await page.goto(`${BASE}/exam`);
+      await page.click("[data-testid=exam-start]");
+      await page.locator("[data-testid=exam-running]").waitFor();
+      assert.match(await page.textContent("[data-testid=exam-timer]"), /^4[45]:\d\d$/, "countdown runs");
+      assert.equal(await page.locator("[data-testid=question-nav] button").count(), 30, "30 questions in the overview");
+      const first = await page.locator("[data-testid=question-card]").getAttribute("data-qid");
+      await page.locator("[data-testid=option-a] input").check();
+      await page.locator("[data-testid=option-b] input").check();
+      await page.click("[data-testid=exam-flag]");
+      assert.equal(await page.textContent("[data-testid=exam-answered]"), "1/30");
+      assert.ok(await page.locator("[data-testid=nav-1]").evaluate((e) => e.classList.contains("is-answered") && e.classList.contains("is-flagged")));
+      await page.click("[data-testid=nav-5]");
+      assert.equal(await page.locator("[data-testid=nav-5]").getAttribute("aria-current"), "step");
+      assert.equal(await page.locator("[data-testid=feedback], [data-testid=tag-correct]").count(), 0, "no answer disclosed during the exam");
+      await axe(page, `exam running (${name})`);
+      await noOverflow(page, `exam running (${name})`);
+      const small = await page.$$eval("[data-testid=question-nav] button", (els) => els.filter((e) => e.getBoundingClientRect().height < 44 || e.getBoundingClientRect().width < 44).length);
+      assert.equal(small, 0, "overview buttons are touch targets ≥ 44px");
+      await page.screenshot({ path: `${OUT}/exam-running-${name}.png`, fullPage: true });
+      // Reload in the middle of the exam: nothing is lost.
+      await page.waitForFunction(() => new Promise((res) => { const r = indexedDB.open("regadrive"); r.onsuccess = () => { const g = r.result.transaction("kv").objectStore("kv").get("exam-session"); g.onsuccess = () => res(g.result?.pos === 4); }; }));
+      await page.reload();
+      await page.locator("[data-testid=exam-paused]").waitFor();
+      await page.click("[data-testid=exam-resume]");
+      assert.equal(await page.locator("[data-testid=nav-5]").getAttribute("aria-current"), "step", "same question after reload");
+      assert.equal(await page.textContent("[data-testid=exam-answered]"), "1/30");
+      await page.click("[data-testid=nav-1]");
+      assert.equal(await page.locator("[data-testid=question-card]").getAttribute("data-qid"), first, "same exam after reload");
+      assert.ok(await page.locator("[data-testid=option-a] input").isChecked() && await page.locator("[data-testid=option-b] input").isChecked(), "answers restored");
+      // Handing in with open questions asks first.
+      await page.click("[data-testid=exam-to-end]");
+      await page.click("[data-testid=exam-submit]");
+      assert.match(await page.textContent("[data-testid=exam-confirm]"), /29/);
+      assert.equal(await page.locator("[data-testid=exam-result]").count(), 0);
+      await page.click("[data-testid=exam-submit]");
+      await page.locator("[data-testid=exam-result]").waitFor();
+      assert.ok((await page.textContent("[data-testid=exam-result]")).includes("Nicht bestanden"), "29 open questions cannot pass");
+      // Review: mistakes first, every question available, correct answers and own answers visible.
+      assert.equal(await page.locator("[data-testid=review-wrong]").getAttribute("aria-pressed"), "true");
+      assert.ok(await page.locator("[data-testid=tag-correct]").count() >= 1, "correct answers shown in the review");
+      assert.ok(await page.locator("[data-testid=question-card] input").first().isDisabled(), "review is read-only");
+      await page.click("[data-testid=review-all]");
+      assert.equal(await page.locator("[data-testid=question-nav] button").count(), 30);
+      assert.equal(await page.locator("[data-testid=question-card]").getAttribute("data-qid"), first);
+      assert.ok(await page.locator("[data-testid=option-a] input").isChecked() && await page.locator("[data-testid=option-b] input").isChecked(), "own answers shown in the review");
+      await axe(page, `exam review (${name})`);
+      await noOverflow(page, `exam review (${name})`);
+      await page.screenshot({ path: `${OUT}/exam-review-${name}.png`, fullPage: true });
+      // Scored exactly once; the finished session is gone.
+      const progress = await stored(page, "progress");
+      assert.equal(progress.examHistory.length, 1);
+      assert.equal(Object.keys(progress.questions).length, 30);
+      assert.ok(Object.values(progress.questions).every((q) => q.attempts === 1));
+      assert.equal(await stored(page, "exam-session"), null);
+      await page.goto(`${BASE}/progress`);
+      assert.equal(await page.locator("[data-testid=readiness]").getAttribute("data-level"), "learning");
+      await ctx.close();
+    }
+  });
+
+  await test("exam: handed in automatically when the time is over", async () => {
+    const ctx = await browser.newContext({ viewport: { width: 1280, height: 900 } });
+    const page = await ctx.newPage();
+    await page.clock.install();
+    await page.goto(`${BASE}/exam`);
+    await page.click("[data-testid=exam-start]");
+    await page.locator("[data-testid=option-a] input").check();
+    await page.clock.fastForward("44:00");
+    assert.match(await page.textContent("[data-testid=exam-timer]"), /^0[01]:\d\d$/);
+    assert.ok(await page.locator("[data-testid=exam-timer]").evaluate((e) => e.classList.contains("is-low")), "low time is highlighted");
+    await page.clock.fastForward("02:00");
+    await page.locator("[data-testid=exam-result]").waitFor();
+    assert.ok((await page.textContent("[data-testid=exam-result]")).includes("automatisch abgegeben"));
+    assert.equal((await stored(page, "progress")).examHistory.length, 1);
+    await ctx.close();
+  });
+
   await test("settings language switch never moves the mobile header [iPhone, as the live smoke test]", async () => {
     const ctx = await browser.newContext(devices["iPhone 13"]);
     const page = await ctx.newPage();
