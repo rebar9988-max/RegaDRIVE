@@ -41,6 +41,8 @@ for (const [pname, opts] of Object.entries(profiles)) {
       await page.goto(BASE + path);
       await page.waitForSelector("main#main > div:not([aria-busy])");
       await page.evaluate(() => document.fonts.ready);
+      // Give the logo up to 10 s to finish loading; a logo that never loads still fails below.
+      await page.waitForFunction(() => [...document.images].filter((i) => /brand|logo/i.test(i.src)).every((i) => i.complete && i.naturalWidth > 0), null, { timeout: 10000 }).catch(() => {});
       const s = await page.evaluate(() => {
         const lum = (c) => { const m = c.match(/\d+(\.\d+)?/g)?.map(Number) ?? [0, 0, 0]; return (0.2126 * m[0] + 0.7152 * m[1] + 0.0722 * m[2]) / 255; };
         const logo = [...document.querySelectorAll("img")].find((i) => /brand|logo/i.test(i.src));
