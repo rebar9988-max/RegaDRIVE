@@ -21,8 +21,14 @@ jobs:
           cache: npm
       - name: Install dependencies (bounded retry, network only)
         run: for i in 1 2 3; do npm ci && exit 0; echo "npm ci failed (attempt $i)"; sleep $((2 ** i * 2)); done; exit 1
+      # Same hardening as deploy.yml: OS packages once (a killed apt run leaves a lock that fails every retry),
+      # then the browser download with a per-attempt timeout so a stalled mirror cannot consume the whole job.
+      - name: Install browser system dependencies
+        timeout-minutes: 6
+        run: npx playwright install-deps chromium
       - name: Install Chromium for E2E (bounded retry)
-        run: for i in 1 2 3; do npx playwright install --with-deps chromium && exit 0; sleep $((2 ** i * 2)); done; exit 1
+        timeout-minutes: 8
+        run: for i in 1 2 3; do timeout --kill-after=10s 150 npx playwright install chromium && exit 0; echo "attempt $i failed or timed out"; sleep $((2 ** i * 2)); done; exit 1
       - name: Verification pipeline (lint, types, tests, migrations, builds, E2E + axe + offline, worker, preflight)
         run: node scripts/pipeline.mjs
       - name: Dependency audit (production deps)
