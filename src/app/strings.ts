@@ -3,7 +3,6 @@ import type { Bilingual } from "../content/types";
 const b = (ckb: string, de: string, kmr: string, ar: string): Bilingual => ({ ckb, de, kmr, ar });
 
 export const T = {
-  appTagline: b("فێربوونی تیۆری شۆفێری بە کوردی و ئەڵمانی", "Führerschein-Theorie auf Kurdisch und Deutsch", "Teoriya ehliyeta ajotinê bi kurdî û almanî", "نظرية رخصة القيادة بالكردية والعربية والألمانية"),
   nav: {
     home: b("سەرەکی", "Start", "Destpêk", "الرئيسية"), learn: b("فێربوون", "Lernen", "Fêrbûn", "التعلّم"), practice: b("ڕاهێنان", "Üben", "Rahênan", "التدريب"),
     exam: b("تاقیکردنەوە", "Prüfung", "Ezmûn", "الامتحان"), more: b("زیاتر", "Mehr", "Zêdetir", "المزيد"), signs: b("نیشانەکان", "Verkehrszeichen", "Nîşaneyên trafîkê", "إشارات المرور"),
@@ -12,7 +11,6 @@ export const T = {
     settings: b("ڕێکخستنەکان", "Einstellungen", "Mîheng", "الإعدادات"), about: b("دەربارە و یاسایی", "Über & Rechtliches", "Derbar û qanûnî", "حول التطبيق والأحكام"),
   },
   greeting: b("بەخێربێیت بۆ RegaDRIVE", "Willkommen bei RegaDRIVE", "Bi xêr hatî RegaDRIVE", "مرحبًا بك في RegaDRIVE"),
-  continueLearning: b("بەردەوامبە لە فێربوون", "Weiterlernen", "Fêrbûnê bidomîne", "تابع التعلّم"),
   startLearning: b("دەست بە فێربوون بکە", "Mit dem Lernen beginnen", "Dest bi fêrbûnê bike", "ابدأ التعلّم"),
   dailyGoal: b("ئامانجی ڕۆژانە", "Tagesziel", "Armanca rojane", "الهدف اليومي"),
   streak: b("ڕۆژی بەدوایەک", "Tage in Folge", "Rojên li pey hev", "أيام متتالية"),
