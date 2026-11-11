@@ -112,7 +112,12 @@ try {
       await page.goto(`${base}/settings`);
       // Four languages; the layout never mirrors or moves, only the words change.
       const layout = () => page.evaluate(() => [".topbar .brand", ".sidenav", ".tabbar"].map((s) => { const r = document.querySelector(s)?.getBoundingClientRect(); return r && r.width ? [Math.round(r.left), Math.round(r.right)] : null; }));
-      // Web fonts use font-display: swap; measure only after they settle so a late swap is not mistaken for a layout move.
+      // The shell paints a splash screen (no country button in the header yet) until settings load from storage.
+      // The language buttons only exist once the app is ready, so wait for them, the country button the learner
+      // chose above, and the web fonts (font-display: swap) before taking the baseline; otherwise the header's
+      // late arrivals would be mistaken for a layout move caused by switching language.
+      await page.waitForSelector("[data-testid=lang-kmr]", { timeout: 20000 });
+      await page.waitForSelector(".country-switch", { timeout: 20000 });
       await page.evaluate(() => document.fonts.ready);
       const before = await layout();
       for (const lang of ["kmr", "ar", "de", "ckb"]) {
