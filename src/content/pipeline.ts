@@ -77,6 +77,3 @@ export function publicationGate(rec: ContentRecord | undefined, question?: Quest
   }
   return { publishable: reasons.length === 0, reasons };
 }
-
-/** Index of the stage, for progress display and monotonic checks. */
-export const stageIndex = (s: ContentStage) => STAGES.indexOf(s);

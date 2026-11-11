@@ -8,7 +8,7 @@
  */
 import type { D1Like } from "./db";
 import { invalidateOverrides, loadOverrides } from "./db";
-import { FEATURES, featureByKey, resolveFeatures, type FeatureState } from "./features";
+import { featureByKey, resolveFeatures, type FeatureState } from "./features";
 import type { Flags } from "../../src/lib/shared/flags";
 
 export interface DrEnv {
@@ -367,5 +367,3 @@ export async function handleDr(req: Request, env: DrEnv, deps: DrDeps = {}): Pro
   await audit(actor, `${req.method} ${path}`, "denied", { reason: "unknown route" });
   return reply({ error: "NOT_FOUND" }, 404);
 }
-
-export const DR_FEATURE_KEYS = FEATURES.map((f) => f.key);

@@ -49,9 +49,6 @@ export function sessionCookie(token: string, maxAgeSeconds: number): string {
   return `${SESSION_COOKIE}=${token}; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=${maxAgeSeconds}`;
 }
 
-/** Same response for "unknown email" and "wrong password" (anti-enumeration). */
-export const GENERIC_AUTH_ERROR = { error: "INVALID_CREDENTIALS" } as const;
-
 export class ForbiddenError extends Error {}
 /** Object-level authorization: a student may only touch their own records. */
 export function assertOwnStudent(sessionStudentId: string | null, resourceStudentId: string): void {
