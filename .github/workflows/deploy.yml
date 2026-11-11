@@ -58,8 +58,10 @@ jobs:
         run: for i in 1 2 3; do npm ci && exit 0; sleep $((2 ** i * 2)); done; exit 1
       # Install OS packages once: killing apt mid-install can leave a lock
       # that makes every subsequent retry fail on the same runner.
-      - name: Install browser system dependencies
-        timeout-minutes: 5
+      # Best effort, as in ci.yml: the runner image already has Chromium's libraries; the smoke test fails if not.
+      - name: Install browser system dependencies (best effort)
+        timeout-minutes: 4
+        continue-on-error: true
         run: npx playwright install-deps chromium
       - name: Install Chromium for the live smoke test
         timeout-minutes: 8

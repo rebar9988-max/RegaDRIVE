@@ -23,8 +23,11 @@ jobs:
         run: for i in 1 2 3; do npm ci && exit 0; echo "npm ci failed (attempt $i)"; sleep $((2 ** i * 2)); done; exit 1
       # Same hardening as deploy.yml: OS packages once (a killed apt run leaves a lock that fails every retry),
       # then the browser download with a per-attempt timeout so a stalled mirror cannot consume the whole job.
-      - name: Install browser system dependencies
-        timeout-minutes: 6
+      # ubuntu-24.04 runners already ship every library Chromium needs; install-deps only adds optional fonts.
+      # An apt mirror outage must not block CI: if a library were really missing, the E2E browser launch fails.
+      - name: Install browser system dependencies (best effort)
+        timeout-minutes: 4
+        continue-on-error: true
         run: npx playwright install-deps chromium
       - name: Install Chromium for E2E (bounded retry)
         timeout-minutes: 8
