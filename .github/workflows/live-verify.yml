@@ -1,0 +1,16 @@
+name: live verify (temporary, read-only)
+on:
+  push:
+    branches: [diag/live-verify]
+permissions: { contents: read }
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22 }
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - run: EXPECT_COMMIT=65926c58ceeeff46d75a7258652e81dc4e5d66ad node diag/live-verify.mjs
