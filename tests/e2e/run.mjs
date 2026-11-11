@@ -222,10 +222,15 @@ try {
     const detail = () => page.evaluate(() => [".topbar", ".topbar > :first-child", ".topbar .brand", ".topbar > :last-child", ".country-switch", ".notification-menu"].map((s) => { const r = document.querySelector(s)?.getBoundingClientRect(); return `${s}=${r ? `${Math.round(r.left)}..${Math.round(r.right)}` : "none"}`; }).join(" ") + ` scrollW=${document.documentElement.scrollWidth} clientW=${document.documentElement.clientWidth}`);
     const before = await layout();
     const beforeDetail = await detail();
-    // Evidence for the live smoke failure: the header before stored settings load has no country button.
-    await page.addStyleTag({ content: ".country-switch{display:none!important}" });
-    console.log(`  header brand without country button: ${JSON.stringify((await layout())[0])}; with: ${JSON.stringify(before[0])}`);
-    await page.addStyleTag({ content: ".country-switch{display:revert!important}" });
+    // While settings load, Shell shows a hidden placeholder instead of the country button; it must take the same space.
+    await page.evaluate(() => {
+      const btn = document.querySelector("button.country-switch");
+      const ph = document.createElement("span");
+      ph.className = "country-switch"; ph.setAttribute("aria-hidden", "true"); ph.style.visibility = "hidden"; ph.textContent = "🇩🇪";
+      btn.after(ph); btn.style.display = "none";
+    });
+    assert.deepEqual(await layout(), before, "loading placeholder keeps the header in place");
+    await page.evaluate(() => { document.querySelector("span.country-switch").remove(); document.querySelector("button.country-switch").style.display = ""; });
     assert.deepEqual(await layout(), before);
     for (const lang of ["kmr", "ar", "de", "ckb"]) {
       await page.click(`[data-testid=lang-${lang}]`);

@@ -30,7 +30,7 @@ const isActive = (path: string, href: string) => (href === "/" ? path === "/" : 
 
 export function Shell({ children }: { children: ReactNode }) {
   const path = usePath();
-  const { online, saveError, settings, setSettings } = useApp();
+  const { online, saveError, settings, setSettings, ready } = useApp();
   const label = useBiText();
 
   return (
@@ -47,6 +47,8 @@ export function Shell({ children }: { children: ReactNode }) {
         </Link>
         <div className="header-tools">
           {settings.country && <button type="button" className="country-switch" onClick={() => setSettings({ country: null })} aria-label="گۆڕینی وڵات">{settings.country === "DE" ? "🇩🇪" : "🇮🇹"}</button>}
+          {/* While stored settings load, keep the country button's space so the logo does not jump when it appears. */}
+          {!ready && !settings.country && <span className="country-switch" aria-hidden="true" style={{ visibility: "hidden" }}>🇩🇪</span>}
           {!online && <span className="offline-pill" role="status" data-testid="offline-pill">{label(T.offline)}</span>}
           <details className="notification-menu">
             <summary className="icon-button" aria-label={label({ ckb: "ئاگادارییەکان", de: "Hinweise", kmr: "Agahdarî", ar: "تنبيهات" })}><Icon name="bell" /></summary>
