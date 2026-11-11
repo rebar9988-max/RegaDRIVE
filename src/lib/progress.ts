@@ -106,3 +106,29 @@ export function weakTopics(state: ProgressState, questions: Question[], limit = 
     .slice(0, limit)
     .map(([id]) => id);
 }
+
+/**
+ * Pure, loss-free merge of two progress copies (device + account backup). Nothing is ever dropped:
+ * per question the more recent answer wins, lists and scored keys are united, day counts keep the maximum
+ * and exam results are united by time. Used when backing up to or restoring from a student account.
+ */
+export function mergeProgress(a: ProgressState, b: ProgressState): ProgressState {
+  const questions: Record<string, QuestionProgress> = { ...a.questions };
+  for (const [id, q] of Object.entries(b.questions ?? {})) {
+    const mine = questions[id];
+    if (!mine || (q.lastAnsweredAt ?? 0) > (mine.lastAnsweredAt ?? 0) || ((q.lastAnsweredAt ?? 0) === (mine.lastAnsweredAt ?? 0) && q.attempts > mine.attempts)) questions[id] = q;
+  }
+  const days: Record<string, number> = { ...a.days };
+  for (const [d, n] of Object.entries(b.days ?? {})) days[d] = Math.max(days[d] ?? 0, n);
+  const exams = new Map<number, ProgressState["examHistory"][number]>();
+  for (const e of [...(a.examHistory ?? []), ...(b.examHistory ?? [])]) exams.set(e.at, e);
+  return {
+    version: 1,
+    questions,
+    scored: { ...a.scored, ...b.scored },
+    bookmarks: [...new Set([...(a.bookmarks ?? []), ...(b.bookmarks ?? [])])],
+    completedLessons: [...new Set([...(a.completedLessons ?? []), ...(b.completedLessons ?? [])])],
+    days,
+    examHistory: [...exams.values()].sort((x, y) => x.at - y.at),
+  };
+}

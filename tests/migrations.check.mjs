@@ -68,4 +68,41 @@ throws(`INSERT INTO question_translations VALUES ('o1','prompt','fa','x','draft'
 const ic = db.prepare("PRAGMA integrity_check").get();
 assert.equal(Object.values(ic)[0], "ok");
 assert.equal(db.prepare("PRAGMA foreign_key_check").all().length, 0);
-console.log(`migrations OK: ${tables.length} tables, constraints verified`);
+
+// ── migrations-students: separate student D1 (regadrive-students), applied to its own database ──
+const sdb = new DatabaseSync(":memory:");
+const studentFiles = readdirSync("migrations-students").filter((f) => f.endsWith(".sql")).sort();
+assert.ok(studentFiles.length > 0, "student migrations present");
+for (const f of studentFiles) {
+  const sql = readFileSync(`migrations-students/${f}`, "utf8");
+  assert.ok(!/\bdr_|DROP\s+TABLE|DELETE\s+FROM/i.test(sql), `${f}: forward-only, never touches /dr tables`);
+  sdb.exec(sql);
+}
+sdb.exec("PRAGMA foreign_keys = ON");
+const stables = sdb.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'").all().map((r) => r.name);
+for (const t of ["students", "email_challenges", "student_sessions", "student_progress", "student_auth_events", "student_rate_events"]) assert.ok(stables.includes(t), `missing student table ${t}`);
+for (const t of stables) assert.ok(!t.startsWith("dr_"), "no /dr table in the student database");
+const sthrows = (sql, msg) => assert.throws(() => sdb.exec(sql), undefined, msg);
+const H = "pbkdf2-sha256$100000$s$h";
+const h64 = "a".repeat(64);
+sdb.exec(`INSERT INTO students (id,email_normalized,password_hash,created_at,updated_at) VALUES ('s1','a@example.de','${H}',${now},${now})`);
+sthrows(`INSERT INTO students (id,email_normalized,password_hash,created_at,updated_at) VALUES ('s2','a@example.de','${H}',${now},${now})`, "unique e-mail");
+sthrows(`INSERT INTO students (id,email_normalized,password_hash,created_at,updated_at) VALUES ('s2','B@example.de','${H}',${now},${now})`, "e-mail stored normalized");
+sthrows(`INSERT INTO students (id,email_normalized,password_hash,created_at,updated_at) VALUES ('s2','b@example.de','plaintext',${now},${now})`, "only PBKDF2 hashes");
+sthrows(`INSERT INTO students (id,email_normalized,password_hash,lang,created_at,updated_at) VALUES ('s2','b@example.de','${H}','fr',${now},${now})`, "language domain");
+sthrows(`INSERT INTO email_challenges (id,student_id,purpose,code_hash,expires_at,created_at) VALUES ('c1','s1','verify_email','123456',${now + 1},${now})`, "codes stored hashed");
+sthrows(`INSERT INTO email_challenges (id,student_id,purpose,code_hash,expires_at,created_at) VALUES ('c1','s1','sms','${h64}',${now + 1},${now})`, "no SMS purpose");
+sthrows(`INSERT INTO email_challenges (id,student_id,purpose,code_hash,expires_at,created_at) VALUES ('c1','nope','verify_email','${h64}',${now + 1},${now})`, "challenge FK");
+sdb.exec(`INSERT INTO email_challenges (id,student_id,purpose,code_hash,expires_at,created_at) VALUES ('c1','s1','verify_email','${h64}',${now + 1},${now})`);
+sthrows(`UPDATE email_challenges SET attempts = 6 WHERE id='c1'`, "attempt cap");
+sthrows(`INSERT INTO student_sessions (id,student_id,token_hash,created_at,last_seen_at,expires_at) VALUES ('x','s1','tok',${now},${now},${now + 1})`, "tokens stored hashed");
+sdb.exec(`INSERT INTO student_sessions (id,student_id,token_hash,created_at,last_seen_at,expires_at) VALUES ('x','s1','${h64}',${now},${now},${now + 1})`);
+sthrows(`INSERT INTO student_progress VALUES ('s1','not json',1,${now})`, "progress must be JSON");
+sdb.exec(`INSERT INTO student_progress VALUES ('s1','{"version":1}',1,${now})`);
+sdb.exec(`INSERT INTO student_auth_events (student_id,event_type,created_at) VALUES ('s1','login',${now})`);
+sdb.exec(`DELETE FROM students WHERE id='s1'`);
+for (const t of ["email_challenges", "student_sessions", "student_progress"]) assert.equal(sdb.prepare(`SELECT COUNT(*) AS n FROM ${t}`).get().n, 0, `${t} cascades on account deletion`);
+assert.equal(sdb.prepare("SELECT student_id FROM student_auth_events").get().student_id, null, "events keep no reference after deletion");
+assert.equal(Object.values(sdb.prepare("PRAGMA integrity_check").get())[0], "ok");
+
+console.log(`migrations OK: ${tables.length} tables, constraints verified; student database: ${stables.length} tables, constraints verified`);

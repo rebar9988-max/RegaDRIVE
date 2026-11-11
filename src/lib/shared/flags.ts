@@ -22,6 +22,8 @@ export interface FlagEnv {
   PUBLIC_OFFICIAL_MOCK_EXAMS_ENABLED?: string;
   CONTENT_AUTO_SYNC_ENABLED?: string;
   SUBSCRIPTIONS_ENABLED?: string;
+  /** Student e-mail accounts on the separate student D1 database (STUDENT_DB). Owner-approved 2026-11-11. */
+  STUDENT_AUTH_ENABLED?: string;
   /** Owner-set acknowledgement required before licensed official content may be shown. */
   OWNER_OFFICIAL_CONTENT_ACTIVATION?: string;
   /** Owner-set acknowledgement required before any money-moving flag may turn on. */
@@ -48,6 +50,8 @@ export interface Flags {
   publicOfficialMockExamsEnabled: boolean;
   contentAutoSyncEnabled: boolean;
   subscriptionsEnabled: boolean;
+  /** Student registration/sign-in. Independent of the (still off) production content/payments database. */
+  studentAuthEnabled: boolean;
 }
 
 const on = (v: string | undefined): boolean => v === "true";
@@ -88,5 +92,6 @@ export function readFlags(env: FlagEnv): Flags {
     contentAutoSyncEnabled: false,
     // RegaDRIVE sells a one-time lifetime purchase only; subscriptions are never enabled.
     subscriptionsEnabled: false,
+    studentAuthEnabled: on(env.STUDENT_AUTH_ENABLED),
   };
 }

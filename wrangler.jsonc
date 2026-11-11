@@ -15,9 +15,12 @@
   // Workers AI (free daily allocation). Used only when AI is enabled and the gateway's free-only guard passes.
   "ai": { "binding": "AI" },
   // D1 `regadrive-db` (owner-approved 2026-11-07) is used ONLY by the /dr owner control center (dr_* tables,
-  // migrations/0003_dr_admin.sql). Student data stays OFF (DATABASE_PRODUCTION_ENABLED=false).
+  // migrations/0003_dr_admin.sql). No student record is ever written there.
+  // D1 `regadrive-students` (owner-approved 2026-11-11) holds ONLY student accounts (migrations-students/).
+  // The content/payments production database stays OFF (DATABASE_PRODUCTION_ENABLED=false).
   "d1_databases": [
-    { "binding": "DB", "database_name": "regadrive-db", "database_id": "bd9f0f57-3b67-49ab-9597-f8ce9b305c88", "migrations_dir": "migrations" }
+    { "binding": "DB", "database_name": "regadrive-db", "database_id": "bd9f0f57-3b67-49ab-9597-f8ce9b305c88", "migrations_dir": "migrations" },
+    { "binding": "STUDENT_DB", "database_name": "regadrive-students", "database_id": "4b6065a1-812c-44c3-8558-b50e66e18764", "migrations_dir": "migrations-students" }
   ],
   "vars": {
     "APP_ENV": "production",
@@ -34,6 +37,9 @@
     "PUBLIC_OFFICIAL_MOCK_EXAMS_ENABLED": "false",
     "CONTENT_AUTO_SYNC_ENABLED": "false",
     "SUBSCRIPTIONS_ENABLED": "false",
+    // Student e-mail registration / sign-in (owner-approved 2026-11-11). /dr can switch it off at any time.
+    "STUDENT_AUTH_ENABLED": "true",
+    "STUDENT_MAIL_FROM": "RegaDRIVE <no-reply@regaplatform.com>",
     "AI_ENABLED": "true",
     "AI_FREE_ONLY": "true",
     "AI_PAID_FALLBACK_ENABLED": "false",

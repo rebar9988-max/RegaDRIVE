@@ -35,7 +35,8 @@ export const FEATURES: readonly FeatureDef[] = [
   { key: "checkout", group: "payments", ckb: "کڕین (Checkout)", en: "Checkout", controllable: false, critical: true, allowed: (f) => f.checkoutEnabled, defaultOn: false },
   { key: "payment_webhooks", group: "payments", ckb: "Webhook ـی پارەدان", en: "Payment webhooks", controllable: false, critical: true, allowed: (f) => f.livePaymentWebhooksEnabled, defaultOn: false },
   { key: "license_enforcement", group: "payments", ckb: "مۆڵەتی بەکارهێنان", en: "License enforcement", controllable: false, critical: true, allowed: (f) => f.licenseEnforcementEnabled, defaultOn: false },
-  { key: "student_accounts", group: "students", ckb: "هەژماری خوێندکاران", en: "Student accounts (database)", controllable: false, critical: true, allowed: (f) => f.databaseProductionEnabled, defaultOn: false },
+  // Owner may switch student accounts OFF from /dr (kill switch); it can never exceed the deploy configuration.
+  { key: "student_accounts", group: "students", ckb: "هەژماری خوێندکاران", en: "Student accounts (e-mail sign-in)", controllable: true, critical: true, allowed: (f) => f.studentAuthEnabled, defaultOn: true },
   { key: "official_question_bank", group: "content", ckb: "بانکی پرسیاری فەرمی", en: "Official question bank", controllable: false, critical: true, allowed: (f) => f.officialQuestionBankEnabled, defaultOn: false },
   { key: "official_mock_exams", group: "content", ckb: "تاقیکردنەوەی فەرمی", en: "Official mock exams", controllable: false, critical: true, allowed: (f) => f.publicOfficialMockExamsEnabled, defaultOn: false },
   { key: "content_import", group: "content", ckb: "هاوردەکردنی ناوەڕۆک", en: "Content import", controllable: false, critical: true, allowed: (f) => f.contentImportExecutionEnabled, defaultOn: false },
@@ -82,5 +83,6 @@ export function applyOverrides(flags: Flags, providerOrder: string | undefined, 
     const k = PROVIDER_KEYS[id];
     return k !== undefined && views.get(k)?.effective === true;
   });
-  return { flags: { ...flags, aiEnabled: flags.aiEnabled && aiOn }, providerOrder: order.join(",") };
+  const studentsOn = views.get("student_accounts")?.effective === true;
+  return { flags: { ...flags, aiEnabled: flags.aiEnabled && aiOn, studentAuthEnabled: flags.studentAuthEnabled && studentsOn }, providerOrder: order.join(",") };
 }
