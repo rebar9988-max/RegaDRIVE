@@ -452,6 +452,31 @@ try {
     await ctx.close();
   });
 
+  // Mirrors the live smoke check: a real phone (touch, isMobile) on /settings must keep the header in place in every language.
+  await test("mobile phone emulation: settings header never moves between languages", async () => {
+    const ctx = await browser.newContext({ ...devices["iPhone 13"], bypassCSP: true });
+    const page = await ctx.newPage();
+    await page.goto(`${BASE}/settings`);
+    await page.waitForSelector("[data-testid=lang-kmr]");
+    await page.addStyleTag({ content: "[data-testid=preview-banner] { display: none !important; }" });
+    await page.evaluate(() => document.fonts.ready);
+    const snap = () => page.evaluate(() => {
+      const box = (s) => { const r = document.querySelector(s)?.getBoundingClientRect(); return r && r.width ? [Math.round(r.left), Math.round(r.right)] : null; };
+      const wide = [...document.querySelectorAll("body *")].map((e) => ({ e, r: e.getBoundingClientRect() })).filter((x) => x.r.right > innerWidth + 1 || x.r.left < -1)
+        .slice(0, 6).map((x) => `${x.e.tagName.toLowerCase()}.${String(x.e.className).slice(0, 40)}[${Math.round(x.r.left)},${Math.round(x.r.right)}]`);
+      const bn = document.querySelector(".brand-name");
+      return { layout: [".topbar .brand", ".sidenav", ".tabbar"].map(box), innerWidth, docOverflow: document.documentElement.scrollWidth - document.documentElement.clientWidth,
+        vvScale: window.visualViewport?.scale, brandFont: bn ? getComputedStyle(bn).fontSize : null, brandDisplay: bn ? getComputedStyle(bn).display : null, wide };
+    });
+    const before = await snap();
+    for (const lang of ["kmr", "ar", "de", "ckb"]) {
+      await page.click(`[data-testid=lang-${lang}]`);
+      const after = await snap();
+      assert.deepEqual(after.layout, before.layout, `header moved in ${lang}\nbefore=${JSON.stringify(before)}\nafter=${JSON.stringify(after)}`);
+    }
+    await ctx.close();
+  });
+
   await test("reference navigation, lesson filters and narrow layouts", async () => {
     const ctx = await browser.newContext({ viewport: { width: 320, height: 844 } });
     const page = await ctx.newPage();
