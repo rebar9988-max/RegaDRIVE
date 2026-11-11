@@ -61,7 +61,7 @@ Already enforced by the importer and the coverage report unless marked NEW.
 - German text (required) and Sorani text (required before approval) for question, every answer and explanation.
 - Media: kind, file, German alt text (Sorani before approval), poster for videos.
 - Source type and licence id; provenance (author, AI assistance disclosed, legal references).
-- NEW: per-question media review record (reviewer confirms the picture matches the scenario and the answer key).
+- Media manifest with scenario sheet, provenance and instructor review per file (`src/lib/shared/mediaManifest.ts`), checked in the workbench; storing it in the database is still to build.
 - NEW: Kurmanji and Arabic for imported questions (today they fall back to German).
 
 ## 5. Workflow: import → review → publish
@@ -103,7 +103,7 @@ Durations are estimates and depend on reviewer availability.
 
 | Phase | Content | Result | Depends on |
 | --- | --- | --- | --- |
-| 0 ▶ | Fix the topic map for 1,600 questions (quota per topic, Grundstoff / Zusatzstoff split, share with media) | quota table in this file | — |
+| 0 ▶ | Fix the topic map for 1,600 questions (quota per topic, Grundstoff / Zusatzstoff split, share with media) | PROPOSED in `src/lib/shared/catalogPlan.ts`; waits for owner confirmation | — |
 | 1 ▶ | `/dr` content screens: batch list, question detail, review sign-off, publish/unpublish, coverage dashboard, audit log | owner workflow complete in a preview build | — |
 | 2 | Bind the production content database, run the reviewed migrations, serve published questions from the Worker with an offline cache | stored, versioned content | decision 3 |
 | 3 ▶ | Blender scene library, camera rig, 10 pilot scenarios (5 images, 5 videos) | approved pilot media | decision 4 |

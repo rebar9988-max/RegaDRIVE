@@ -3,6 +3,8 @@ import { Bi, useBiText } from "../components/Bi";
 import { TOPICS } from "../content/topics";
 import { checkMedia } from "../lib/shared/media";
 import { catalogReport } from "../lib/shared/catalog";
+import { CATALOG_PLAN_STATUS, planCoverage } from "../lib/shared/catalogPlan";
+import { parseMediaManifest, validateMediaManifest, type MediaManifest } from "../lib/shared/mediaManifest";
 import { csvToImport, jsonToImport, validateImport, type ImportPreview, type ImportQuestion, type MediaManifestEntry } from "../lib/shared/importer";
 
 /**
@@ -19,6 +21,7 @@ const t = {
   export: { ckb: "هەناردەکردنی JSON ـی ڕاستکراوە", de: "Korrigiertes JSON exportieren", kmr: "JSON-a rastkirî derxîne", ar: "تصدير JSON المصحّح" },
   commit: { ckb: "هاوردەکردن بۆ داتابەیس (ناچالاک)", de: "In Datenbank importieren (deaktiviert)", kmr: "Têxe databasê (neçalak)", ar: "استيراد إلى قاعدة البيانات (معطّل)" },
   commitWhy: { ckb: "داتابەیسی بەرهەمهێنان کوژاوەیە. هاوردەکردن تەنها دوای ڕەزامەندی خاوەن چالاک دەبێت.", de: "Die Produktionsdatenbank ist ausgeschaltet. Der Import wird erst nach Freigabe durch den Inhaber aktiviert.", kmr: "Databasa hilberînê girtî ye. Anîn tenê piştî pejirandina xwedî çalak dibe.", ar: "قاعدة بيانات الإنتاج متوقفة. لن يُفعَّل الاستيراد إلا بعد موافقة المالك." },
+  manifest: { ckb: "لیستی سەرچاوە و پێداچوونەوەی وێنە و ڤیدیۆکان (JSON)", de: "Medien-Manifest: Herkunft und Prüfung der Bilder und Videos (JSON)", kmr: "Manîfestoya medyayê: çavkanî û kontrola wêne û vîdyoyan (JSON)", ar: "بيان الوسائط: مصدر الصور والفيديوهات ومراجعتها (JSON)" },
   manual: { ckb: "زیادکردنی دەستی", de: "Manuelle Eingabe", kmr: "Têketina bi destan", ar: "إدخال يدوي" },
   add: { ckb: "زیادکردن", de: "Hinzufügen", kmr: "Zêde bike", ar: "إضافة" },
 };
@@ -35,9 +38,25 @@ export function AdminImport() {
   const [preview, setPreview] = useState<ImportPreview | null>(null);
   const [manual, setManual] = useState(emptyManual);
   // Coverage of the validated file against the owner target; media must be among the attached files.
-  const catalog = preview && !preview.fatal
-    ? catalogReport(preview.rows.flatMap((r) => (r.question ? [r.question] : [])), { mediaKeys: new Set([...media.values()].map((m) => m.key)) })
-    : null;
+  const [manifest, setManifest] = useState<MediaManifest | null>(null);
+  const [manifestError, setManifestError] = useState<string | null>(null);
+  const shaOf = (key: string) => key.replace(/^media\//, "").replace(/\.[a-z0-9]+$/, "");
+  // Provenance and instructor review of the attached files. Without a manifest no media file counts as approved.
+  const manifestResult = manifest ? validateMediaManifest(manifest, {
+    knownLicenses: new Set(licences.split(/[\s,;]+/).filter(Boolean)),
+    attached: new Map([...media.values()].map((m) => [m.file, { sha256: shaOf(m.key), kind: m.kind }])),
+  }) : null;
+  const approvedMediaKeys = new Set((manifestResult?.approvedFiles ?? []).flatMap((f) => { const k = media.get(f)?.key; return k ? [k] : []; }));
+  const catalogOptions = { mediaKeys: new Set([...media.values()].map((m) => m.key)), approvedMediaKeys };
+  const validQuestions = preview && !preview.fatal ? preview.rows.flatMap((r) => (r.question ? [r.question] : [])) : null;
+  const catalog = validQuestions ? catalogReport(validQuestions, catalogOptions) : null;
+  const plan = validQuestions ? planCoverage(validQuestions, catalogOptions) : null;
+
+  const loadManifest = async (f: File | undefined) => {
+    if (!f) { setManifest(null); setManifestError(null); return; }
+    try { setManifest(parseMediaManifest(await f.text())); setManifestError(null); }
+    catch (e) { setManifest(null); setManifestError((e as Error).message); }
+  };
 
   const loadFile = async (f: File | undefined) => {
     if (!f) return;
@@ -121,6 +140,15 @@ export function AdminImport() {
           <input type="file" multiple accept="image/png,image/jpeg,image/webp,video/mp4,video/webm" onChange={(e) => loadMedia(e.target.files)} data-testid="media-files" /></label>
         {media.size > 0 && <p className="small muted" dir="ltr">{[...media.values()].map((m) => `${m.file} → ${m.key.slice(0, 18)}…`).join(" · ")}</p>}
         {mediaErrors.map((m) => <p key={m} className="feedback bad small" role="alert">{m}</p>)}
+        <label className="stack" style={{ gap: 4 }}><span className="small muted">{label(t.manifest)}</span>
+          <input type="file" accept=".json,application/json" onChange={(e) => loadManifest(e.target.files?.[0])} data-testid="manifest-file" /></label>
+        {manifestError && <p className="feedback bad small" role="alert">{manifestError}</p>}
+        {manifestResult && (
+          <div className="stack" dir="ltr" data-testid="manifest-report">
+            <p className="small"><strong>Media manifest</strong> — files: {manifestResult.summary.media}; approved: {manifestResult.summary.approved}; original: {manifestResult.summary.original}; licensed: {manifestResult.summary.licensed}; AI-generated: {manifestResult.summary.aiGenerated}; scenarios: {manifestResult.summary.scenarios}.</p>
+            {manifestResult.issues.length > 0 && <ul className="list small">{manifestResult.issues.map((i, n) => <li key={n}>{i.subject}: {i.kind}{i.detail ? ` — ${i.detail}` : ""}</li>)}</ul>}
+          </div>
+        )}
         <p className="small muted" dir="ltr" data-testid="row-count">{rows.length} rows</p>
         <div className="q-actions">
           <button type="button" className="btn btn-primary" disabled={rows.length === 0} onClick={validate} data-testid="validate"><Bi t={t.validate} /></button>
@@ -169,6 +197,15 @@ export function AdminImport() {
                 <span className="badge badge-outline">with video: {catalog.withVideo}</span>
                 {Object.entries(catalog.issueCounts).map(([k, n]) => <span key={k} className="badge">{k}: {n}</span>)}
               </div>
+            </div>
+          )}
+          {plan && (
+            <div className="stack" dir="ltr" data-testid="plan-report">
+              <p className="small"><strong>Plan per topic</strong> ({CATALOG_PLAN_STATUS === "proposed" ? "proposed quota, not yet confirmed by the owner" : "owner-confirmed quota"}) — valid / quota, ready for learners, media.</p>
+              <ul className="list small">
+                {plan.topics.map((x) => <li key={x.topicId}>{x.topicId} ({x.category}): {x.valid} / {x.quota} valid, {x.ready} ready, {x.missing} missing; media {x.mediaHave} / {x.withMedia}</li>)}
+              </ul>
+              {plan.unplanned.length > 0 && <p className="feedback bad small">Topics without a quota: {plan.unplanned.join(", ")}</p>}
             </div>
           )}
           {preview.rows.map((r) => (

@@ -11,7 +11,7 @@ export const CATALOG_TARGET = 1600;
 export type CatalogIssueKind =
   | "duplicate_id" | "duplicate_code" | "duplicate_content"
   | "invalid_answer_key" | "missing_points" | "missing_german" | "missing_sorani" | "missing_explanation"
-  | "missing_media_alt" | "media_not_found" | "video_without_poster"
+  | "missing_media_alt" | "media_not_found" | "video_without_poster" | "media_not_approved"
   | "official_without_licence" | "official_without_code" | "official_without_catalogue_version" | "original_with_official_code";
 
 export interface CatalogIssue { questionId: string; kind: CatalogIssueKind; detail?: string }
@@ -56,6 +56,11 @@ export interface CatalogOptions {
   target?: number;
   /** Storage keys that really exist. When given, every referenced media key must be in it. */
   mediaKeys?: ReadonlySet<string>;
+  /**
+   * Storage keys whose provenance and scenario review passed (see mediaManifest.ts). When given, a question
+   * using any other media file is not ready for learners.
+   */
+  approvedMediaKeys?: ReadonlySet<string>;
 }
 
 export function catalogReport(questions: readonly Question[], opts: CatalogOptions = {}): CatalogReport {
@@ -98,6 +103,8 @@ export function catalogReport(questions: readonly Question[], opts: CatalogOptio
       if (opts.mediaKeys && !opts.mediaKeys.has(m.key)) add(q.id, "media_not_found", m.key);
       if (opts.mediaKeys && m.posterKey && !opts.mediaKeys.has(m.posterKey)) add(q.id, "media_not_found", m.posterKey);
       if (m.kind === "video" && !m.posterKey) add(q.id, "video_without_poster", m.key);
+      if (opts.approvedMediaKeys && !opts.approvedMediaKeys.has(m.key)) add(q.id, "media_not_approved", m.key);
+      if (opts.approvedMediaKeys && m.posterKey && !opts.approvedMediaKeys.has(m.posterKey)) add(q.id, "media_not_approved", m.posterKey);
     }
 
     if (q.sourceType === "licensed_official") {

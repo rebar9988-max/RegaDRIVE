@@ -1,0 +1,34 @@
+{
+  "_note": "TEMPLATE — replace every [[placeholder]]. One scenario sheet per traffic situation, approved by the driving instructor BEFORE rendering. One media record per file; a re-render gets a new sha256 and needs a new review.",
+  "scenarios": [
+    {
+      "id": "[[scenario id, e.g. sc-priority-001]]",
+      "questionRefs": ["[[question id or official number]]"],
+      "description": "[[Wer steht wo, wer bewegt sich, welches Zeichen oder welche Regel gilt]]",
+      "signs": ["[[StVO-Zeichennummer, z. B. 205 — leer lassen, wenn kein Zeichen sichtbar ist]]"],
+      "legalRefs": ["[[z. B. StVO §8 Abs. 1]]"],
+      "expectedBehaviour": "[[Welches Verhalten das Bild verlangt — muss zum Antwortschlüssel passen]]",
+      "approvedBy": "[[Name der Fahrlehrerin / des Fahrlehrers]]",
+      "approvedOn": "[[YYYY-MM-DD]]"
+    }
+  ],
+  "media": [
+    {
+      "file": "[[file name as in the question file, e.g. sc-priority-001.webp]]",
+      "kind": "image",
+      "sha256": "[[sha256 of the file, 64 hex characters]]",
+      "origin": "original_regadrive",
+      "licenseId": null,
+      "author": "[[person or studio]]",
+      "tool": "[[e.g. Blender 4.2]]",
+      "sourceFile": "[[path of the .blend file in the RegaDRIVE media archive]]",
+      "thirdPartyAssets": ["[[asset — licence — source; empty list when everything is self-made]]"],
+      "aiGenerated": false,
+      "scenarioId": "[[scenario id]]",
+      "createdOn": "[[YYYY-MM-DD]]",
+      "reviews": [
+        { "reviewer": "[[Name]]", "role": "driving_instructor", "date": "[[YYYY-MM-DD]]", "sha256": "[[sha256 of the reviewed file]]", "outcome": "pass", "evidenceRef": "[[review note, ticket or signed sheet]]" }
+      ]
+    }
+  ]
+}
