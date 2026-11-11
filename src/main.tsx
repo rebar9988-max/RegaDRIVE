@@ -3,7 +3,7 @@ import { createRoot } from "react-dom/client";
 import { App } from "./App";
 import { AppProvider } from "./app/state";
 import "./styles/app.css";
-import "./styles/figma-premium-abc.css";
+import "./styles/premium-light.css";
 
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
