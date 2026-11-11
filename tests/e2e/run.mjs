@@ -530,6 +530,9 @@ try {
     // German (LTR words, fixed RTL layout) and account deletion.
     await page.goto(`${BASE}/settings`);
     await page.click("[data-testid=lang-de]");
+    // Settings are written to IndexedDB after the click; leaving the page before the write is committed
+    // would load the old language again (seen on a fast CI runner). Wait for the stored value first.
+    await page.waitForFunction(() => new Promise((res) => { const r = indexedDB.open("regadrive"); r.onsuccess = () => { const g = r.result.transaction("kv").objectStore("kv").get("settings"); g.onsuccess = () => res(g.result?.lang === "de"); }; }));
     await page.goto(`${BASE}/account`);
     await page.locator("[data-testid=account-signed-in]").waitFor();
     assert.equal(await page.getAttribute("html", "dir"), "rtl");
