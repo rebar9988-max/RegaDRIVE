@@ -110,6 +110,8 @@ try {
       const cards = await page.locator("[data-testid=question-card]").count();
       if (cards > 0) assert.equal(await page.locator("[data-testid=question-card] legend .bi > span").first().getAttribute("dir"), "rtl");
       await page.goto(`${base}/settings`);
+      // Measure only after stored settings have loaded: before that the header has no country button yet.
+      await page.waitForSelector("[data-testid=lang-ckb]");
       // Four languages; the layout never mirrors or moves, only the words change.
       const layout = () => page.evaluate(() => [".topbar .brand", ".sidenav", ".tabbar"].map((s) => { const r = document.querySelector(s)?.getBoundingClientRect(); return r && r.width ? [Math.round(r.left), Math.round(r.right)] : null; }));
       // Web fonts use font-display: swap; measure only after they settle so a late swap is not mistaken for a layout move.
