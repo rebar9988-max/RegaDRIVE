@@ -12,7 +12,7 @@ ok(info.commit === EXPECT, `live commit ${info.commit} (build ${info.buildId}) =
 const browser = await chromium.launch();
 const targets = { iphone: devices["iPhone 13"], android: devices["Pixel 7"], desktop: { viewport: { width: 1366, height: 900 } } };
 for (const [dev, opts] of Object.entries(targets)) {
-  const ctx = await browser.newContext({ ...opts, bypassCSP: true }); // test-side only, so axe can be injected const page = await ctx.newPage();
+  const ctx = await browser.newContext({ ...opts, bypassCSP: true }); /* test-side only, so axe can be injected */ const page = await ctx.newPage();
   const errors = []; page.on("console", (m) => { if (m.type() === "error") errors.push(m.text()); }); page.on("pageerror", (e) => errors.push(String(e)));
   await page.goto(BASE); await page.locator(".country-card:has([lang=de])").click(); await page.waitForSelector("[data-testid=home]");
   for (const lang of ["ckb", "kmr", "ar", "de"]) {
