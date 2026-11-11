@@ -15,7 +15,8 @@ import { Icon } from "./Icon";
 
 interface Props {
   question: Question;
-  mode: "practice" | "exam";
+  /** "review": read-only, shows the given selection against the answer key (exam evaluation). Nothing is scored. */
+  mode: "practice" | "exam" | "review";
   sessionId: string;
   index?: number;
   total?: number;
@@ -23,20 +24,24 @@ interface Props {
   selected?: string[];
   onSelect?: (ids: string[]) => void;
   onNext?: () => void;
+  /** Practice: the answer already checked in this session, restored when the learner comes back to the question. */
+  checkedAnswer?: string[];
+  onChecked?: (ids: string[]) => void;
 }
 
-export function QuestionCard({ question: q, mode, sessionId, index, total, selected: controlled, onSelect, onNext }: Props) {
+export function QuestionCard({ question: q, mode, sessionId, index, total, selected: controlled, onSelect, onNext, checkedAnswer, onChecked }: Props) {
   const { progress, update } = useApp();
   const label = useBiText();
-  const [local, setLocal] = useState<string[]>([]);
-  const [checked, setChecked] = useState(false);
+  const [local, setLocal] = useState<string[]>(checkedAnswer ?? []);
+  const [checked, setChecked] = useState(checkedAnswer !== undefined);
   const selected = controlled ?? local;
   const legendId = useId();
   const sign = q.signId ? signById(q.signId) : undefined;
   const topic = topicById(q.topicId);
   const correct = isQuestionAnswerCorrect(q, selected);
   const isNumber = q.answerType === "number";
-  const reveal = mode === "practice" && checked;
+  // The answer key is shown only after the learner handed the answer in — never while choosing.
+  const reveal = mode === "review" || (mode === "practice" && checked);
   const bookmarked = progress.bookmarks.includes(q.id);
 
   const toggle = (id: string) => {
@@ -53,13 +58,14 @@ export function QuestionCard({ question: q, mode, sessionId, index, total, selec
   const check = () => {
     if (checked || selected.length === 0) return;
     setChecked(true);
+    onChecked?.(selected);
     update((p) => recordAnswer(p, sessionId, q.id, isQuestionAnswerCorrect(q, selected), Date.now()));
   };
 
   return (
     <article className="card question-card" aria-labelledby={legendId} data-testid="question-card" data-qid={q.id}>
       {index !== undefined && total !== undefined && <>
-        <div className="question-heading"><strong><Bi t={mode === "practice" ? { ckb: "پرسیاری ڕاهێنان", de: "Übungsfrage", kmr: "Pirsa rahênanê", ar: "سؤال تدريبي" } : T.mockExam} /></strong><span className="question-counter" dir="ltr">{index + 1} / {total}</span>{mode === "practice" && <Link href="/" className="icon-button" aria-label={label({ ckb: "داخستنی ڕاهێنان", de: "Übung schließen", kmr: "Rahênanê bigire", ar: "إغلاق التدريب" })}><Icon name="close" /></Link>}</div>
+        <div className="question-heading"><strong><Bi t={mode === "practice" ? { ckb: "پرسیاری ڕاهێنان", de: "Übungsfrage", kmr: "Pirsa rahênanê", ar: "سؤال تدريبي" } : mode === "review" ? T.examReview : T.mockExam} /></strong><span className="question-counter" dir="ltr">{index + 1} / {total}</span>{mode === "practice" && <Link href="/" className="icon-button" aria-label={label({ ckb: "داخستنی ڕاهێنان", de: "Übung schließen", kmr: "Rahênanê bigire", ar: "إغلاق التدريب" })}><Icon name="close" /></Link>}</div>
         <div className="progressbar question-progress" role="progressbar" aria-label={label({ ckb: "ڕێڕەوی پرسیارەکان", de: "Fragenfortschritt", kmr: "Pêşketina pirsan", ar: "تقدّم الأسئلة" })} aria-valuemin={0} aria-valuemax={total} aria-valuenow={index + 1}><span style={{ width: `${(index + 1) / total * 100}%` }} /></div>
       </>}
       <div className="q-meta">
@@ -73,12 +79,11 @@ export function QuestionCard({ question: q, mode, sessionId, index, total, selec
         </button>
       </div>
 
-      {sign && <SignIcon sign={sign} className="q-sign" label={`${label(sign.name)} (${sign.stvoNumber})`} />}
-      {q.media?.map((m) => <QuestionMedia key={m.key} media={m} />)}
-
       <fieldset className="options" aria-describedby={`${legendId}-hint`}>
         <legend id={legendId} className="q-prompt"><Bi t={q.prompt} /></legend>
-        <p id={`${legendId}-hint`} className="muted small" style={{ marginTop: -8, marginBottom: 4 }}><Bi t={isNumber ? T.numberHint : T.multipleHint} inline /></p>
+        {sign && <SignIcon sign={sign} className="q-sign" label={`${label(sign.name)} (${sign.stvoNumber})`} />}
+        {q.media?.map((m) => <QuestionMedia key={m.key} media={m} />)}
+        <p id={`${legendId}-hint`} className="muted small q-hint"><Bi t={isNumber ? T.numberHint : T.multipleHint} inline /></p>
         {isNumber && (
           <label className={`option${reveal ? (correct ? " is-correct" : " is-wrong") : ""}`} style={{ gridTemplateColumns: "1fr" }}>
             <span className="sr-only">{label(T.numberHint)}</span>
@@ -92,8 +97,12 @@ export function QuestionCard({ question: q, mode, sessionId, index, total, selec
           const cls = ["option", isSel && "is-selected", reveal && isRight && "is-correct", reveal && isSel && !isRight && "is-wrong", reveal && "is-disabled"].filter(Boolean).join(" ");
           return (
             <label key={o.id} className={cls} data-testid={`option-${o.id}`}>
-              <input type="checkbox" checked={isSel} disabled={reveal} onChange={() => toggle(o.id)} />
-              <Bi t={o.text} />
+              <input type="checkbox" className="q-check" checked={isSel} disabled={reveal} onChange={() => toggle(o.id)} />
+              <span className="option-body">
+                <Bi t={o.text} />
+                {reveal && isRight && <span className="option-tag ok" data-testid="tag-correct"><Bi t={T.correctAnswers} inline /></span>}
+                {reveal && isSel && !isRight && <span className="option-tag bad" data-testid="tag-wrong"><Bi t={T.wrongChoice} inline /></span>}
+              </span>
             </label>
           );
         })}
@@ -101,11 +110,12 @@ export function QuestionCard({ question: q, mode, sessionId, index, total, selec
 
       {reveal && (
         <div className={`feedback ${correct ? "ok" : "bad"}`} role="status" data-testid="feedback">
-          <div className="feedback-title"><Bi t={correct ? T.correct : T.incorrect} inline /></div>
+          <div className="feedback-title"><Bi t={correct ? T.correct : selected.length === 0 ? T.notAnswered : T.incorrect} inline /></div>
+          {!correct && q.points !== null && <p className="error-points" data-testid="error-points"><span className="num error-points-value" dir="ltr">{q.points}</span><Bi t={T.errorPointsLost} inline /></p>}
           {isNumber && !correct && q.numericAnswer !== undefined && <p className="num-block"><Bi t={T.correctAnswers} inline />: <span className="num">{String(q.numericAnswer).replace(".", ",")}</span></p>}
           <div className="explanation-heading"><Icon name="info" /><Bi t={{ ckb: "ڕوونکردنەوە", de: "Erklärung", kmr: "Şirove", ar: "الشرح" }} /></div>
           <Bi t={q.explanation} />
-          <AiExplain questionId={q.id} />
+          {mode === "practice" && <AiExplain questionId={q.id} />}
         </div>
       )}
 

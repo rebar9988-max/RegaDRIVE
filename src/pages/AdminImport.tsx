@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Bi, useBiText } from "../components/Bi";
 import { TOPICS } from "../content/topics";
 import { checkMedia } from "../lib/shared/media";
+import { catalogReport } from "../lib/shared/catalog";
 import { csvToImport, jsonToImport, validateImport, type ImportPreview, type ImportQuestion, type MediaManifestEntry } from "../lib/shared/importer";
 
 /**
@@ -33,6 +34,10 @@ export function AdminImport() {
   const [mediaErrors, setMediaErrors] = useState<string[]>([]);
   const [preview, setPreview] = useState<ImportPreview | null>(null);
   const [manual, setManual] = useState(emptyManual);
+  // Coverage of the validated file against the owner target; media must be among the attached files.
+  const catalog = preview && !preview.fatal
+    ? catalogReport(preview.rows.flatMap((r) => (r.question ? [r.question] : [])), { mediaKeys: new Set([...media.values()].map((m) => m.key)) })
+    : null;
 
   const loadFile = async (f: File | undefined) => {
     if (!f) return;
@@ -152,6 +157,20 @@ export function AdminImport() {
             {(["new", "update", "duplicate", "invalid"] as const).map((k) => <span key={k} className="badge">{k}: {preview.summary[k]}</span>)}
             <span className="badge badge-outline">warnings: {preview.summary.warnings}</span>
           </div>
+          {catalog && (
+            <div className="stack" dir="ltr" data-testid="catalog-report">
+              <p className="small"><strong>Catalogue coverage</strong> — valid records in this file: {catalog.valid} of target {catalog.target}; still missing: {catalog.missing}; approved and published: {catalog.ready}. {catalog.complete ? "Target reached." : "The bank is NOT complete."}</p>
+              <div className="chip-row">
+                <span className="badge badge-outline">Grundstoff: {catalog.byCategory.Grundstoff}</span>
+                <span className="badge badge-outline">Zusatzstoff: {catalog.byCategory.Zusatzstoff}</span>
+                <span className="badge badge-outline">licensed official: {catalog.bySource.licensed_official}</span>
+                <span className="badge badge-outline">original: {catalog.bySource.original}</span>
+                <span className="badge badge-outline">with image: {catalog.withImage}</span>
+                <span className="badge badge-outline">with video: {catalog.withVideo}</span>
+                {Object.entries(catalog.issueCounts).map(([k, n]) => <span key={k} className="badge">{k}: {n}</span>)}
+              </div>
+            </div>
+          )}
           {preview.rows.map((r) => (
             <article key={r.index} className="card stack" data-testid="preview-row" data-status={r.status}>
               <div className="row" dir="ltr"><span className="badge">{r.status}</span><strong>#{r.index + 1}</strong><span className="muted">{r.code ?? "—"}</span>

@@ -10,7 +10,7 @@ import { Icon } from "../components/Icon";
 import { CONTENT } from "../app/content";
 import { TOPICS } from "../content/topics";
 import { normalize } from "../lib/search";
-import { questionStatus, streakDays, topicStats } from "../lib/progress";
+import { questionStatus, readiness, streakDays, topicStats } from "../lib/progress";
 
 export function More() {
   return (
@@ -40,6 +40,7 @@ export function ProgressPage() {
   const mastered = qs.filter((q) => questionStatus(progress.questions[q.id], settings.masteryThreshold) === "mastered").length;
   const percent = qs.length ? Math.round(mastered / qs.length * 100) : 0;
   const lastExams = [...progress.examHistory].reverse().slice(0, 5);
+  const ready = readiness(progress, qs, settings.masteryThreshold);
   return (
     <div className="rega-progress-premium">
       <header className="page-head page-head-center"><h1><Bi t={T.nav.progress} /></h1>
@@ -53,7 +54,7 @@ export function ProgressPage() {
         <div className="card stat stat-danger"><span className="stat-icon"><Icon name="sign" /></span><span className="stat-value">{wrongIds.length}</span><span className="stat-label"><Bi t={T.incorrectF} /></span></div>
         <div className="card stat stat-warning"><span className="stat-icon"><Icon name="trophy" /></span><span className="stat-value">{progress.examHistory.length}</span><span className="stat-label"><Bi t={T.mockExam} /></span></div>
       </div>
-      <section className="card readiness-card"><h2 className="section-title"><Bi t={{ ckb: "ئاستی فێربوونی پرسیارەکان", de: "Stand deines Fragentrainings", kmr: "Asta fêrbûna pirsan", ar: "مستوى تدريبك على الأسئلة" }} /><span className="badge" dir="ltr">{percent}%</span></h2><div className="progressbar" role="progressbar" aria-label={label(T.mastered)} aria-valuemin={0} aria-valuemax={100} aria-valuenow={percent}><span style={{ width: `${percent}%` }} /></div></section>
+      <section className="card readiness-card"><h2 className="section-title"><Bi t={{ ckb: "ئاستی فێربوونی پرسیارەکان", de: "Stand deines Fragentrainings", kmr: "Asta fêrbûna pirsan", ar: "مستوى تدريبك على الأسئلة" }} /><span className="badge" dir="ltr">{percent}%</span></h2><div className="progressbar" role="progressbar" aria-label={label(T.mastered)} aria-valuemin={0} aria-valuemax={100} aria-valuenow={percent}><span style={{ width: `${percent}%` }} /></div><p className="readiness-level" data-testid="readiness" data-level={ready.level}><strong><Bi t={T.readiness} inline />: </strong><Bi t={T.readinessLevels[ready.level]} inline /></p>{ready.recentExams > 0 && <p className="small muted"><Bi t={{ ckb: `لە دوایین ${ready.recentExams} تاقیکردنەوەی ڕاهێنان، ${ready.recentPassed} سەرکەوتوو بوون.`, de: `Von den letzten ${ready.recentExams} Übungsprüfungen wurden ${ready.recentPassed} bestanden.`, kmr: `Ji ${ready.recentExams} ezmûnên ceribandinê yên dawî ${ready.recentPassed} serkeftî bûn.`, ar: `آخر ${ready.recentExams} امتحانات تجريبية: نجحت في ${ready.recentPassed}.` }} /></p>}</section>
       <div className="row small muted progress-secondary"><Icon name="flame" /><span>{streakDays(progress, now)} {label(T.streak)}</span><span className="spacer" /><Icon name="bookmark" /><span>{progress.bookmarks.length} {label(T.bookmarked)}</span></div>
       <div className="q-actions progress-actions">
         <Link href="/practice?status=incorrect" className="btn btn-primary"><Bi t={T.reviewMistakes} /></Link>

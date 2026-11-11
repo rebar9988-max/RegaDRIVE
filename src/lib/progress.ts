@@ -107,6 +107,28 @@ export function weakTopics(state: ProgressState, questions: Question[], limit = 
     .map(([id]) => id);
 }
 
+export type ReadinessLevel = "not_started" | "learning" | "almost" | "ready";
+export interface Readiness { level: ReadinessLevel; answeredPct: number; masteredPct: number; recentExams: number; recentPassed: number }
+
+/**
+ * Exam readiness from real results only: how much of the bank is mastered and how the latest simulations
+ * went. "ready" needs 90 % mastered and the last three simulations passed; it is a learning aid, not a promise.
+ */
+export function readiness(state: ProgressState, questions: Question[], threshold = MASTERY_THRESHOLD_DEFAULT): Readiness {
+  const total = questions.length;
+  const answered = questions.filter((q) => questionStatus(state.questions[q.id], threshold) !== "unanswered").length;
+  const mastered = questions.filter((q) => questionStatus(state.questions[q.id], threshold) === "mastered").length;
+  const recent = (state.examHistory ?? []).slice(-3);
+  const recentPassed = recent.filter((e) => e.passed).length;
+  const pct = (n: number) => (total ? Math.round((n / total) * 100) : 0);
+  const masteredPct = pct(mastered);
+  let level: ReadinessLevel = "learning";
+  if (answered === 0 && recent.length === 0) level = "not_started";
+  else if (masteredPct >= 90 && recent.length === 3 && recentPassed === 3) level = "ready";
+  else if (masteredPct >= 70 && recent.length > 0 && recent[recent.length - 1]!.passed) level = "almost";
+  return { level, answeredPct: pct(answered), masteredPct, recentExams: recent.length, recentPassed };
+}
+
 /**
  * Pure, loss-free merge of two progress copies (device + account backup). Nothing is ever dropped:
  * per question the more recent answer wins, lists and scored keys are united, day counts keep the maximum
