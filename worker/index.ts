@@ -11,12 +11,13 @@ import { RateLimiter } from "./lib/rateLimit";
 import { handleAdmin } from "./lib/admin";
 import type { AdminEnv } from "./lib/adminAuth";
 import { handleDr, type DrEnv } from "./dr/handler";
+import { handleStudents, type StudentEnv } from "./students/handler";
 import { loadOverrides } from "./dr/db";
 import { applyOverrides } from "./dr/features";
 import { QUESTIONS } from "../src/content/questions";
 import { contentFor } from "../src/content/access";
 
-export interface Env extends FlagEnv, AiEnv, AdminEnv, DrEnv {
+export interface Env extends FlagEnv, AiEnv, AdminEnv, DrEnv, StudentEnv {
   /** "preview" only for local/CI; production shows and explains approved content only. */
   CONTENT_MODE?: string;
   ASSETS: { fetch(req: Request): Promise<Response> };
@@ -58,10 +59,11 @@ export async function handleApi(req: Request, env: Env, now = Date.now()): Promi
       officialQuestionBankEnabled: flags.officialQuestionBankEnabled, contentAdminEnabled: flags.contentAdminEnabled,
       contentImportExecutionEnabled: flags.contentImportExecutionEnabled, publicOfficialMockExamsEnabled: flags.publicOfficialMockExamsEnabled,
       contentAutoSyncEnabled: flags.contentAutoSyncEnabled, subscriptionsEnabled: flags.subscriptionsEnabled,
+      studentAuthEnabled: flags.studentAuthEnabled && !!env.STUDENT_DB,
     });
   }
 
-  // Mutating endpoints: same-origin only (CSRF defence; there are no cookies yet, but keep the rule from day one).
+  // Mutating endpoints: same-origin only (CSRF defence for the /dr and student session cookies).
   if (req.method !== "GET" && req.method !== "HEAD") {
     const origin = req.headers.get("origin");
     if (p !== "/api/payments/webhook" && origin !== null && origin !== url.origin) return json({ error: "FORBIDDEN_ORIGIN" }, 403);
@@ -86,10 +88,9 @@ export async function handleApi(req: Request, env: Env, now = Date.now()): Promi
     return handleAdmin(req, env, flags, json);
   }
 
-  if (p.startsWith("/api/auth/") || p.startsWith("/api/me")) {
-    // No student data can be served or stored without the (disabled) production database.
-    if (!flags.databaseProductionEnabled) return json({ error: "AUTH_UNAVAILABLE", reason: "DATABASE_PRODUCTION_ENABLED=false" }, 503);
-    return json({ error: "NOT_IMPLEMENTED" }, 501);
+  if (p.startsWith("/api/auth/") || p === "/api/me" || p.startsWith("/api/me/")) {
+    // Student accounts: separate student D1 (STUDENT_DB) only; off unless STUDENT_AUTH_ENABLED and the /dr switch allow it.
+    return handleStudents(req, env, { now, enabled: flags.studentAuthEnabled });
   }
 
   if (p === "/api/purchase/checkout") {

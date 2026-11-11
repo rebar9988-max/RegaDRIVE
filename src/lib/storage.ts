@@ -1,4 +1,4 @@
-/** Minimal IndexedDB key-value store. Local to this browser only; nothing is synced to a server. */
+/** Minimal IndexedDB key-value store. Local to this browser; only an explicit, opt-in account backup sends a copy to the server. */
 const DB = "regadrive";
 const STORE = "kv";
 let dbp: Promise<IDBDatabase> | null = null;

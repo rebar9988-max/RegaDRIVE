@@ -39,10 +39,21 @@ await check("all payment/database flags OFF", async () => {
   const f = await (await get("/api/flags")).json();
   for (const k of ["paymentsEnabled", "checkoutEnabled", "livePaymentWebhooksEnabled", "purchaseRequired", "databaseProductionEnabled", "aiPaidFallbackEnabled"]) assert.equal(f[k], false, k);
 });
-await check("checkout/webhook/auth refused", async () => {
+await check("checkout/webhook refused", async () => {
   assert.equal((await get("/api/purchase/checkout", { method: "POST" })).status, 403);
   assert.equal((await get("/api/payments/webhook", { method: "POST", body: "{}" })).status, 403);
-  assert.equal((await get("/api/auth/login", { method: "POST" })).status, 503);
+});
+await check("student accounts live on the separate student database, CSRF-protected, no session leak", async () => {
+  const f = await (await get("/api/flags")).json();
+  assert.equal(f.studentAuthEnabled, true, "studentAuthEnabled");
+  const me = await get("/api/me");
+  assert.equal(me.status, 200); assert.deepEqual(await me.json(), { authenticated: false });
+  assert.equal((await get("/api/auth/login", { method: "POST" })).status, 403, "state change without the CSRF header is refused");
+  // Exercises the student schema and password hashing on the real database; reserved .invalid address, never registered.
+  const r = await get("/api/auth/login", { method: "POST", headers: { "content-type": "application/json", "x-rd-request": "1" }, body: JSON.stringify({ email: "smoke-test@regadrive.invalid", password: "not-a-real-password" }) });
+  assert.equal(r.status, 401, `login with unknown account answers 401 (got ${r.status})`);
+  assert.deepEqual(await r.json(), { error: "INVALID_CREDENTIALS" });
+  assert.equal(r.headers.get("set-cookie"), null, "no cookie on failure");
 });
 await check("AI zero-cost controls", async () => {
   const a = await (await get("/api/ai/status")).json();

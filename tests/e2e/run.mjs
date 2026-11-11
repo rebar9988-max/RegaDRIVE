@@ -1,8 +1,9 @@
 // End-to-end tests against the real Workers runtime (wrangler dev, fully local).
 // The remote-only Workers AI binding is removed for the test config; everything else is identical.
 // Usage: npm run build:preview && npm run test:e2e   (screenshots → test-results/)
-import { spawn } from "node:child_process";
-import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { spawn, execFileSync } from "node:child_process";
+import { createServer } from "node:http";
+import { mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { createRequire } from "node:module";
 import assert from "node:assert/strict";
 import { chromium, devices } from "playwright";
@@ -16,9 +17,23 @@ mkdirSync(OUT, { recursive: true });
 
 const cfg = JSON.parse(readFileSync("wrangler.jsonc", "utf8").replace(/^\s*\/\/.*$/gm, ""));
 delete cfg.ai;
-cfg.vars = { ...cfg.vars, CONTENT_MODE: "preview" }; // E2E runs against the preview build (npm run build:preview)
+// E2E runs against the preview build (npm run build:preview). Student e-mails go to a local loopback sink
+// (honoured only with APP_ENV=e2e — see worker/students/handler.ts); nothing is sent to Resend.
+const MAIL_PORT = 8799;
+cfg.vars = { ...cfg.vars, CONTENT_MODE: "preview", APP_ENV: "e2e", MAIL_API_URL: `http://127.0.0.1:${MAIL_PORT}/emails`, REGADRIVE_RESEND_API_KEY: "re_e2e_local_only" };
 delete cfg.$schema;
 writeFileSync(".wrangler-e2e.json", JSON.stringify(cfg, null, 2));
+
+const outbox = [];
+const mailSink = createServer((req, res) => {
+  let b = "";
+  req.on("data", (d) => (b += d));
+  req.on("end", () => { try { outbox.push(JSON.parse(b)); } catch { /* ignore */ } res.writeHead(200, { "content-type": "application/json" }).end('{"id":"e2e"}'); });
+}).listen(MAIL_PORT, "127.0.0.1");
+const codeFor = (to) => /(\d{6})/.exec([...outbox].reverse().find((m) => m.to?.[0] === to)?.text ?? "")?.[1] ?? "";
+// Fresh local student database with the reviewed migrations (local only — never touches Cloudflare).
+rmSync(".wrangler/state", { recursive: true, force: true });
+execFileSync("npx", ["wrangler", "d1", "migrations", "apply", "regadrive-students", "--local", "-c", ".wrangler-e2e.json"], { stdio: "inherit", env: { ...process.env, CI: "true", WRANGLER_SEND_METRICS: "false" } });
 
 const dev = spawn("npx", ["wrangler", "dev", "-c", ".wrangler-e2e.json", "--port", String(PORT), "--ip", "127.0.0.1", "--show-interactive-dev-session=false"], { stdio: ["ignore", "pipe", "pipe"], env: { ...process.env, WRANGLER_SEND_METRICS: "false" } });
 let devLog = "";
@@ -50,15 +65,30 @@ let browser;
 try {
   await waitUp();
   browser = await chromium.launch();
+  // New users must choose their licence country first (src/app/CountrySelection.tsx). Every test context
+  // chooses Germany once, exactly as a learner does; the choice persists in that context's IndexedDB.
+  const newContext = browser.newContext.bind(browser);
+  browser.newContext = async (opts) => {
+    const ctx = await newContext(opts);
+    const p = await ctx.newPage();
+    await p.goto(BASE);
+    await p.locator(".country-card:has([lang=de])").click();
+    await p.waitForSelector("[data-testid=home]");
+    await p.close();
+    return ctx;
+  };
 
-  await test("API: health, flags OFF, auth unavailable, checkout refused", async () => {
+  await test("API: health, flags OFF, student auth on separate DB, checkout refused", async () => {
     const h = await (await fetch(`${BASE}/api/health`)).json();
     const info = await (await fetch(`${BASE}/build-info.json`)).json();
     assert.equal(info.contentMode, "preview", "E2E must run against the preview build");
     assert.equal(h.database, "off"); assert.equal(h.payments, "off");
     const f = await (await fetch(`${BASE}/api/flags`)).json();
     for (const k of ["paymentsEnabled", "checkoutEnabled", "livePaymentWebhooksEnabled", "purchaseRequired", "databaseProductionEnabled", "aiPaidFallbackEnabled"]) assert.equal(f[k], false, k);
-    assert.equal((await fetch(`${BASE}/api/auth/login`, { method: "POST" })).status, 503);
+    assert.equal(f.studentAuthEnabled, true, "student accounts enabled");
+    assert.deepEqual(await (await fetch(`${BASE}/api/me`)).json(), { authenticated: false });
+    assert.equal((await fetch(`${BASE}/api/auth/login`, { method: "POST" })).status, 403, "state changes need the CSRF header");
+    assert.equal((await fetch(`${BASE}/api/auth/login`, { method: "POST", headers: { origin: "https://evil.example", "x-rd-request": "1", "content-type": "application/json" }, body: "{}" })).status, 403, "cross-origin refused");
     assert.equal((await fetch(`${BASE}/api/purchase/checkout`, { method: "POST" })).status, 403);
     assert.equal((await fetch(`${BASE}/api/payments/webhook`, { method: "POST", body: "{}" })).status, 403);
     const ai = await fetch(`${BASE}/api/ai/explain`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ questionId: "rd-g-003" }) });
@@ -216,7 +246,109 @@ try {
     }
   });
 
-  await test("purchase disabled, account unavailable, services show no invented data", async () => {
+  await test("student account: register → e-mail code → verify → log out → log in; reset; local progress kept [iPhone]", async () => {
+    const ctx = await browser.newContext({ ...devices["iPhone 13"], bypassCSP: true });
+    const page = await ctx.newPage();
+    const errors = [];
+    page.on("pageerror", (e) => errors.push(e.message));
+    const email = `e2e-${Date.now()}@example.de`;
+    const pw = "E2E-sicheres-Passwort";
+    // Local progress before having an account.
+    await page.goto(`${BASE}/practice?topic=priority`);
+    await page.locator("[data-testid=option-a] input").check();
+    await page.locator("[data-testid=check]").click();
+    await page.locator("[data-testid=feedback]").waitFor();
+    const before = await page.evaluate(() => new Promise((res) => { const r = indexedDB.open("regadrive"); r.onsuccess = () => { try { const tx = r.result.transaction(r.result.objectStoreNames[0], "readonly"); const g = tx.objectStore(r.result.objectStoreNames[0]).get("progress"); g.onsuccess = () => res(Object.keys(g.result?.questions ?? {}).length); g.onerror = () => res(-1); } catch { res(-1); } }; r.onerror = () => res(-1); }));
+
+    assert.ok(before > 0, "a local answer was stored before signing in");
+    await page.goto(`${BASE}/account`);
+    await page.locator("[data-testid=signin-form]").waitFor();
+    await axe(page, "/account sign-in");
+    await page.click("[data-testid=to-register]");
+    await page.locator("[data-testid=register-form]").waitFor();
+    await page.fill("[data-testid=auth-name]", "E2E");
+    await page.fill("[data-testid=auth-email]", email);
+    await page.fill("[data-testid=auth-password]", "kurz");
+    await page.click("[data-testid=register-submit]");
+    // Browser validation (minLength) or server validation stops weak passwords.
+    assert.equal(await page.locator("[data-testid=verify-form]").count(), 0);
+    await page.fill("[data-testid=auth-password]", pw);
+    await axe(page, "/account register");
+    await page.click("[data-testid=register-submit]");
+    await page.locator("[data-testid=verify-form]").waitFor();
+    await axe(page, "/account verify");
+    await page.screenshot({ path: `${OUT}/account-verify-iphone.png`, fullPage: true });
+    const code = codeFor(email);
+    assert.match(code, /^\d{6}$/, "verification e-mail delivered to the sink");
+    await page.fill("[data-testid=auth-code]", code === "000000" ? "111111" : "000000");
+    await page.click("[data-testid=verify-submit]");
+    await page.locator("[data-testid=auth-error]").waitFor();
+    await page.fill("[data-testid=auth-code]", code);
+    await page.click("[data-testid=verify-submit]");
+    await page.locator("[data-testid=account-signed-in]").waitFor();
+    assert.equal(await page.textContent("[data-testid=account-email]"), email);
+    const cookies = await ctx.cookies();
+    const sess = cookies.find((c) => c.name === "__Host-rd_session");
+    assert.ok(sess && sess.httpOnly && sess.sameSite === "Lax" && sess.path === "/", "HttpOnly SameSite session cookie");
+    assert.equal(await page.evaluate(() => document.cookie.includes("rd_session")), false, "token invisible to JavaScript");
+    await axe(page, "/account signed in");
+    await page.screenshot({ path: `${OUT}/account-signed-in-iphone.png`, fullPage: true });
+    await page.click("[data-testid=backup]");
+    await page.locator("[data-testid=auth-info]").waitFor();
+
+    await page.click("[data-testid=logout]");
+    await page.locator("[data-testid=signin-form]").waitFor();
+    assert.deepEqual(await (await page.request.get(`${BASE}/api/me`)).json(), { authenticated: false });
+    await page.fill("[data-testid=auth-email]", email);
+    await page.fill("[data-testid=auth-password]", "falsches-Passwort-1");
+    await page.click("[data-testid=signin-submit]");
+    await page.locator("[data-testid=auth-error]").waitFor();
+    await page.fill("[data-testid=auth-password]", pw);
+    await page.click("[data-testid=signin-submit]");
+    await page.locator("[data-testid=account-signed-in]").waitFor();
+    await page.reload();
+    await page.locator("[data-testid=account-signed-in]").waitFor(); // persistent session
+
+    // Forgot / reset.
+    await page.click("[data-testid=logout]");
+    await page.locator("[data-testid=signin-form]").waitFor();
+    await page.click("[data-testid=to-forgot]");
+    await page.fill("[data-testid=auth-email]", email);
+    await page.click("[data-testid=forgot-submit]");
+    await page.locator("[data-testid=reset-form]").waitFor();
+    await axe(page, "/account reset");
+    await page.fill("[data-testid=auth-code]", codeFor(email));
+    await page.fill("[data-testid=auth-password]", "Neues-E2E-Passwort");
+    await page.click("[data-testid=reset-submit]");
+    await page.locator("[data-testid=signin-form] [data-testid=auth-info]").waitFor();
+    await page.fill("[data-testid=auth-email]", email);
+    await page.fill("[data-testid=auth-password]", "Neues-E2E-Passwort");
+    await page.click("[data-testid=signin-submit]");
+    await page.locator("[data-testid=account-signed-in]").waitFor();
+
+    // Local progress was never replaced.
+    const after = await page.evaluate(() => new Promise((res) => { const r = indexedDB.open("regadrive"); r.onsuccess = () => { try { const tx = r.result.transaction(r.result.objectStoreNames[0], "readonly"); const g = tx.objectStore(r.result.objectStoreNames[0]).get("progress"); g.onsuccess = () => res(Object.keys(g.result?.questions ?? {}).length); g.onerror = () => res(-1); } catch { res(-1); } }; r.onerror = () => res(-1); }));
+    assert.equal(after, before, "local progress preserved across sign-in, sign-out and reset");
+
+    // German (LTR words, fixed RTL layout) and account deletion.
+    await page.goto(`${BASE}/settings`);
+    await page.click("[data-testid=lang-de]");
+    await page.goto(`${BASE}/account`);
+    await page.locator("[data-testid=account-signed-in]").waitFor();
+    assert.equal(await page.getAttribute("html", "dir"), "rtl");
+    assert.match(await page.textContent("[data-testid=logout]"), /Abmelden/);
+    await axe(page, "/account signed in (de)");
+    await page.click("[data-testid=delete-start]");
+    await page.fill("[data-testid=delete-form] [data-testid=auth-password]", "Neues-E2E-Passwort");
+    await page.click("[data-testid=delete-confirm]");
+    await page.locator("[data-testid=signin-form] [data-testid=auth-info]").waitFor();
+    const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
+    assert.equal(overflow, 0, "no horizontal overflow");
+    assert.deepEqual(errors, []);
+    await ctx.close();
+  });
+
+  await test("purchase disabled, services show no invented data", async () => {
     const ctx = await browser.newContext({ viewport: { width: 1280, height: 900 } });
     const page = await ctx.newPage();
     await page.goto(`${BASE}/access`);
@@ -379,6 +511,7 @@ try {
 } finally {
   await browser?.close();
   dev.kill("SIGTERM");
+  mailSink.close();
 }
 
 const failed = results.filter((r) => !r.ok).length;

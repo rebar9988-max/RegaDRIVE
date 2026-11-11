@@ -28,6 +28,7 @@ Daily request caps are set below each provider's free limits (`worker/ai/gateway
 `/api/ai/status` reports ACTIVE, RATE_LIMITED, NOT_CONFIGURED, UNAVAILABLE or DISABLED for each provider. A provider is ACTIVE only after a real successful call.
 
 ## 3. Production database (D1)
+Note (2026-11-11): student e-mail accounts use their own database `regadrive-students` (binding `STUDENT_DB`, switch `STUDENT_AUTH_ENABLED`), see `docs/STUDENT_EMAIL_AUTH_IMPLEMENTATION.md`. The steps below remain the gate for the content/payments production database.
 Note (2026-11-07): `regadrive-db` is already bound as `DB` for the `/dr` owner control center only (`docs/DR_ADMIN.md`). The steps below are still required before any **student** data is stored.
 Prerequisites: a reviewed privacy policy, retention and deletion rules, and a working e-mail provider for verification.
 1. `wrangler d1 create regadrive` (a new, separate database).

@@ -499,3 +499,18 @@ textarea.input { min-height: 120px; }
 .daily-goal-copy > h2 .bi > .de {
   color: #174b38;
 }
+
+/* Student account forms — existing tokens only (no new colours). */
+.auth-field { gap: 4px; }
+.auth-label { font-weight: 700; color: var(--ink); }
+.auth-hint { margin: 0; }
+.auth-check { display: inline-flex; align-items: center; gap: 8px; min-height: 44px; color: var(--muted); cursor: pointer; }
+.auth-check input { width: 20px; height: 20px; margin: 0; accent-color: var(--primary); }
+.auth-code { font-size: 1.5rem; letter-spacing: .4em; text-align: center; font-variant-numeric: tabular-nums; }
+.auth-links, .auth-actions { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s3); }
+.auth-links .btn, .auth-actions .btn { flex: 1 1 180px; }
+.auth-error { background: var(--danger-bg); border-color: var(--danger); color: var(--danger-ink); margin: 0; }
+.auth-ok { background: var(--success-bg); border-color: var(--success); color: var(--success-ink); margin: 0; }
+.auth-danger { color: var(--danger-ink); border-color: var(--danger); }
+.auth-danger-solid { background: var(--danger-ink); border-color: var(--danger-ink); }
+.auth-name { font-weight: 800; }

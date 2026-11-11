@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { Link } from "../app/router";
 import { MORE_LINKS } from "../app/Shell";
 import { useApp, useNow } from "../app/state";
@@ -159,30 +159,7 @@ export function Services() {
   );
 }
 
-interface PublicFlags { paymentsEnabled: boolean; checkoutEnabled: boolean; databaseProductionEnabled: boolean; lifetimePriceEur: number }
-function useFlags() {
-  const [f, setF] = useState<PublicFlags | null>(null);
-  useEffect(() => { fetch("/api/flags").then((r) => (r.ok ? r.json() : null)).then(setF, () => setF(null)); }, []);
-  return f;
-}
-
-export function Account() {
-  const flags = useFlags();
-  const label = useBiText();
-  return (
-    <div>
-      <header className="page-head"><h1><Bi t={T.nav.account} /></h1></header>
-      <section className="card stack" data-testid="account-unavailable">
-        <img className="account-logo" src="/brand/regadrive-logo.svg" alt="RegaDRIVE" width={112} height={112} />
-        <Bi t={{ ckb: "هەژماری قوتابی (تۆمارکردن، چوونەژوورەوە، پشتڕاستکردنەوەی ئیمەیڵ) ئامادەکراوە، بەڵام هێشتا چالاک نییە، چونکە داتابەیسی بەرهەمهێنان بە ئەنقەست کوژاوەتەوە.",
-          de: "Schülerkonten (Registrierung, Anmeldung, E-Mail-Bestätigung) sind vorbereitet, aber noch nicht aktiv, weil die Produktionsdatenbank bewusst ausgeschaltet ist.", kmr: "Hesabên xwendekaran (tomarbûn, têketin, piştrastkirina e-nameyê) amade ne, lê hê ne çalak in, ji ber ku databasa hilberînê bi qestî girtî ye.", ar: "حسابات الطلاب (التسجيل وتسجيل الدخول وتأكيد البريد الإلكتروني) جاهزة، لكنها غير مفعّلة بعد لأن قاعدة بيانات الإنتاج متوقفة عمدًا." }} />
-        <Bi t={{ ckb: "هەموو پێشکەوتنەکەت بە سەلامەتی لەسەر ئەم ئامێرە پاشەکەوت دەکرێت.", de: "Dein gesamter Lernfortschritt wird sicher auf diesem Gerät gespeichert.", kmr: "Hemû pêşketina te bi ewlehî li ser vê amûrê tê tomarkirin.", ar: "يُحفظ كل تقدّمك في التعلّم بأمان على هذا الجهاز." }} />
-        <button className="btn btn-primary" disabled aria-disabled="true">{label({ ckb: "تۆمارکردن (بەم زووانە)", de: "Registrieren (bald verfügbar)", kmr: "Tomar bibe (di demeke nêzîk de)", ar: "التسجيل (قريبًا)" })}</button>
-        <p className="small muted" dir="ltr" style={{ textAlign: "start" }}>DATABASE_PRODUCTION_ENABLED = {String(flags?.databaseProductionEnabled ?? false)}</p>
-      </section>
-    </div>
-  );
-}
+export { Account } from "./Account";
 
 export function Access() {
   return (
@@ -262,6 +239,7 @@ export function About() {
         <section className="card stack" id="privacy">
           <h2 className="section-title"><Bi t={{ ckb: "تایبەتمەندی و داتا", de: "Datenschutz und Daten", kmr: "Nepenî û dane", ar: "الخصوصية والبيانات" }} /></h2>
           <Bi t={{ ckb: "پێشکەوتنی فێربوون و ڕێکخستنەکان لە بیرگەی ناوخۆی وێبگەڕەکەت (IndexedDB) پاشەکەوت دەکرێن؛ ئەم پێشکەوتنە بۆ ڕاژەکار نانێردرێت. بۆ پێشاندانی ماڵپەڕ و API، داواکارییە تەکنیکییەکان لە Cloudflare تێدەپەڕن و دەتوانن داتای پەیوەندیی پێویست لەگەڵ خۆیان هەڵبگرن.", de: "Lernfortschritt und Einstellungen werden lokal im Browser (IndexedDB) gespeichert und nicht an den Server synchronisiert. Für Website und API laufen technische Anfragen über Cloudflare und können erforderliche Verbindungsdaten verarbeiten.", kmr: "Pêşketina fêrbûnê û mîheng bi herêmî di gerokê de (IndexedDB) tên tomarkirin û bi serverê re nayên hevdemkirin. Ji bo malper û API, daxwazên teknîkî di ser Cloudflare re derbas dibin û dikarin daneyên girêdanê yên pêwîst pêvajo bikin.", ar: "يُحفظ تقدّم التعلّم والإعدادات محليًا في المتصفح (IndexedDB) ولا تُزامَن مع الخادم. ولتشغيل الموقع وواجهة API تمر الطلبات التقنية عبر Cloudflare وقد تُعالَج بيانات الاتصال اللازمة." }} />
+          <Bi t={{ ckb: "هەژماری قوتابی ئارەزوومەندانەیە. ئەگەر هەژمار دروست بکەیت، ئیمەیڵ، ناو (ئارەزوومەندانە)، زمان و هاشی وشەی نهێنی لە داتابەیسێکی جیاوازی Cloudflare D1 (ناوچەی ئەوروپای ڕۆژئاوا) پاشەکەوت دەکرێن. کۆدی پشتڕاستکردنەوە لە ڕێگەی Resend دەنێردرێت. پێشکەوتن تەنها کاتێک دەنێردرێت کە خۆت «پاشەکەوتکردن لە هەژمار» هەڵبژێریت. لە پەڕەی هەژمار دەتوانیت داتاکانت دابگریت یان هەژمارەکەت بە یەکجاری بسڕیتەوە؛ تۆمارە پشتڕاستنەکراوەکان دوای ٧ ڕۆژ دەسڕێنەوە.", de: "Ein Schülerkonto ist freiwillig. Wenn du eines anlegst, werden E-Mail-Adresse, optionaler Name, Sprache und ein Passwort-Hash in einer getrennten Cloudflare-D1-Datenbank (Region Westeuropa) gespeichert. Bestätigungscodes werden über Resend versendet. Lernfortschritt wird nur übertragen, wenn du selbst „Im Konto sichern“ wählst. Auf der Kontoseite kannst du deine Daten herunterladen oder das Konto endgültig löschen; unbestätigte Registrierungen werden nach 7 Tagen gelöscht.", kmr: "Hesabê xwendekar bi dilxwazî ye. Heke tu hesabekî çêkî, e-name, navê bijarte, ziman û haşa şîfreyê di databasa Cloudflare D1 ya cuda de (herêma Ewropaya Rojava) têne tomarkirin. Kodên piştrastkirinê bi Resend têne şandin. Pêşketin tenê dema ku tu bixwe „Di hesabê de biparêze“ hilbijêrî tê şandin. Li rûpela hesabê tu dikarî daneyên xwe daxî an hesabê bi temamî jê bibî; tomarên nepiştrastkirî piştî 7 rojan têne jêbirin.", ar: "حساب الطالب اختياري. عند إنشائه يُحفظ البريد الإلكتروني والاسم الاختياري واللغة وتجزئة كلمة المرور في قاعدة بيانات Cloudflare D1 منفصلة (منطقة غرب أوروبا). تُرسل رموز التأكيد عبر Resend. لا يُنقل التقدّم إلا إذا اخترت بنفسك „الحفظ في الحساب“. في صفحة الحساب يمكنك تنزيل بياناتك أو حذف الحساب نهائيًا؛ وتُحذف التسجيلات غير المؤكدة بعد 7 أيام." }} />
           <Bi t={{ ckb: "ئەگەر ڕوونکردنەوەی AI چالاک بێت، داواکارییەکە تەنها ناسنامەی پرسیارێکی پەسەندکراوی RegaDRIVE و زمانی هەڵبژێردراو دەگرێت؛ دەقی ئازادی بەکارهێنەر و زانیاریی پرۆفایل نانێردرێت. دابینکەری AI دەتوانێت ناوەڕۆکی ئەو پرسیارە بۆ وەڵامدانەوە وەربگرێت.", de: "Wenn die KI-Erklärung aktiviert ist, enthält die Anfrage nur die ID einer freigegebenen RegaDRIVE-Frage und die gewählte Anzeigesprache; freier Nutzereingabetext und Profildaten werden nicht gesendet. Der KI-Anbieter kann den Inhalt dieser Frage zur Antwortverarbeitung erhalten.", kmr: "Heke şiroveya AI çalak be, daxwaz tenê nasnameya pirseke pejirandî ya RegaDRIVE û zimanê hilbijartî dihewîne; nivîsa azad a bikarhêner û daneyên profîlê nayên şandin. Pêşkêşkarê AI dikare naveroka vê pirsê ji bo bersivdanê bistîne.", ar: "عند تفعيل شرح الذكاء الاصطناعي، يحتوي الطلب فقط على معرّف سؤال معتمد من RegaDRIVE واللغة المختارة؛ ولا يُرسل أي نص حر من المستخدم ولا بيانات الملف الشخصي. وقد يتلقى مزوّد الذكاء الاصطناعي محتوى هذا السؤال لمعالجة الإجابة." }} />
           <p className="small muted"><Bi t={{ ckb: "ئەم زانیارییە لە پشکنینی کۆدەوە کورتکراوەتەوە و هێشتا پێداچوونەوەی یاسایی و پشتڕاستکردنەوەی دابینکەر، بنەمای یاسایی و ماوەی پاراستنی داتا پێویستە؛ بەمەش بە تەنها ئاگادارکردنەوەی یاسایی تەواو نابێت.", de: "Diese Zusammenfassung beruht auf einer Codeprüfung. Eine rechtliche Prüfung sowie die Verifizierung der Anbieter, Rechtsgrundlagen und Speicherfristen stehen noch aus; sie ist allein keine vollständige Datenschutzerklärung.", kmr: "Ev kurte li ser kontrola kodê ava bûye. Kontrola qanûnî û piştrastkirina pêşkêşkaran, bingehên qanûnî û demên tomarkirinê hê mane; ev bi tena serê xwe ne daxuyaniyeke nepeniyê ya temam e.", ar: "يستند هذا الملخص إلى فحص الشيفرة البرمجية. ولا تزال المراجعة القانونية والتحقق من مقدّمي الخدمات والأسس القانونية ومدد التخزين معلّقة؛ ولا يُعد وحده إشعار خصوصية كاملًا." }} /></p>
         </section>

@@ -1,6 +1,29 @@
 # Student email authentication — implementation and release gate
 
-Status: IN PROGRESS — NOT LIVE. Owner approved activation after successful safety checks on 2026-11-10.
+Status: IMPLEMENTED (2026-11-11). Owner approved activation after successful safety checks (2026-11-10) and authorised
+database creation, migration, merge and deployment on 2026-11-11. Live state must be confirmed by the deploy smoke test.
+
+## As built (2026-11-11)
+- Separate D1 database `regadrive-students` (id `4b6065a1-812c-44c3-8558-b50e66e18764`, created with location hint WEUR),
+  binding `STUDENT_DB`, migrations in `migrations-students/` (applied: `0001_student_auth.sql`, recorded in `d1_migrations`).
+  The owner database `regadrive-db` (binding `DB`) holds no student data; it is read only for the existing RegaDRIVE mail key.
+  Note: the database was created through the Cloudflare API without the `eu` jurisdiction flag (location hint only).
+- Activation: var `STUDENT_AUTH_ENABLED=true` (+ `STUDENT_MAIL_FROM`). Independent of `DATABASE_PRODUCTION_ENABLED`, which stays
+  `false` (payments, imports and purchase gating are unaffected). The owner can switch accounts OFF in /dr (`student_accounts`);
+  the emergency lock also stops them.
+- API (`worker/students/handler.ts`): `POST /api/auth/{register,verify-email,resend-code,login,logout,forgot-password,reset-password}`,
+  `GET /api/me`, `POST /api/me` (name/language), `GET|POST /api/me/progress` (opt-in, versioned backup), `GET /api/me/export`,
+  `POST /api/me/delete` (password required, cascades).
+- Security: PBKDF2-SHA256 (100k), codes SHA-256-hashed, 10-minute single-use codes with 5 tries, `__Host-rd_session`
+  HttpOnly/Secure/SameSite=Lax cookie (hash stored, rotated on sign-in, revoked on logout/reset/deletion, 30-day lifetime),
+  CSRF header `x-rd-request: 1` + JSON + same-origin check, durable D1 rate limits keyed by hashed IP/e-mail, anti-enumeration
+  (identical answers for register/resend/forgot/login), 80 student e-mails/day cap (Resend free tier, €0).
+- Retention: rate events 24 h, expired codes 24 h, expired sessions removed, security events 90 days (no IP/e-mail),
+  unverified registrations 7 days.
+- UI: `src/pages/Account.tsx` (ckb/kmr/ar/de, fixed RTL layout, accessible states). Local progress is never replaced;
+  backup/restore use the loss-free `mergeProgress`.
+- Tests: `tests/unit/students.test.ts`, `tests/unit/progress-merge.test.ts`, `tests/migrations.check.mjs` (student schema),
+  E2E full flow with a loopback mail sink (`APP_ENV=e2e` only), live smoke check in `scripts/smoke.mjs`.
 
 ## Existing behavior (confirmed)
 - `worker/index.ts` returns 503 for `/api/auth/*` and `/api/me` while `DATABASE_PRODUCTION_ENABLED=false`; otherwise returns 501 NOT_IMPLEMENTED.
