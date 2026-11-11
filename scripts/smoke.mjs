@@ -57,7 +57,10 @@ await check("student accounts live on the separate student database, CSRF-protec
 });
 await check("AI zero-cost controls", async () => {
   const a = await (await get("/api/ai/status")).json();
-  assert.equal(a.paidFallback, false); assert.equal(a.costLimitEur, 0); assert.equal(a.providers.length, 4);
+  assert.equal(a.paidFallback, false); assert.equal(a.costLimitEur, 0);
+  // Five adapters exist (gemini, groq, openrouter, workers-ai and the opt-in freemodel). freemodel is not in AI_PROVIDER_ORDER, so it must stay inactive.
+  assert.equal(a.providers.length, 5);
+  assert.notEqual(a.providers.find((p) => p.id === "freemodel")?.status, "ACTIVE", "freemodel must not be active unless explicitly enabled");
   const r = await get("/api/ai/explain", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ questionId: "not-a-question" }) });
   assert.equal(r.status, 404, "AI must refuse non-RegaDRIVE content");
 });
@@ -109,6 +112,8 @@ try {
       await page.goto(`${base}/settings`);
       // Four languages; the layout never mirrors or moves, only the words change.
       const layout = () => page.evaluate(() => [".topbar .brand", ".sidenav", ".tabbar"].map((s) => { const r = document.querySelector(s)?.getBoundingClientRect(); return r && r.width ? [Math.round(r.left), Math.round(r.right)] : null; }));
+      // Web fonts use font-display: swap; measure only after they settle so a late swap is not mistaken for a layout move.
+      await page.evaluate(() => document.fonts.ready);
       const before = await layout();
       for (const lang of ["kmr", "ar", "de", "ckb"]) {
         await page.click(`[data-testid=lang-${lang}]`);
