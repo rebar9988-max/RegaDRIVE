@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { formatClock, isAnswered, newExamSession, remainingMs, restoreExamSession } from "../../src/lib/examSession";
-import { EXAM_SIMULATION_MINUTES, KLASSE_B_RULES_2026, scoreExam } from "../../src/lib/shared/exam";
+import { elapsedMs, formatClock, isAnswered, newExamSession, remainingMs, restoreExamSession } from "../../src/lib/examSession";
+import { EXAM_PRACTICE_LIMIT_MINUTES, KLASSE_B_RULES_2026, scoreExam } from "../../src/lib/shared/exam";
 import { buildMockExam } from "../../src/lib/mockExam";
 import { isQuestionAnswerCorrect } from "../../src/lib/answers";
 import { QUESTIONS } from "../../src/content/questions";
@@ -10,11 +10,23 @@ const V = KLASSE_B_RULES_2026.version;
 const ids = () => ["q1", "q2", "q3"];
 
 describe("exam session", () => {
-  it("starts empty with the simulation time limit", () => {
-    const s = newExamSession(7, V, EXAM_SIMULATION_MINUTES, 1_000);
-    expect(s).toMatchObject({ seed: 7, pos: 0, answers: {}, flagged: [], durationMs: EXAM_SIMULATION_MINUTES * 60_000 });
-    expect(remainingMs(s, 1_000)).toBe(EXAM_SIMULATION_MINUTES * 60_000);
-    expect(remainingMs(s, 1_000 + s.durationMs + 5)).toBe(0);
+  it("has no time limit by default, as the official exam, and only counts the time used", () => {
+    const s = newExamSession(7, V, null, 1_000);
+    expect(s).toMatchObject({ seed: 7, pos: 0, answers: {}, flagged: [], durationMs: null });
+    expect(remainingMs(s, 1_000 + 10 * 3_600_000)).toBeNull();
+    expect(elapsedMs(s, 62_500)).toBe(61_500);
+    expect(formatClock(elapsedMs(s, 62_500), "down")).toBe("01:01");
+    expect(restoreExamSession(JSON.parse(JSON.stringify(s)), V, ids)).toEqual(s);
+  });
+  it("an optional practice limit counts down to zero", () => {
+    const s = newExamSession(7, V, EXAM_PRACTICE_LIMIT_MINUTES, 1_000);
+    expect(remainingMs(s, 1_000)).toBe(EXAM_PRACTICE_LIMIT_MINUTES * 60_000);
+    expect(remainingMs(s, 1_000 + s.durationMs! + 5)).toBe(0);
+  });
+  it("the rules are sourced from the law and claim no official time limit", () => {
+    expect(KLASSE_B_RULES_2026.sources.some((x) => x.includes("gesetze-im-internet.de/fev_2010/anlage_7"))).toBe(true);
+    expect(KLASSE_B_RULES_2026).toMatchObject({ officialTotalPoints: 110, maxErrorPoints: 10, failOnFivePointMistakes: 2 });
+    expect(Object.keys(KLASSE_B_RULES_2026).some((k) => /minute|duration|time/i.test(k))).toBe(false);
   });
   it("formats the clock as mm:ss and never shows a negative time", () => {
     expect(formatClock(45 * 60_000)).toBe("45:00");

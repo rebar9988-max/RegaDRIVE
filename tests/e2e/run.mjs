@@ -298,7 +298,8 @@ try {
       await page.goto(`${BASE}/exam`);
       await page.click("[data-testid=exam-start]");
       await page.locator("[data-testid=exam-running]").waitFor();
-      assert.match(await page.textContent("[data-testid=exam-timer]"), /^4[45]:\d\d$/, "countdown runs");
+      assert.equal(await page.locator("[data-testid=exam-timer]").getAttribute("data-timed"), "false", "no time limit unless the learner asks for one");
+      assert.match(await page.textContent("[data-testid=exam-timer]"), /^00:0\d$/, "time used is shown");
       assert.equal(await page.locator("[data-testid=question-nav] button").count(), 30, "30 questions in the overview");
       const first = await page.locator("[data-testid=question-card]").getAttribute("data-qid");
       await page.locator("[data-testid=option-a] input").check();
@@ -355,12 +356,20 @@ try {
     }
   });
 
-  await test("exam: handed in automatically when the time is over", async () => {
+  await test("exam: no time limit by default; optional 45-minute practice limit hands in automatically", async () => {
     const ctx = await browser.newContext({ viewport: { width: 1280, height: 900 } });
     const page = await ctx.newPage();
     await page.clock.install();
     await page.goto(`${BASE}/exam`);
+    // Without the optional limit nothing is ever handed in automatically.
     await page.click("[data-testid=exam-start]");
+    await page.clock.fastForward("02:00:00");
+    assert.equal(await page.locator("[data-testid=exam-result]").count(), 0, "no automatic hand-in without a limit");
+    assert.match(await page.textContent("[data-testid=exam-timer]"), /^120:0\d$/);
+    await page.goto(`${BASE}/exam`);
+    await page.locator("[data-testid=exam-timed]").check();
+    await page.click("[data-testid=exam-start]");
+    assert.equal(await page.locator("[data-testid=exam-timer]").getAttribute("data-timed"), "true");
     await page.locator("[data-testid=option-a] input").check();
     await page.clock.fastForward("44:00");
     assert.match(await page.textContent("[data-testid=exam-timer]"), /^0[01]:\d\d$/);
@@ -521,6 +530,9 @@ try {
     // German (LTR words, fixed RTL layout) and account deletion.
     await page.goto(`${BASE}/settings`);
     await page.click("[data-testid=lang-de]");
+    // Settings are written to IndexedDB after the click; leaving the page before the write is committed
+    // would load the old language again (seen on a fast CI runner). Wait for the stored value first.
+    await page.waitForFunction(() => new Promise((res) => { const r = indexedDB.open("regadrive"); r.onsuccess = () => { const g = r.result.transaction("kv").objectStore("kv").get("settings"); g.onsuccess = () => res(g.result?.lang === "de"); }; }));
     await page.goto(`${BASE}/account`);
     await page.locator("[data-testid=account-signed-in]").waitFor();
     assert.equal(await page.getAttribute("html", "dir"), "rtl");

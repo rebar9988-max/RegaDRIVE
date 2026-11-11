@@ -70,6 +70,7 @@ export const T = {
   answeredL: b("وەڵام دراوەتەوە", "Beantwortet", "Bersivandî", "تمت الإجابة"),
   current: b("ئێستا", "Aktuell", "Niha", "الحالي"),
   timeLeft: b("کاتی ماوە", "Verbleibende Zeit", "Dema mayî", "الوقت المتبقي"),
+  timeUsed: b("کاتی تێپەڕیو", "Verstrichene Zeit", "Dema derbasbûyî", "الوقت المنقضي"),
   timeUp: b("کات تەواو بوو. تاقیکردنەوەکە خۆکارانە نێردرا.", "Die Zeit ist abgelaufen. Die Prüfung wurde automatisch abgegeben.", "Dem qediya. Ezmûn bixweber hat şandin.", "انتهى الوقت. تم تسليم الامتحان تلقائيًا."),
   resumeExam: b("درێژە بە تاقیکردنەوە بدە", "Prüfung fortsetzen", "Ezmûnê bidomîne", "تابع الامتحان"),
   examInProgress: b("تاقیکردنەوەیەکی تەواونەکراوت هەیە. وەڵامەکانت پاشەکەوت کراون.", "Du hast eine angefangene Prüfung. Deine Antworten sind gespeichert.", "Ezmûneke te ya neqedandî heye. Bersivên te hatine tomarkirin.", "لديك امتحان غير مكتمل. إجاباتك محفوظة."),
