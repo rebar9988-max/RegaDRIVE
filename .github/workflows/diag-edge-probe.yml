@@ -1,0 +1,37 @@
+name: Diagnose live version (read-only)
+# Read-only investigation of mixed live versions. Never deploys, rolls back or changes Cloudflare state.
+on:
+  push:
+    branches: ["diag/edge-version-probe"]
+permissions:
+  contents: read
+jobs:
+  probe:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: npm }
+      - run: npm ci --ignore-scripts
+      - name: Cloudflare deployments and versions (read-only)
+        run: |
+          test -n "$CLOUDFLARE_API_TOKEN" && echo "token present" || echo "token NOT available to this job"
+          npx wrangler deployments list --json 2>&1 | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{try{const a=JSON.parse(s);for(const d of a.slice(-6))console.log(d.created_on,d.source,d.strategy,JSON.stringify(d.versions),d.annotations?.["workers/message"]??"")}catch{console.log(s.slice(0,3000))}})'
+          npx wrangler versions list --json 2>&1 | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{try{const a=JSON.parse(s);for(const v of a.slice(-8))console.log(v.id,v.metadata?.created_on,v.metadata?.source,v.annotations?.["workers/tag"]??"",v.annotations?.["workers/message"]??"")}catch{console.log(s.slice(0,3000))}})'
+          npx wrangler deployments status 2>&1 | head -30
+      - name: Probe live build-info 40 times (unique URLs) with edge headers
+        run: |
+          for i in $(seq 1 40); do
+            h=$(curl -s -D - -o /tmp/b.json -H "cache-control: no-cache" "https://www.regaplatform.com/build-info.json?probe=$RANDOM$i")
+            id=$(node -p "try{require('/tmp/b.json').buildId}catch{'?'}")
+            echo "$i $id ray=$(echo "$h" | grep -i '^cf-ray' | tr -d '\r' | cut -d' ' -f2) cache=$(echo "$h" | grep -i '^cf-cache-status' | tr -d '\r' | cut -d' ' -f2) age=$(echo "$h" | grep -i '^age:' | tr -d '\r' | cut -d' ' -f2) cc=$(echo "$h" | grep -i '^cache-control' | tr -d '\r' | cut -d' ' -f2-) etag=$(echo "$h" | grep -i '^etag' | tr -d '\r' | cut -d' ' -f2)"
+            sleep 1
+          done | tee /tmp/probe.txt
+          echo "--- summary"; awk '{print $2}' /tmp/probe.txt | sort | uniq -c
+      - name: Probe index.html asset references 10 times
+        run: |
+          for i in $(seq 1 10); do curl -s "https://www.regaplatform.com/?probe=$RANDOM$i" | grep -o 'assets/index-[A-Za-z0-9_-]*\.css' | head -1; done | sort | uniq -c
