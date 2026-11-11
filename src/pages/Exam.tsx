@@ -7,11 +7,11 @@ import { QuestionCard } from "../components/QuestionCard";
 import { QuestionNavigator, type NavItem } from "../components/QuestionNavigator";
 import { CONTENT } from "../app/content";
 import { buildMockExam } from "../lib/mockExam";
-import { EXAM_SIMULATION_MINUTES, KLASSE_B_RULES_2026, scoreExam, type ExamResult } from "../lib/shared/exam";
+import { EXAM_PRACTICE_LIMIT_MINUTES, KLASSE_B_RULES_2026, scoreExam, type ExamResult } from "../lib/shared/exam";
 import { isQuestionAnswerCorrect } from "../lib/answers";
 import { recordAnswer } from "../lib/progress";
 import { kv } from "../lib/storage";
-import { EXAM_SESSION_KEY, formatClock, isAnswered, newExamSession, remainingMs, restoreExamSession, type ExamSession } from "../lib/examSession";
+import { EXAM_SESSION_KEY, elapsedMs, formatClock, isAnswered, newExamSession, remainingMs, restoreExamSession, type ExamSession } from "../lib/examSession";
 
 const rules = KLASSE_B_RULES_2026;
 const examQuestions = (seed: number) => buildMockExam(CONTENT.questions, seed, rules);
@@ -27,6 +27,8 @@ export function Exam() {
   const [confirming, setConfirming] = useState(false);
   const [onlyWrong, setOnlyWrong] = useState(true);
   const [reviewPos, setReviewPos] = useState(0);
+  // The official exam has no fixed time limit, so a limit is only used when the learner switches it on.
+  const [timed, setTimed] = useState(false);
   const submitted = useRef(false);
 
   const activeSeed = session?.seed ?? finished?.session.seed ?? null;
@@ -54,7 +56,7 @@ export function Exam() {
     setNow(Date.now());
     setSession(s);
   };
-  const start = () => begin(newExamSession(Date.now() >>> 0, rules.version, EXAM_SIMULATION_MINUTES, Date.now()));
+  const start = () => begin(newExamSession(Date.now() >>> 0, rules.version, timed ? EXAM_PRACTICE_LIMIT_MINUTES : null, Date.now()));
 
   const submit = useCallback((s: ExamSession, timedOut: boolean) => {
     if (submitted.current) return; // an exam is scored exactly once
@@ -75,13 +77,13 @@ export function Exam() {
     window.scrollTo(0, 0);
   }, [update]);
 
-  // Countdown. When the time is over the exam is handed in automatically with the answers given so far.
+  // Clock. With a practice limit the exam is handed in automatically when the time is over; without one it only counts up.
   useEffect(() => {
     if (!session) return;
     const tick = () => {
       const t = Date.now();
       setNow(t);
-      if (remainingMs(session, t) <= 0) submit(session, true);
+      if (remainingMs(session, t) === 0) submit(session, true);
     };
     const id = window.setInterval(tick, 1000);
     const first = window.setTimeout(tick, 0);
@@ -144,13 +146,20 @@ export function Exam() {
             de: `${rules.grundstoffCount} Grundstoff- + ${rules.zusatzstoffCount} Zusatzstofffragen. Höchstens ${rules.maxErrorPoints} Fehlerpunkte. Zwei falsche 5-Punkte-Fragen = nicht bestanden.`,
             kmr: `${rules.grundstoffCount} pirsên bingehîn (Grundstoff) + ${rules.zusatzstoffCount} pirsên zêde (Zusatzstoff). Herî zêde ${rules.maxErrorPoints} xalên şaş. Du pirsên 5 xalî yên şaş = ne serkeftî.`,
             ar: `أسئلة أساسية (Grundstoff): ${rules.grundstoffCount} + أسئلة إضافية (Zusatzstoff): ${rules.zusatzstoffCount}. الحد الأقصى لنقاط الخطأ: ${rules.maxErrorPoints}. الخطأ في سؤالين من فئة 5 نقاط = راسب.` }} />
-          <Bi t={{ ckb: `کاتی ئەم ڕاهێنانە: ${EXAM_SIMULATION_MINUTES} خولەک. وەڵامەکانت خۆکارانە پاشەکەوت دەکرێن.`,
-            de: `Zeit für diese Übung: ${EXAM_SIMULATION_MINUTES} Minuten. Deine Antworten werden automatisch gespeichert.`,
-            kmr: `Dema vê rahênanê: ${EXAM_SIMULATION_MINUTES} deqe. Bersivên te bixweber tên tomarkirin.`,
-            ar: `مدة هذا التدريب: ${EXAM_SIMULATION_MINUTES} دقيقة. تُحفظ إجاباتك تلقائيًا.` }} />
-          <p className="small muted"><Bi t={{ ckb: "یاساکانی خاڵدان لەگەڵ سەرچاوەکان بەراورد کراون (وەشان: " + rules.version + "). کاتی فەرمی لەگەڵ قوتابخانەی شۆفێری یان TÜV/DEKRA دڵنیا بکەرەوە.", de: "Bewertungsregeln mit Quellen abgeglichen (Version: " + rules.version + "). Die amtliche Bearbeitungszeit bitte bei Fahrschule oder TÜV/DEKRA bestätigen.",
-            kmr: "Qaîdeyên xaldanê bi çavkaniyan re hatine berhevkirin (guherto: " + rules.version + "). Dema fermî ya ezmûnê ji kerema xwe li dibistana ajotinê an li TÜV/DEKRA piştrast bike.",
-            ar: "قواعد التقييم مطابقة للمصادر (الإصدار: " + rules.version + "). يرجى التأكد من مدة الامتحان الرسمية لدى مدرسة القيادة أو TÜV/DEKRA." }} /></p>
+          <Bi t={{ ckb: "تاقیکردنەوەی فەرمی سنووری کاتی دیاریکراوی نییە؛ زۆربەی کات نزیکەی 30 بۆ 45 خولەک دەخایەنێت. وەڵامەکانت خۆکارانە پاشەکەوت دەکرێن.",
+            de: "Die amtliche Prüfung hat keine feste Zeitbegrenzung; meist dauert sie etwa 30 bis 45 Minuten. Deine Antworten werden automatisch gespeichert.",
+            kmr: "Ezmûna fermî sînorekî demê yê diyarkirî nîne; bi piranî nêzîkî 30 heta 45 deqeyan dikişîne. Bersivên te bixweber tên tomarkirin.",
+            ar: "ليس للامتحان الرسمي حد زمني ثابت؛ ويستغرق غالبًا نحو 30 إلى 45 دقيقة. تُحفظ إجاباتك تلقائيًا." }} />
+          <label className="option exam-limit">
+            <input type="checkbox" className="q-check" checked={timed} onChange={(e) => setTimed(e.target.checked)} data-testid="exam-timed" />
+            <Bi t={{ ckb: `ڕاهێنان لەگەڵ سنووری کاتی ${EXAM_PRACTICE_LIMIT_MINUTES} خولەک (ئارەزوومەندانە، فەرمی نییە)`,
+              de: `Mit ${EXAM_PRACTICE_LIMIT_MINUTES} Minuten Zeitlimit üben (freiwillig, nicht amtlich)`,
+              kmr: `Bi sînorê demê yê ${EXAM_PRACTICE_LIMIT_MINUTES} deqeyan rahênan bike (bi dilxwazî, ne fermî)`,
+              ar: `تدرّب بحد زمني قدره ${EXAM_PRACTICE_LIMIT_MINUTES} دقيقة (اختياري وغير رسمي)` }} />
+          </label>
+          <p className="small muted"><Bi t={{ ckb: "یاساکانی خاڵدان لەگەڵ یاسای FeV (پاشکۆی 7) بەراورد کراون (وەشان: " + rules.version + "). بۆ وردەکاریی ڕۆژی تاقیکردنەوە لە قوتابخانەی شۆفێری یان TÜV/DEKRA بپرسە.", de: "Bewertungsregeln mit der FeV (Anlage 7) abgeglichen (Version: " + rules.version + "). Einzelheiten zum Prüfungstag bitte bei Fahrschule oder TÜV/DEKRA erfragen.",
+            kmr: "Qaîdeyên xaldanê bi qanûna FeV (pêveka 7) re hatine berhevkirin (guherto: " + rules.version + "). Ji bo hûrgiliyên roja ezmûnê ji dibistana ajotinê an TÜV/DEKRA bipirse.",
+            ar: "قواعد التقييم مطابقة للائحة FeV (الملحق 7) (الإصدار: " + rules.version + "). للاستفسار عن تفاصيل يوم الامتحان راجع مدرسة القيادة أو TÜV/DEKRA." }} /></p>
           {!canRun && <p className="notice"><Bi t={T.contentInReview} /></p>}
           {paused && canRun ? <>
             <p className="notice" role="status" data-testid="exam-paused"><Bi t={T.examInProgress} /></p>
@@ -168,6 +177,7 @@ export function Exam() {
   const answeredCount = questions.filter((x) => isAnswered(session.answers, x.id)).length;
   const open = questions.length - answeredCount;
   const left = remainingMs(session, now);
+  const low = left !== null && left <= 5 * 60_000;
   const isFlagged = session.flagged.includes(q.id);
   const items: NavItem[] = questions.map((x) => ({ id: x.id, state: isAnswered(session.answers, x.id) ? "answered" : "open", flagged: session.flagged.includes(x.id) }));
   const go = (pos: number) => { setConfirming(false); patch({ pos }); };
@@ -178,7 +188,7 @@ export function Exam() {
       <header className="page-head exam-head">
         <h1><Bi t={T.mockExam} /></h1>
         <div className="exam-status">
-          <span className={`exam-timer${left <= 5 * 60_000 ? " is-low" : ""}`} role="timer" aria-label={label(T.timeLeft)} data-testid="exam-timer"><Icon name="calendar" /><span className="num" dir="ltr">{formatClock(left)}</span></span>
+          <span className={`exam-timer${low ? " is-low" : ""}`} role="timer" aria-label={label(left === null ? T.timeUsed : T.timeLeft)} data-testid="exam-timer" data-timed={left !== null}><Icon name="calendar" /><span className="num" dir="ltr">{left === null ? formatClock(elapsedMs(session, now), "down") : formatClock(left)}</span></span>
           <span className="small muted num-block"><span className="num" dir="ltr" data-testid="exam-answered">{answeredCount}/{questions.length}</span> <Bi t={T.answeredL} inline /></span>
         </div>
       </header>

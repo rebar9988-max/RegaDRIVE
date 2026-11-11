@@ -10,7 +10,8 @@ export interface ExamSession {
   seed: number;
   rulesVersion: string;
   startedAt: number;
-  durationMs: number;
+  /** Optional practice time limit chosen by the learner. null: no limit, as in the official exam. */
+  durationMs: number | null;
   pos: number;
   /** questionId -> chosen option ids (or [typedValue] for number questions). */
   answers: Record<string, string[]>;
@@ -18,15 +19,17 @@ export interface ExamSession {
   flagged: string[];
 }
 
-export function newExamSession(seed: number, rulesVersion: string, durationMinutes: number, now: number): ExamSession {
-  return { version: 1, seed, rulesVersion, startedAt: now, durationMs: durationMinutes * 60_000, pos: 0, answers: {}, flagged: [] };
+export function newExamSession(seed: number, rulesVersion: string, limitMinutes: number | null, now: number): ExamSession {
+  return { version: 1, seed, rulesVersion, startedAt: now, durationMs: limitMinutes === null ? null : limitMinutes * 60_000, pos: 0, answers: {}, flagged: [] };
 }
 
-export const remainingMs = (s: ExamSession, now: number) => Math.max(0, s.startedAt + s.durationMs - now);
+/** Time left of the practice limit; null when the simulation has no limit. */
+export const remainingMs = (s: ExamSession, now: number) => (s.durationMs === null ? null : Math.max(0, s.startedAt + s.durationMs - now));
+export const elapsedMs = (s: ExamSession, now: number) => Math.max(0, now - s.startedAt);
 
-/** mm:ss, always Latin digits (the timer is rendered left-to-right in every language). */
-export function formatClock(ms: number): string {
-  const total = Math.ceil(ms / 1000);
+/** mm:ss, always Latin digits (the timer is rendered left-to-right in every language). A countdown rounds up, a stopwatch down. */
+export function formatClock(ms: number, round: "up" | "down" = "up"): string {
+  const total = round === "up" ? Math.ceil(ms / 1000) : Math.floor(ms / 1000);
   return `${String(Math.floor(total / 60)).padStart(2, "0")}:${String(total % 60).padStart(2, "0")}`;
 }
 
@@ -40,7 +43,8 @@ export function restoreExamSession(raw: unknown, rulesVersion: string, questionI
   if (!raw || typeof raw !== "object") return null;
   const s = raw as Partial<ExamSession>;
   if (s.version !== 1 || s.rulesVersion !== rulesVersion) return null;
-  if (!Number.isInteger(s.seed) || !Number.isFinite(s.startedAt) || !Number.isFinite(s.durationMs) || s.durationMs! <= 0) return null;
+  if (!Number.isInteger(s.seed) || !Number.isFinite(s.startedAt)) return null;
+  if (s.durationMs !== null && (!Number.isFinite(s.durationMs) || s.durationMs! <= 0)) return null;
   if (!s.answers || typeof s.answers !== "object" || !isStringArray(s.flagged)) return null;
   const ids = questionIds(s.seed!);
   if (ids.length === 0) return null;

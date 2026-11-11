@@ -21,17 +21,22 @@ export const KLASSE_B_RULES_2026: ExamRules = {
   maxErrorPoints: 10,
   failOnFivePointMistakes: 2,
   sources: [
-    "https://www.tuev-nord.de/de/privatkunden/verkehr/fuehrerschein/theoretische-pruefung",
-    "https://www.bussgeldkatalog.de/theoriepruefung/",
+    // Law: 30 questions, 110 points, 10 permitted error points; failed when exceeded or two weight-5 questions are wrong.
+    "https://www.gesetze-im-internet.de/fev_2010/anlage_7.html (FeV Anlage 7 Nr. 1.2.2, 1.3)",
+    // 20 Grundstoff + 10 Zusatzstoff for Klasse B; "in der Regel rund 30 bis 45 Minuten".
+    "https://www.tuev-nord.de/de/dienstleistungen/fuehrerschein-und-fahrzeug/theoriepruefung/",
+    // "Es gibt keine zeitliche Begrenzung."
+    "https://www.adac.de/verkehr/rund-um-den-fuehrerschein/erwerb/theoretische-fuehrerscheinpruefung/",
   ],
-  verifiedOn: "2026-11-06",
+  verifiedOn: "2026-11-11",
 };
 
 /**
- * Time limit of the RegaDRIVE practice simulation. This is a product setting, not an official rule:
- * the learner is told to confirm the official working time with the driving school or TÜV/DEKRA.
+ * Optional time limit a learner may switch on for a simulation. It is NOT an official rule: FeV Anlage 7
+ * states no duration and ADAC reports no time limit (checked 2026-11-11); TÜV NORD says candidates usually
+ * need about 30 to 45 minutes. A simulation therefore runs without a limit unless the learner asks for one.
  */
-export const EXAM_SIMULATION_MINUTES = 45;
+export const EXAM_PRACTICE_LIMIT_MINUTES = 45;
 
 export interface ScoredAnswer {
   questionId: string;
