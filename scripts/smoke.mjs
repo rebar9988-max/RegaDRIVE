@@ -21,6 +21,19 @@ const check = async (name, fn) => {
 };
 const get = (p, init) => retry(() => fetch(base + p, { ...init, signal: AbortSignal.timeout(15000) }), { attempts: 3, isRecoverable: isNetworkError });
 
+// Cloudflare's edge can keep serving the previous version for a short while after `wrangler deploy`.
+// Before any check, wait (up to 120 s) until the expected build is live, so every check below tests the new release.
+// The release-identity check itself stays strict: if the new build never appears, it still fails and the deploy rolls back.
+if (process.env.EXPECTED_BUILD_ID) {
+  const deadline = Date.now() + 120_000;
+  for (;;) {
+    let live = "";
+    try { live = (await (await get("/build-info.json", { cache: "no-store" })).json()).buildId ?? ""; } catch { /* retry */ }
+    if (live === process.env.EXPECTED_BUILD_ID) { console.log(`Edge serves ${live}`); break; }
+    if (Date.now() > deadline) { console.log(`Edge still serves ${live || "unknown"} after 120 s`); break; }
+    await new Promise((r) => setTimeout(r, 5000));
+  }
+}
 await check("HTTPS", async () => { if (!allowHttp) assert.ok(base.startsWith("https://"), "target must be https"); assert.equal((await get("/")).status, 200); });
 await check("health: regadrive, production content, DB off, payments off", async () => {
   const h = await (await get("/api/health")).json();
