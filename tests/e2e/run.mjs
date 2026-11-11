@@ -212,6 +212,24 @@ try {
     await ctx.close();
   });
 
+  await test("settings language switch never moves the mobile header [iPhone, as the live smoke test]", async () => {
+    const ctx = await browser.newContext(devices["iPhone 13"]);
+    const page = await ctx.newPage();
+    await page.goto(`${BASE}/settings`);
+    await page.waitForSelector("[data-testid=lang-ckb]");
+    await page.addStyleTag({ content: "[data-testid=preview-banner] { display: none !important; }" });
+    const layout = () => page.evaluate(() => [".topbar .brand", ".sidenav", ".tabbar"].map((s) => { const r = document.querySelector(s)?.getBoundingClientRect(); return r && r.width ? [Math.round(r.left), Math.round(r.right)] : null; }));
+    const detail = () => page.evaluate(() => [".topbar", ".topbar > :first-child", ".topbar .brand", ".topbar > :last-child", ".country-switch", ".notification-menu"].map((s) => { const r = document.querySelector(s)?.getBoundingClientRect(); return `${s}=${r ? `${Math.round(r.left)}..${Math.round(r.right)}` : "none"}`; }).join(" ") + ` scrollW=${document.documentElement.scrollWidth} clientW=${document.documentElement.clientWidth}`);
+    const before = await layout();
+    const beforeDetail = await detail();
+    for (const lang of ["kmr", "ar", "de", "ckb"]) {
+      await page.click(`[data-testid=lang-${lang}]`);
+      assert.equal(await page.getAttribute("html", "lang"), lang);
+      assert.deepEqual(await layout(), before, `header moved in ${lang}\n  ckb: ${beforeDetail}\n  ${lang}: ${await detail()}`);
+    }
+    await ctx.close();
+  });
+
   await test("languages: Sorani, Kurmanji, Arabic and German change the words, never the layout", async () => {
     for (const viewport of [{ width: 1280, height: 900 }, { width: 390, height: 844 }]) {
       // bypassCSP only so the axe test script can be injected; the app itself keeps its strict CSP.
