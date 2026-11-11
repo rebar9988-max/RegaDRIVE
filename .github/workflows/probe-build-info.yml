@@ -1,0 +1,18 @@
+name: probe build-info cache (temporary, read-only)
+on:
+  push:
+    branches: [diag/build-info-cache-probe]
+permissions: { contents: read }
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - run: |
+          for u in "/build-info.json" "/build-info.json?t=$(date +%s%N)" "/" "/index.html"; do
+            echo "===== GET https://www.regaplatform.com$u"
+            curl -sS -D - -o /tmp/body "https://www.regaplatform.com$u" | grep -iE "^(HTTP|cache-control|cf-cache-status|age|etag|last-modified|expires|cdn-cache-control|cf-ray|server)" ; head -c 300 /tmp/body; echo
+          done
+          echo "===== again plain"; curl -sS -D - -o /tmp/body "https://www.regaplatform.com/build-info.json" | grep -iE "^(cf-cache-status|age|etag)"; cat /tmp/body; echo
+          echo "===== no-cache request header"; curl -sS -H 'cache-control: no-cache' -D - -o /tmp/body "https://www.regaplatform.com/build-info.json" | grep -iE "^(cf-cache-status|age)"; cat /tmp/body; echo
+          echo "===== index asset hashes"; curl -sS "https://www.regaplatform.com/?x=$RANDOM" | grep -oE '/assets/[^"]+' | head -5
