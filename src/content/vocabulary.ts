@@ -38,4 +38,3 @@ export const VOCABULARY: VocabularyEntry[] = [
   { id: "v-bremse", article: "die", de: "Bremse", kmr: "Fren", ar: "المكابح", ckb: "بریک" },
   { id: "v-dachlast", article: "die", de: "Dachlast", kmr: "Barê ser banê wesayîtê", ar: "حمولة السقف", ckb: "باری سەر سەربان" },
 ];
-export const vocabById = (id: string) => VOCABULARY.find((v) => v.id === id);

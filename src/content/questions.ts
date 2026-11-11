@@ -318,4 +318,3 @@ export const QUESTIONS: Question[] = [
 ];
 
 export const questionById = (id: string) => QUESTIONS.find((x) => x.id === id);
-export const publishedQuestions = () => QUESTIONS.filter((x) => x.publicationStatus === "published");

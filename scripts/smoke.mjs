@@ -90,6 +90,9 @@ try {
         (PLATFORM_INJECTED.test(r.url()) ? warnings : errors).push(`[${name}] request failed: ${text}`);
       });
       await page.goto(base);
+      // First visit: new learners choose their licence country (src/app/CountrySelection.tsx). Choose Germany, as a learner does.
+      await page.waitForSelector("[data-testid=home], .country-card", { timeout: 20000 });
+      if (await page.locator(".country-card").count()) await page.locator(".country-card:has([lang=de])").click();
       await page.waitForSelector("[data-testid=home]", { timeout: 20000 });
       assert.equal(await page.getAttribute("html", "dir"), "rtl");
       assert.equal(await page.getAttribute("html", "lang"), "ckb");
