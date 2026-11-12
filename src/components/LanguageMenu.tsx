@@ -12,7 +12,7 @@ const OPTIONS: LangOption[] = [
   SORANI,
   { id: "kmr", code: "KMR", native: "Kurmancî (Badînî)", flag: "/flags/kurdistan.png" },
   { id: "de", code: "DE", native: "Deutsch", flag: "/flags/de.png" },
-  { id: "ar", code: "AR", native: "العربية", flag: "/flags/iraq.png" },
+  { id: "ar", code: "AR", native: "العربية", flag: "/flags/arabic.png" },
 ];
 const TITLE = { ckb: "زمان", de: "Sprache", kmr: "Ziman", ar: "اللغة" };
 const PANEL_WIDTH = 288;
