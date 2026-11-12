@@ -11,7 +11,7 @@ import { Exam } from "./pages/Exam";
 import { About, Access, Account, More, NotFound, ProgressPage, Services, Settings, Vocabulary } from "./pages/Misc";
 
 // Owner import workbench: compiled in only when VITE_ADMIN_UI=true (production builds drop it entirely).
-const AdminImport = import.meta.env.VITE_ADMIN_UI === "true" ? lazy(() => import("./pages/AdminImport").then((m) => ({ default: m.AdminImport }))) : null;
+const AdminImport = import.meta.env.VITE_ADMIN_UI === "true" ? lazy(() => import("./pages/DrContent").then((m) => ({ default: m.DrContent }))) : null;
 
 // Owner control center (/dr): its own chunk, outside the student shell. Access is enforced by the Worker.
 const DrAdmin = lazy(() => import("./pages/DrAdmin").then((m) => ({ default: m.DrAdmin })));

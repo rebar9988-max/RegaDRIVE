@@ -5,6 +5,7 @@ import { checkMedia } from "../lib/shared/media";
 import { catalogReport } from "../lib/shared/catalog";
 import { CATALOG_PLAN_STATUS, planCoverage } from "../lib/shared/catalogPlan";
 import { parseMediaManifest, validateMediaManifest, type MediaManifest } from "../lib/shared/mediaManifest";
+import { licenseChecklist, licenseProblems, parseLicenseRegister, type LicenseRecord } from "../lib/shared/license";
 import { csvToImport, jsonToImport, validateImport, type ImportPreview, type ImportQuestion, type MediaManifestEntry } from "../lib/shared/importer";
 
 /**
@@ -22,6 +23,7 @@ const t = {
   commit: { ckb: "هاوردەکردن بۆ داتابەیس (ناچالاک)", de: "In Datenbank importieren (deaktiviert)", kmr: "Têxe databasê (neçalak)", ar: "استيراد إلى قاعدة البيانات (معطّل)" },
   commitWhy: { ckb: "داتابەیسی بەرهەمهێنان کوژاوەیە. هاوردەکردن تەنها دوای ڕەزامەندی خاوەن چالاک دەبێت.", de: "Die Produktionsdatenbank ist ausgeschaltet. Der Import wird erst nach Freigabe durch den Inhaber aktiviert.", kmr: "Databasa hilberînê girtî ye. Anîn tenê piştî pejirandina xwedî çalak dibe.", ar: "قاعدة بيانات الإنتاج متوقفة. لن يُفعَّل الاستيراد إلا بعد موافقة المالك." },
   manifest: { ckb: "لیستی سەرچاوە و پێداچوونەوەی وێنە و ڤیدیۆکان (JSON)", de: "Medien-Manifest: Herkunft und Prüfung der Bilder und Videos (JSON)", kmr: "Manîfestoya medyayê: çavkanî û kontrola wêne û vîdyoyan (JSON)", ar: "بيان الوسائط: مصدر الصور والفيديوهات ومراجعتها (JSON)" },
+  register: { ckb: "تۆماری مۆڵەت لە گرێبەستی واژۆکراوەوە (JSON)", de: "Lizenzregister aus dem unterschriebenen Vertrag (JSON)", kmr: "Tomara lîsansê ji peymana îmzekirî (JSON)", ar: "سجل الترخيص من العقد الموقَّع (JSON)" },
   manual: { ckb: "زیادکردنی دەستی", de: "Manuelle Eingabe", kmr: "Têketina bi destan", ar: "إدخال يدوي" },
   add: { ckb: "زیادکردن", de: "Hinzufügen", kmr: "Zêde bike", ar: "إضافة" },
 };
@@ -38,12 +40,23 @@ export function AdminImport() {
   const [preview, setPreview] = useState<ImportPreview | null>(null);
   const [manual, setManual] = useState(emptyManual);
   // Coverage of the validated file against the owner target; media must be among the attached files.
+  // Licence register from the signed contract. With it, licensed rows are checked against verified rights.
+  const [register, setRegister] = useState<LicenseRecord[] | null>(null);
+  const [registerError, setRegisterError] = useState<string | null>(null);
+  const today = new Date().toISOString().slice(0, 10);
+  const knownLicenseIds = () => new Set([...licences.split(/[\s,;]+/).filter(Boolean), ...(register ?? []).map((l) => l.id)]);
+  const loadRegister = async (f: File | undefined) => {
+    setPreview(null);
+    if (!f) { setRegister(null); setRegisterError(null); return; }
+    try { setRegister(parseLicenseRegister(await f.text())); setRegisterError(null); }
+    catch (e) { setRegister(null); setRegisterError((e as Error).message); }
+  };
   const [manifest, setManifest] = useState<MediaManifest | null>(null);
   const [manifestError, setManifestError] = useState<string | null>(null);
   const shaOf = (key: string) => key.replace(/^media\//, "").replace(/\.[a-z0-9]+$/, "");
   // Provenance and instructor review of the attached files. Without a manifest no media file counts as approved.
   const manifestResult = manifest ? validateMediaManifest(manifest, {
-    knownLicenses: new Set(licences.split(/[\s,;]+/).filter(Boolean)),
+    knownLicenses: knownLicenseIds(),
     attached: new Map([...media.values()].map((m) => [m.file, { sha256: shaOf(m.key), kind: m.kind }])),
   }) : null;
   const approvedMediaKeys = new Set((manifestResult?.approvedFiles ?? []).flatMap((f) => { const k = media.get(f)?.key; return k ? [k] : []; }));
@@ -81,9 +94,11 @@ export function AdminImport() {
 
   const validate = async () => setPreview(await validateImport(rows, {
     knownTopics: new Set(TOPICS.map((x) => x.id)),
-    knownLicenses: new Set(licences.split(/[\s,;]+/).filter(Boolean)),
+    knownLicenses: knownLicenseIds(),
     existing: new Map(),
     media,
+    // With a register the rights of the verified licence decide; without one only the id is checked.
+    ...(register ? { licenses: new Map(register.map((l) => [l.id, l])), today } : {}),
   }));
 
   const editCkb = (i: number, path: "prompt" | "explanation" | `option:${string}`, value: string) => {
@@ -140,6 +155,34 @@ export function AdminImport() {
           <input type="file" multiple accept="image/png,image/jpeg,image/webp,video/mp4,video/webm" onChange={(e) => loadMedia(e.target.files)} data-testid="media-files" /></label>
         {media.size > 0 && <p className="small muted" dir="ltr">{[...media.values()].map((m) => `${m.file} → ${m.key.slice(0, 18)}…`).join(" · ")}</p>}
         {mediaErrors.map((m) => <p key={m} className="feedback bad small" role="alert">{m}</p>)}
+        {media.size > 0 && (
+          <div className="dr-scroll" dir="ltr" data-testid="media-table">
+            <table className="dr-table"><thead><tr><th>File</th><th>Kind</th><th>Size</th><th>Storage key</th><th>Review</th></tr></thead><tbody>
+              {[...media.values()].map((m) => {
+                const approved = manifestResult?.approvedFiles.includes(m.file);
+                const issues = manifestResult?.issues.filter((i) => i.subject === m.file).length ?? 0;
+                return <tr key={m.file}><td>{m.file}</td><td>{m.kind}</td><td>{(m.bytes / 1024).toFixed(1)} KB</td><td>{m.key.slice(0, 22)}…</td>
+                  <td>{!manifestResult ? "no manifest" : approved ? "approved" : `${issues} open issue(s)`}</td></tr>;
+              })}
+            </tbody></table>
+          </div>
+        )}
+        <label className="stack" style={{ gap: 4 }}><span className="small muted">{label(t.register)}</span>
+          <input type="file" accept=".json,application/json" onChange={(e) => loadRegister(e.target.files?.[0])} data-testid="register-file" /></label>
+        {registerError && <p className="feedback bad small" role="alert">{registerError}</p>}
+        <div className="stack" dir="ltr" data-testid="license-report">
+          {(register && register.length ? register : [undefined]).map((l, n) => {
+            const list = licenseChecklist(l, today);
+            const problems = l ? licenseProblems(l) : [];
+            return (
+              <div key={l?.id ?? n} className="stack" style={{ gap: 6 }}>
+                <p className="small"><strong>{l ? `Licence ${l.id} (${l.country}) — ${l.status}` : "No licence on record"}</strong>{l ? "" : " — official content cannot be imported or published."}</p>
+                <ul className="list small">{list.map((c) => <li key={c.item}>{c.done ? "✓" : "✗"} {c.item}</li>)}</ul>
+                {problems.length > 0 && <p className="feedback bad small">{problems.join("; ")}</p>}
+              </div>
+            );
+          })}
+        </div>
         <label className="stack" style={{ gap: 4 }}><span className="small muted">{label(t.manifest)}</span>
           <input type="file" accept=".json,application/json" onChange={(e) => loadManifest(e.target.files?.[0])} data-testid="manifest-file" /></label>
         {manifestError && <p className="feedback bad small" role="alert">{manifestError}</p>}

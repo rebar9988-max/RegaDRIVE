@@ -136,6 +136,20 @@ describe("/dr owner control center", () => {
     expect(rows.results.length).toBe(0); // state before the emergency lock: no overrides
   });
 
+  it("content status: owner only, read-only, and honest that nothing can be stored yet", async () => {
+    const { call, login } = setup();
+    expect((await call("/api/dr/content/status")).status).toBe(401);
+    await login();
+    const r = await call("/api/dr/content/status");
+    expect(r.status).toBe(200);
+    const body = r.body as unknown as { storage: { active: boolean; missing: string[] }; officialContent: { shown: boolean }; progress: unknown };
+    expect(body.storage.active).toBe(false);
+    expect(body.storage.missing.join(" | ")).toMatch(/not activated by the owner/);
+    expect(body.storage.missing.join(" | ")).toMatch(/no content database is bound/);
+    expect(body.officialContent.shown).toBe(false);
+    expect(body.progress).toBeNull();
+  });
+
   it("applies owner overrides to the public API (AI off, provider removed, emergency lock)", async () => {
     const t = setup();
     const env = { ASSETS: { fetch: async () => new Response() }, AI_ENABLED: "true", DB: t.db, DR_OWNER_EMAIL: OWNER } as unknown as Env;
