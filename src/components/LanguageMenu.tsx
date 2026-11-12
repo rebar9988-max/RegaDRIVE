@@ -6,8 +6,10 @@ import { Icon } from "./Icon";
 import { useBiText } from "./Bi";
 
 /** The four learner languages, in the order of the owner's brief. Names are written in their own language. */
-const OPTIONS: { id: Lang; code: string; native: string }[] = [
-  { id: "ckb", code: "CKB", native: "کوردی (سۆرانی)" },
+type LangOption = { id: Lang; code: string; native: string };
+const SORANI: LangOption = { id: "ckb", code: "CKB", native: "کوردی (سۆرانی)" };
+const OPTIONS: LangOption[] = [
+  SORANI,
   { id: "kmr", code: "KMR", native: "Kurmancî (Badînî)" },
   { id: "de", code: "DE", native: "Deutsch" },
   { id: "ar", code: "AR", native: "العربية" },
@@ -32,7 +34,7 @@ export function LanguageMenu() {
   const trigger = useRef<HTMLButtonElement>(null);
   const panel = useRef<HTMLDivElement>(null);
   const panelId = useId();
-  const current = OPTIONS.find((o) => o.id === settings.lang) ?? OPTIONS[0];
+  const current = OPTIONS.find((o) => o.id === settings.lang) ?? SORANI;
   const title = label(TITLE);
 
   const close = useCallback((refocus: boolean) => {
