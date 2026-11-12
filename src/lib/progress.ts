@@ -26,6 +26,42 @@ export const emptyProgress = (): ProgressState => ({
   version: 1, questions: {}, scored: {}, bookmarks: [], completedLessons: [], days: {}, examHistory: [],
 });
 
+const isObj = (v: unknown): v is Record<string, unknown> => typeof v === "object" && v !== null && !Array.isArray(v);
+const count = (v: unknown) => (typeof v === "number" && Number.isFinite(v) && v >= 0 ? Math.floor(v) : 0);
+const ids = (v: unknown, max: number) => (Array.isArray(v) ? [...new Set(v.filter((x): x is string => typeof x === "string" && x.length > 0 && x.length <= 120))].slice(0, max) : []);
+
+/**
+ * Rebuilds a progress document from untrusted input (device storage after an update, an account backup from
+ * another device). Everything well-formed is kept; anything malformed is dropped instead of crashing the app or
+ * being merged into good data. Returns null only when the input is not a version-1 progress document at all.
+ */
+export function normalizeProgress(raw: unknown): ProgressState | null {
+  if (!isObj(raw) || raw.version !== 1) return null;
+  const out = emptyProgress();
+  if (isObj(raw.questions)) {
+    for (const [id, v] of Object.entries(raw.questions).slice(0, 20_000)) {
+      if (!isObj(v) || id.length === 0 || id.length > 120) continue;
+      const attempts = count(v.attempts);
+      out.questions[id] = {
+        attempts, correctCount: Math.min(attempts, count(v.correctCount)), streak: Math.min(attempts, count(v.streak)),
+        lastCorrect: typeof v.lastCorrect === "boolean" ? v.lastCorrect : null,
+        lastAnsweredAt: typeof v.lastAnsweredAt === "number" && Number.isFinite(v.lastAnsweredAt) ? v.lastAnsweredAt : null,
+      };
+    }
+  }
+  if (isObj(raw.scored)) for (const k of Object.keys(raw.scored).slice(0, 50_000)) if (raw.scored[k] === true && k.length <= 260) out.scored[k] = true;
+  out.bookmarks = ids(raw.bookmarks, 20_000);
+  out.completedLessons = ids(raw.completedLessons, 5_000);
+  if (isObj(raw.days)) for (const [d, n] of Object.entries(raw.days).slice(0, 5_000)) if (/^\d{4}-\d{2}-\d{2}$/.test(d) && count(n) > 0) out.days[d] = count(n);
+  if (Array.isArray(raw.examHistory)) {
+    out.examHistory = raw.examHistory.filter(isObj)
+      .filter((e) => typeof e.at === "number" && Number.isFinite(e.at) && typeof e.passed === "boolean")
+      .map((e) => ({ at: e.at as number, passed: e.passed as boolean, errorPoints: count(e.errorPoints), totalPoints: count(e.totalPoints), rulesVersion: typeof e.rulesVersion === "string" ? e.rulesVersion.slice(0, 80) : "" }))
+      .slice(-50);
+  }
+  return out;
+}
+
 export const dayKey = (t: number) => {
   const d = new Date(t);
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;

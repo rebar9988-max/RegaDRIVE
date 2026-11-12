@@ -16,6 +16,7 @@
  */
 import type { D1Like } from "../dr/db";
 import { resendSender, sha256Hex, sixDigitCode, type MailSender } from "../dr/handler";
+import { normalizeProgress } from "../../src/lib/progress";
 import { hashPassword, hashToken, newSessionToken, normalizeEmail, SESSION_COOKIE, sessionCookie, verifyPassword } from "../../src/lib/shared/auth";
 
 export interface StudentEnv {
@@ -238,11 +239,11 @@ export async function handleStudents(req: Request, env: StudentEnv, deps: Studen
     return true;
   };
   /** Duplicate registration: tell the real owner, never the requester. */
-  const sendExistsNotice = async (student: StudentRow): Promise<void> => {
+  const sendExistsNotice = async (student: StudentRow): Promise<boolean> => {
     const ek = await emailKey(student.email_normalized);
-    if (await limited(`mail:e:${ek}`, RATE.mailEmail) || await limited(`mail:ip:${ipKey}`, RATE.mailIp) || await limited("mail:global", RATE.mailGlobal)) return;
+    if (await limited(`mail:e:${ek}`, RATE.mailEmail) || await limited(`mail:ip:${ipKey}`, RATE.mailIp) || await limited("mail:global", RATE.mailGlobal)) return false;
     const key = await mailKey();
-    if (!key) return;
+    if (!key) return false;
     const sent = await send(key, {
       from: env.STUDENT_MAIL_FROM || "RegaDRIVE <no-reply@regaplatform.com>",
       to: student.email_normalized,
@@ -260,6 +261,7 @@ export async function handleStudents(req: Request, env: StudentEnv, deps: Studen
         + `<p style="color:#58657c;font-size:13px">RegaDRIVE · www.regaplatform.com/account</p></div>`,
     });
     await event(sent.ok ? "exists_notice_sent" : "mail_failed", student.id);
+    return sent.ok;
   };
   /** Validates and consumes a code. Wrong codes count against the challenge; 5 misses close it. */
   const checkCode = async (student: StudentRow, purpose: "verify_email" | "reset_password", code: string): Promise<boolean> => {
@@ -292,7 +294,9 @@ export async function handleStudents(req: Request, env: StudentEnv, deps: Studen
     if (existing && existing.email_verified_at !== null) {
       // Duplicate: same answer as a new registration. The real owner is told by e-mail and can sign in or reset.
       await event("register_duplicate", existing.id);
-      await sendExistsNotice(existing);
+      // A failed e-mail answers exactly like a failed e-mail for a new address; otherwise the difference between
+      // 503 (new) and 202 (existing) would reveal which addresses have an account whenever a mail limit is reached.
+      if (!(await sendExistsNotice(existing))) return reply({ error: "MAIL_FAILED" }, 503);
       return reply(ACCEPTED, 202);
     }
     let student: StudentRow;
@@ -422,7 +426,10 @@ export async function handleStudents(req: Request, env: StudentEnv, deps: Studen
       const p = body.progress as { version?: unknown } | undefined;
       const base = typeof body.baseVersion === "number" && Number.isInteger(body.baseVersion) ? body.baseVersion : -1;
       if (!p || typeof p !== "object" || Array.isArray(p) || p.version !== 1) return reply({ error: "BAD_REQUEST" }, 400);
-      const payload = JSON.stringify(p);
+      // Store only a well-formed progress document: a corrupt backup must never reach another device.
+      const clean = normalizeProgress(p);
+      if (!clean) return reply({ error: "BAD_REQUEST" }, 400);
+      const payload = JSON.stringify(clean);
       if (payload.length > MAX_PROGRESS_BYTES) return reply({ error: "PAYLOAD_TOO_LARGE" }, 413);
       const row = await db.prepare("SELECT version FROM student_progress WHERE student_id = ?").bind(current.id).first<{ version: number }>();
       const have = row?.version ?? 0;

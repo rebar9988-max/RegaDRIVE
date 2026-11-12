@@ -121,6 +121,25 @@ describe("student e-mail authentication", () => {
     expect((await t.call("/api/auth/login", { body: { email: EMAIL, password: PW } })).status).toBe(200);
   });
 
+  it("a failed e-mail gives the same answer for an existing and a new address (no enumeration through mail limits)", async () => {
+    const t = setup({ mailOk: false });
+    // An existing, verified account (created directly so that no mail is needed).
+    t.raw.prepare("INSERT INTO students (id, email_normalized, display_name, password_hash, lang, email_verified_at, created_at, updated_at) VALUES ('s1', 'known@example.de', '', 'pbkdf2-sha256$100000$s$h', 'ckb', ?, ?, ?)").run(T0, T0, T0);
+    const existing = await t.call("/api/auth/register", { body: { email: "known@example.de", password: PW }, ip: "198.51.100.7" });
+    const fresh = await t.call("/api/auth/register", { body: { email: "new@example.de", password: PW }, ip: "198.51.100.8" });
+    expect([existing.status, existing.body]).toEqual([fresh.status, fresh.body]);
+    expect(existing.status).toBe(503);
+  });
+
+  it("stores only a well-formed progress document (a corrupt backup never reaches another device)", async () => {
+    const t = setup();
+    await t.registerAndVerify();
+    const dirty = { version: 1, questions: { q1: { attempts: 2, correctCount: 9, streak: 1, lastCorrect: true, lastAnsweredAt: 5 }, bad: "x" }, scored: {}, bookmarks: ["q1", 7], completedLessons: [], days: { nope: 3 }, examHistory: ["junk"], injected: "<script>" };
+    expect((await t.call("/api/me/progress", { body: { progress: dirty, baseVersion: 0 } })).status).toBe(200);
+    expect((await t.call("/api/me/progress")).body.progress).toEqual({ version: 1, questions: { q1: { attempts: 2, correctCount: 2, streak: 1, lastCorrect: true, lastAnsweredAt: 5 } }, scored: {}, bookmarks: ["q1"], completedLessons: [], days: {}, examHistory: [] });
+    expect((await t.call("/api/me/progress", { body: { progress: [1, 2], baseVersion: 1 } })).status).toBe(400);
+  });
+
   it("answers identically for unknown e-mails (login, forgot, resend)", async () => {
     const t = setup();
     await t.registerAndVerify();

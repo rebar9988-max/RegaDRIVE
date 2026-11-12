@@ -291,8 +291,8 @@ try {
     await ctx.close();
   });
 
-  await test("exam: timer, question overview, flag, answers survive a reload, unanswered warning, full review [desktop + iPhone]", async () => {
-    for (const [name, opts] of [["desktop", { viewport: { width: 1280, height: 900 } }], ["iphone", devices["iPhone 13"]]]) {
+  await test("exam: timer, question overview, flag, answers survive a reload, unanswered warning, full review [desktop + iPhone + iPad]", async () => {
+    for (const [name, opts] of [["desktop", { viewport: { width: 1280, height: 900 } }], ["iphone", devices["iPhone 13"]], ["ipad", devices["iPad (gen 7)"]]]) {
       const ctx = await browser.newContext({ ...opts, bypassCSP: true });
       const page = await ctx.newPage();
       await page.goto(`${BASE}/exam`);

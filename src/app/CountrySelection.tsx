@@ -4,7 +4,7 @@ export function CountrySelection() {
   const { setSettings } = useApp();
   return <main className="country-entry" id="main">
     <section className="country-panel" aria-labelledby="country-title">
-      <img src="/brand/regadrive-logo.svg" width={84} height={84} alt="RegaDRIVE" />
+      <img src="/brand/regadrive-logo.webp" width={84} height={84} alt="RegaDRIVE" />
       <h1 id="country-title">وڵاتی تاقیکردنەوەکەت هەڵبژێرە</h1>
       <p lang="en">Choose your driving licence country</p>
       <div className="country-options">

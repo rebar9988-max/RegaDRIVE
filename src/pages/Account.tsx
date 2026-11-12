@@ -6,7 +6,7 @@ import { Link } from "../app/router";
 import { CONTENT } from "../app/content";
 import { useBiText } from "../components/Bi";
 import { Icon, type IconName } from "../components/Icon";
-import { emptyProgress, mergeProgress, questionStatus, type ProgressState } from "../lib/progress";
+import { emptyProgress, mergeProgress, normalizeProgress, questionStatus } from "../lib/progress";
 import type { Bilingual } from "../content/types";
 
 /**
@@ -258,7 +258,8 @@ export function Account() {
     for (let attempt = 0; attempt < 2; attempt++) {
       const cur = await api("/api/me/progress");
       if (cur.status !== 200) { fail("progress", cur); return; }
-      const remoteCopy = (cur.data.progress as ProgressState | null) ?? emptyProgress();
+      // The account copy is rebuilt field by field before it is merged; a damaged copy counts as empty.
+      const remoteCopy = normalizeProgress(cur.data.progress) ?? emptyProgress();
       const r = await api("/api/me/progress", { progress: mergeProgress(progress, remoteCopy), baseVersion: cur.data.version });
       if (r.status === 200) {
         if (typeof r.data.updatedAt === "number") setRemote({ state: "saved", at: r.data.updatedAt });
@@ -270,7 +271,7 @@ export function Account() {
   const doRestore = () => run("restore", async () => {
     const cur = await api("/api/me/progress");
     if (cur.status !== 200) { fail("progress", cur); return; }
-    const remoteCopy = cur.data.progress as ProgressState | null;
+    const remoteCopy = normalizeProgress(cur.data.progress);
     if (!remoteCopy) { setRemote({ state: "none" }); ok("progress", S.nothingSaved); return; }
     update((local) => mergeProgress(local, remoteCopy));
     ok("progress", S.restored);
@@ -329,7 +330,7 @@ export function Account() {
     <button type="button" className="btn btn-secondary" onClick={() => go(v)} disabled={busy !== null} data-testid={testid}>{text(label)}</button>
   );
   const heading = (t: Bilingual) => <Tx t={t} as="h2" id="auth-heading" tabIndex={-1} className="acct-form-title" />;
-  const logo = <img className="account-logo acct-logo" src="/brand/regadrive-logo.svg" alt="RegaDRIVE" width={72} height={72} />;
+  const logo = <img className="account-logo acct-logo" src="/brand/regadrive-logo.webp" alt="RegaDRIVE" width={72} height={72} />;
 
   /** A full-width settings-style row: icon, label, optional value, chevron or action. */
   const row = (icon: IconName, label: Bilingual, value?: ReactNode, extra?: { danger?: boolean }) => (
