@@ -111,7 +111,8 @@ try {
         });
         assert.ok(clear, "footer stays above the bottom navigation");
         await page.evaluate(() => window.scrollTo(0, 0));
-        await page.addScriptTag({ content: AXE });
+        // The production CSP (script-src 'self') rightly blocks injected <script> tags; evaluate runs axe outside the page CSP.
+        await page.evaluate(AXE);
         const v = await page.evaluate(async () => (await window.axe.run(document, { runOnly: { type: "tag", values: ["wcag2a", "wcag2aa", "wcag21a", "wcag21aa", "wcag22aa"] } })).violations.map((x) => ({ id: x.id, n: x.nodes.length, target: x.nodes[0]?.target })));
         assert.deepEqual(v, [], `axe: ${JSON.stringify(v)}`);
         await page.screenshot({ path: `test-results/live-account-${size}-${lang}.png`, fullPage: true });
