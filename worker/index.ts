@@ -15,6 +15,7 @@ import { handleStudents, type StudentEnv } from "./students/handler";
 import { loadOverrides } from "./dr/db";
 import { applyOverrides } from "./dr/features";
 import { QUESTIONS } from "../src/content/questions";
+import { handlePage } from "./pages";
 import { contentFor } from "../src/content/access";
 
 export interface Env extends FlagEnv, AiEnv, AdminEnv, DrEnv, StudentEnv {
@@ -182,6 +183,7 @@ export default {
       try { return await handleApi(req, env); }
       catch { return json({ error: "INTERNAL" }, 500); }
     }
+    if (req.method === "GET" || req.method === "HEAD") return handlePage(req, env.ASSETS);
     return env.ASSETS.fetch(req);
   },
 };

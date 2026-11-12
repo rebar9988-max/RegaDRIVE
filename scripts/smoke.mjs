@@ -82,6 +82,14 @@ await check("critical routes and official assets", async () => {
   const logo = await get("/brand/regadrive-logo.webp");
   assert.equal(logo.status, 200); assert.match(logo.headers.get("content-type") ?? "", /image\/webp/);
 });
+await check("real 404s: unknown paths and missing files are not served as app pages", async () => {
+  for (const p of ["/wp-login.php", "/index.php", "/old-page-of-a-previous-site", "/learn/not-a-lesson", "/missing-file.png"]) {
+    const r = await get(p);
+    assert.equal(r.status, 404, p);
+    assert.equal(r.headers.get("x-robots-tag"), "noindex", `${p} noindex`);
+  }
+  for (const p of ["/", "/practice", "/practice?topic=priority", "/learn/l-priority", "/dr"]) assert.equal((await get(p)).status, 200, p);
+});
 await check("security headers", async () => {
   const r = await get("/");
   // Pages are delivered exactly as built, so no third-party script can be injected into them.
