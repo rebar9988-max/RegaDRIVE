@@ -535,8 +535,8 @@ try {
     const answeredText = (await page.textContent("[data-testid=account-answered] .acct-stat-value")).trim();
     assert.equal(Number(answeredText.split("/")[0]), before, "answered count comes from local progress");
     await page.locator("[data-testid=sync-status][data-state=none]").waitFor();
-    const small = await page.$$eval("[data-testid=account-signed-in] button, [data-testid=account-signed-in] a", (els) => els.filter((e) => e.offsetParent && (e.getBoundingClientRect().height < 44 || e.getBoundingClientRect().width < 44)).length);
-    assert.equal(small, 0, "account touch targets ≥ 44px");
+    const small = await page.$$eval("[data-testid=account-signed-in] button, [data-testid=account-signed-in] a, [data-testid=legal-nav] a", (els) => els.filter((e) => e.offsetParent && (e.getBoundingClientRect().height < 44 || e.getBoundingClientRect().width < 44)).length);
+    assert.equal(small, 0, "account and legal footer touch targets ≥ 44px");
     // Nothing is hidden behind the floating bottom navigation.
     await page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight));
     const clear = await page.evaluate(() => { const last = document.querySelector("[data-testid=settings-all]").getBoundingClientRect(); const bar = document.querySelector(".tabbar").getBoundingClientRect(); return last.bottom <= bar.top; });
