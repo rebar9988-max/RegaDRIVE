@@ -336,3 +336,9 @@ a { color: var(--primary); }
 .acct .btn-secondary[aria-busy='true']::after, .acct-row[aria-busy='true']::after { content: ""; flex: none; width: 16px; height: 16px; border: 2px solid rgb(8 127 79 / 30%); border-top-color: var(--rd-emerald); border-radius: 50%; animation: rd-spin .8s linear infinite; }
 @media (prefers-reduced-motion: reduce) { .acct .btn-secondary[aria-busy='true']::after, .acct-row[aria-busy='true']::after { animation: none; } }
 @media (max-width: 360px) { .acct-card { padding: 14px; } .acct-card:not(.acct-card-flush) > .acct-rows { margin-inline: -14px; } .acct-stat-value { font-size: 1.15rem; } }
+
+/* Legal footer links: same text, colour and spacing as before, but each link is a full 44 × 44 px touch target.
+   The vertical padding moves from the nav onto the links, so the footer keeps its height. */
+.legal-nav { justify-content: center; flex-wrap: wrap; gap: 0 8px; padding: 6px 0; }
+.legal-nav a { display: inline-flex; align-items: center; justify-content: center; min-height: 44px; min-width: 44px; padding: 0 4px; border-radius: 10px; }
+.legal-nav a:focus-visible { outline: 3px solid var(--rd-emerald); outline-offset: 0; }

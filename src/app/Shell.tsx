@@ -68,7 +68,7 @@ export function Shell({ children }: { children: ReactNode }) {
           {CONTENT_MODE === "preview" && <div className="notice small" role="note" data-testid="preview-banner" style={{ marginBottom: 16 }}><Bi t={T.previewBanner} /></div>}
           {saveError && <div className="notice small" role="alert" style={{ marginBottom: 16 }}><Bi t={T.saveError} /></div>}
           {children}
-          <nav className="row small muted" aria-label={label({ ckb: "بەستەرە یاساییەکان", de: "Rechtliche Informationen", kmr: "Agahiyên qanûnî", ar: "المعلومات القانونية" })} style={{ justifyContent: "center", flexWrap: "wrap", gap: 16, padding: "16px 0" }}>
+          <nav className="row small muted legal-nav" data-testid="legal-nav" aria-label={label({ ckb: "بەستەرە یاساییەکان", de: "Rechtliche Informationen", kmr: "Agahiyên qanûnî", ar: "المعلومات القانونية" })}>
             <Link href="/about#impressum">{label({ ckb: "زانیاری دابینکەر", de: "Impressum", kmr: "Agahiyên pêşkêşkar (Impressum)", ar: "بيانات الناشر (Impressum)" })}</Link>
             <Link href="/about#privacy">{label({ ckb: "تایبەتمەندی", de: "Datenschutz", kmr: "Nepenî", ar: "الخصوصية" })}</Link>
             <Link href="/about">{label(T.nav.about)}</Link>
