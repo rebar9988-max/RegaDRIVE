@@ -381,6 +381,42 @@ try {
     await ctx.close();
   });
 
+  await test("home: weak-topics empty state starts a real practice; country button is translated; broken screen recovers", async () => {
+    const ctx = await browser.newContext({ ...devices["iPhone 13"], bypassCSP: true });
+    const page = await ctx.newPage();
+    await page.goto(BASE);
+    await page.waitForSelector("[data-testid=home]");
+    assert.equal(await page.locator("[data-testid=coming-soon]").count(), 0, "nothing is labelled coming soon while content is available");
+    const empty = page.locator("[data-testid=weak-empty]");
+    assert.ok((await empty.textContent()).includes("Nach abgeschlossenen Übungen"));
+    const btn = page.locator("[data-testid=weak-start]");
+    assert.ok((await btn.boundingBox()).height >= 44, "touch target");
+    await axe(page, "home with empty states");
+    await btn.click();
+    await page.locator("[data-testid=question-card]").waitFor();
+    assert.equal(new URL(page.url()).pathname, "/practice");
+    // The country button speaks the learner's language.
+    assert.equal(await page.locator("button.country-switch").getAttribute("aria-label"), "گۆڕینی وڵات");
+    await page.goto(`${BASE}/settings`);
+    await page.click("[data-testid=lang-de]");
+    assert.equal(await page.locator("button.country-switch").getAttribute("aria-label"), "Land wechseln");
+    await page.click("[data-testid=lang-ckb]");
+    await ctx.close();
+    // A screen whose code cannot be loaded shows a recoverable message instead of a blank app.
+    const ctx2 = await browser.newContext({ viewport: { width: 1280, height: 900 }, serviceWorkers: "block" });
+    const page2 = await ctx2.newPage();
+    await page2.route(/\/assets\/Exam-.*\.js$/, (r) => r.abort());
+    await page2.goto(BASE);
+    await page2.waitForSelector("[data-testid=home]");
+    await page2.locator('.sidenav a[href="/exam"]').click();
+    await page2.locator("[data-testid=error-boundary]").waitFor();
+    assert.equal(await page2.locator(".topbar .brand").count(), 1, "the app shell stays usable");
+    await page2.locator('.sidenav a[href="/learn"]').click();
+    await page2.locator(".lesson-list").waitFor();
+    assert.equal(await page2.locator("[data-testid=error-boundary]").count(), 0, "navigating away clears the error");
+    await ctx2.close();
+  });
+
   await test("settings language switch never moves the mobile header [iPhone, as the live smoke test]", async () => {
     const ctx = await browser.newContext(devices["iPhone 13"]);
     const page = await ctx.newPage();
@@ -708,8 +744,14 @@ try {
     await page.goto(BASE);
     await page.locator(".language-switch button[lang=ckb]").click();
     const hrefs = await page.locator(".tabbar a").evaluateAll((els) => els.map((e) => e.getAttribute("href")));
-    assert.deepEqual(hrefs, ["/", "/learn", "/exam", "/progress", "/settings"]);
+    // Owner instruction 2026-11-12: the primary navigation is Learn, Practice, Exam; everything else is under "More".
+    assert.deepEqual(hrefs, ["/", "/learn", "/practice", "/exam", "/more"]);
+    await page.locator('.tabbar a[href="/more"]').click();
+    await page.locator('main .list a[href="/account"]').waitFor();
+    const more = await page.locator("main .list a").evaluateAll((els) => els.map((e) => e.getAttribute("href")));
+    for (const href of ["/account", "/progress", "/settings", "/signs", "/vocabulary", "/about"]) assert.ok(more.includes(href), `${href} stays reachable from More`);
     await page.locator('.tabbar a[href="/learn"]').click();
+    await page.locator(".lesson-list > li").first().waitFor(); // the screen's code is loaded on demand
     const all = await page.locator(".lesson-list > li").count();
     assert.ok(all > 0);
     await page.locator(".lesson-filters button").nth(3).click();
@@ -781,6 +823,12 @@ try {
     await page.locator("[data-testid=question-card]").waitFor();
     await page.locator("[data-testid=offline-pill]").waitFor();
     await page.screenshot({ path: `${OUT}/offline-practice.png` });
+    // Screens that were never opened online work too: their code is precached by the service worker.
+    for (const [path, sel] of [["/exam", "[data-testid=exam-start]"], ["/progress", "[data-testid=readiness]"], ["/signs", "main h1"]]) {
+      await page.goto(`${BASE}${path}`);
+      await page.locator(sel).first().waitFor();
+      assert.equal(await page.locator("[data-testid=error-boundary]").count(), 0, `${path} works offline`);
+    }
     await ctx.setOffline(false);
     await ctx.close();
   });

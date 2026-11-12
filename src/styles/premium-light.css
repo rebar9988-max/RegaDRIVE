@@ -337,6 +337,13 @@ a { color: var(--primary); }
 @media (prefers-reduced-motion: reduce) { .acct .btn-secondary[aria-busy='true']::after, .acct-row[aria-busy='true']::after { animation: none; } }
 @media (max-width: 360px) { .acct-card { padding: 14px; } .acct-card:not(.acct-card-flush) > .acct-rows { margin-inline: -14px; } .acct-stat-value { font-size: 1.15rem; } }
 
+/* Quiet availability label, empty states and route loading */
+.badge-soon, .badge-soon *, .tile .badge-soon * { color: var(--rd-emerald-deep); }
+.badge-soon { background: #fff; border: 1px solid var(--rd-border); justify-self: start; align-self: flex-start; width: auto; gap: 6px; }
+.tile .badge-soon { margin-top: 6px; }
+.empty-state { gap: 12px; }
+.empty-state .btn { align-self: stretch; }
+.route-loading { min-height: 60vh; }
 /* Legal footer links: same text, colour and spacing as before, but each link is a full 44 × 44 px touch target.
    The vertical padding moves from the nav onto the links, so the footer keeps its height. */
 .legal-nav { justify-content: center; flex-wrap: wrap; gap: 0 8px; padding: 6px 0; }

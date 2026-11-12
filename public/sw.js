@@ -3,8 +3,16 @@ const VERSION = "__BUILD_ID__";
 const CACHE = `regadrive-${VERSION}`;
 const SHELL = ["/", "/manifest.webmanifest", "/brand/regadrive-logo.svg", "/brand/regadrive-emblem.webp", "/favicon.png", "/icons/icon-192.png"];
 
+/* Hashed student chunks of this build (filled in at build time). Precached so every screen works offline after
+   the first visit, even one the learner has not opened yet. The owner /dr chunks are never precached. */
+const ASSETS = [/*__PRECACHE__*/];
+
 self.addEventListener("install", (event) => {
-  event.waitUntil(caches.open(CACHE).then((c) => c.addAll(SHELL)).then(() => self.skipWaiting()));
+  event.waitUntil(
+    caches.open(CACHE)
+      .then((c) => c.addAll(SHELL).then(() => Promise.allSettled(ASSETS.map((a) => c.add(a)))))
+      .then(() => self.skipWaiting()),
+  );
 });
 
 self.addEventListener("activate", (event) => {

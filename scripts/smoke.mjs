@@ -118,6 +118,16 @@ try {
       assert.equal(await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth), 0, "no horizontal overflow");
       assert.equal(await page.locator("[data-testid=preview-banner]").count(), 0, "no preview banner in production");
       await page.screenshot({ path: `test-results/smoke-home-${name}.png`, fullPage: true });
+      // Honest availability: areas without approved content carry a quiet "coming soon" label and no practice button
+      // is offered when there is nothing to practise; with content, no label is shown.
+      const visible = (await (await get("/build-info.json", { cache: "no-store" })).json()).visible ?? {};
+      const soon = await page.locator("[data-testid=coming-soon]").count();
+      if ((visible.questions ?? 0) === 0) {
+        assert.ok(soon >= 1, "unavailable areas are labelled coming soon");
+        assert.equal(await page.locator("[data-testid=weak-start]").count(), 0, "no practice button without approved questions");
+      } else assert.equal(await page.locator("[data-testid=weak-start], [data-testid=weak-empty], .dashboard-aside .chip").count() >= 1, true);
+      const tabs = await page.locator(".tabbar a").evaluateAll((els) => els.map((e) => e.getAttribute("href")));
+      if (tabs.length) assert.deepEqual(tabs, ["/", "/learn", "/practice", "/exam", "/more"], "primary navigation");
       await page.goto(`${base}/practice`);
       await page.waitForSelector("main#main > div:not([aria-busy])");
       const cards = await page.locator("[data-testid=question-card]").count();
