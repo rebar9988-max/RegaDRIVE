@@ -490,8 +490,27 @@ try {
     assert.equal(await page.evaluate(() => document.cookie.includes("rd_session")), false, "token invisible to JavaScript");
     await axe(page, "/account signed in");
     await page.screenshot({ path: `${OUT}/account-signed-in-iphone.png`, fullPage: true });
+    // Compact layout: account, learning progress and settings are separate; every label appears once.
+    assert.equal(await page.locator("[data-testid=account-signed-in] .acct-section").count(), 3, "three separate sections");
+    assert.equal(await page.locator("[data-testid=account-signed-in] .bi .de").count(), 0, "no duplicated German second line");
+    assert.equal(await page.getAttribute("[data-testid=account-verified]", "data-verified"), "true", "verified e-mail shown");
+    assert.match(await page.textContent("[data-testid=account-licence]"), /B/, "selected licence class shown");
+    // Real figures only: the counts equal the learner's stored progress.
+    const answeredText = (await page.textContent("[data-testid=account-answered] .acct-stat-value")).trim();
+    assert.equal(Number(answeredText.split("/")[0]), before, "answered count comes from local progress");
+    await page.locator("[data-testid=sync-status][data-state=none]").waitFor();
+    const small = await page.$$eval("[data-testid=account-signed-in] button, [data-testid=account-signed-in] a", (els) => els.filter((e) => e.offsetParent && (e.getBoundingClientRect().height < 44 || e.getBoundingClientRect().width < 44)).length);
+    assert.equal(small, 0, "account touch targets ≥ 44px");
+    // Nothing is hidden behind the floating bottom navigation.
+    await page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight));
+    const clear = await page.evaluate(() => { const last = document.querySelector("[data-testid=settings-all]").getBoundingClientRect(); const bar = document.querySelector(".tabbar").getBoundingClientRect(); return last.bottom <= bar.top; });
+    assert.ok(clear, "last account row stays above the bottom navigation");
     await page.click("[data-testid=backup]");
     await page.locator("[data-testid=auth-info]").waitFor();
+    await page.locator("[data-testid=sync-status][data-state=saved]").waitFor();
+    await page.click("[data-testid=restore]");
+    await page.locator("[data-testid=auth-info]").waitFor();
+    await page.screenshot({ path: `${OUT}/account-synced-iphone.png`, fullPage: true });
 
     await page.click("[data-testid=logout]");
     await page.locator("[data-testid=signin-form]").waitFor();
@@ -537,7 +556,12 @@ try {
     await page.locator("[data-testid=account-signed-in]").waitFor();
     assert.equal(await page.getAttribute("html", "dir"), "rtl");
     assert.match(await page.textContent("[data-testid=logout]"), /Abmelden/);
+    assert.equal(await page.getAttribute("#auth-heading", "dir"), "ltr", "German labels read left-to-right");
     await axe(page, "/account signed in (de)");
+    await page.screenshot({ path: `${OUT}/account-signed-in-de-iphone.png`, fullPage: true });
+    await page.click("[data-testid=delete-start]");
+    await page.click("[data-testid=delete-cancel]");
+    assert.equal(await page.locator("[data-testid=delete-form]").count(), 0, "deletion can be cancelled");
     await page.click("[data-testid=delete-start]");
     await page.fill("[data-testid=delete-form] [data-testid=auth-password]", "Neues-E2E-Passwort");
     await page.click("[data-testid=delete-confirm]");
