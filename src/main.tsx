@@ -2,6 +2,7 @@ import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import { App } from "./App";
 import { AppProvider } from "./app/state";
+import { keepCurrent } from "./lib/swUpdate";
 import "./styles/app.css";
 import "./styles/premium-light.css";
 
@@ -16,6 +17,6 @@ if (import.meta.env.VITE_CONTENT_MODE === "preview") void import("./testing/moun
 
 if ("serviceWorker" in navigator && import.meta.env.PROD) {
   window.addEventListener("load", () => {
-    navigator.serviceWorker.register("/sw.js").catch(() => { /* offline support is optional */ });
+    navigator.serviceWorker.register("/sw.js").then((reg) => keepCurrent(reg)).catch(() => { /* offline support is optional */ });
   });
 }

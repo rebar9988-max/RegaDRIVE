@@ -7,8 +7,11 @@ Each step below needs an explicit decision by the owner. None of them is done by
 2. Create a Cloudflare API token limited to *Workers Scripts: Edit* on that account (not a Rega24/R&L token). Store it as the GitHub secret `CLOUDFLARE_API_TOKEN`, and the account ID as `CLOUDFLARE_ACCOUNT_ID`.
 3. Add to `wrangler.jsonc`: `"routes": [{ "pattern": "www.regaplatform.com", "custom_domain": true }]`. (Done in the repository. Cloudflare only attaches the domain if the zone `regaplatform.com` is in the token's account.)
 4. Content approval is required before the first deploy. The production build publishes only content that passed human review (see `docs/CONTENT_REVIEW.md`), and preflight blocks deployment with fewer than 30 approved questions.
-5. Run *Actions → Deploy to Cloudflare (manual)* on `main` with the confirmation `DEPLOY-REGADRIVE`. The workflow:
-   - runs the full CI on the exact commit, then `preflight --stage=deploy` with every gate fatal;
+5. *Actions → Deploy to Cloudflare* runs by itself after CI succeeds on a push to `main` (owner rule 2026-11-12: only
+   the newest successful version is published), and only if that commit is still the newest `main`; it can also be run
+   by hand on `main` with the confirmation `DEPLOY-REGADRIVE`. Open apps pick up the new release when shown again (or
+   hourly) and reload only while hidden (`src/lib/swUpdate.ts`). The workflow:
+   - requires green CI on the exact commit (manual runs repeat it), then `preflight --stage=deploy` with every gate fatal;
    - runs `scripts/domain-check.mjs`, which refuses to overwrite a site that is not RegaDRIVE;
    - records the last known-good version and deploys;
    - runs `scripts/smoke.mjs` against the live domain;
