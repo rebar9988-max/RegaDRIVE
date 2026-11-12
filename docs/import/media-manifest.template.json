@@ -12,6 +12,18 @@
       "approvedOn": "[[YYYY-MM-DD]]"
     }
   ],
+  "scenes": [
+    {
+      "id": "[[scene id, e.g. scene-junction-urban-01]]",
+      "name": "[[e.g. Innerörtliche Kreuzung, vier Arme]]",
+      "kind": "junction",
+      "tool": "[[e.g. Blender 4.2]]",
+      "sourceFile": "[[path of the .blend file in the RegaDRIVE media archive]]",
+      "author": "[[person or studio]]",
+      "thirdPartyAssets": [],
+      "version": 1
+    }
+  ],
   "media": [
     {
       "file": "[[file name as in the question file, e.g. sc-priority-001.webp]]",
@@ -25,6 +37,8 @@
       "thirdPartyAssets": ["[[asset — licence — source; empty list when everything is self-made]]"],
       "aiGenerated": false,
       "scenarioId": "[[scenario id]]",
+      "scenes": ["[[scene ids this picture was built from]]"],
+      "variants": { "thumbnail": "[[file name of the small preview; for a video also poster, and mp4 / webm of the other container]]" },
       "createdOn": "[[YYYY-MM-DD]]",
       "reviews": [
         { "reviewer": "[[Name]]", "role": "driving_instructor", "date": "[[YYYY-MM-DD]]", "sha256": "[[sha256 of the reviewed file]]", "outcome": "pass", "evidenceRef": "[[review note, ticket or signed sheet]]" }

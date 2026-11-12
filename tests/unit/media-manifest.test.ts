@@ -83,6 +83,35 @@ describe("media manifest", () => {
   });
 });
 
+describe("reusable 3D scenes and delivery variants", () => {
+  const scene = (over = {}) => ({ id: "scene-junction-01", name: "Kreuzung innerorts", kind: "junction" as const, tool: "Blender 4.2", sourceFile: "archive/junction-01.blend", author: "RegaDRIVE Studio", thirdPartyAssets: [], version: 1, ...over });
+  const SHB = "b".repeat(64);
+  const review = (sha: string) => [{ reviewer: "Test Instructor", role: "driving_instructor" as const, date: "2026-11-03", sha256: sha, outcome: "pass" as const, evidenceRef: "r" }];
+  const poster = record({ file: "clip-poster.webp", sha256: SHB, reviews: review(SHB) });
+  const video = (over: Partial<MediaRecord> = {}) => record({ file: "clip.mp4", kind: "video", variants: { poster: "clip-poster.webp" }, ...over });
+
+  it("a picture built from library scenes is approved when the scenes are complete", () => {
+    const r = run({ scenes: [scene()], media: [record({ scenes: ["scene-junction-01"] })] });
+    expect(r.issues).toEqual([]);
+    expect(r.summary).toMatchObject({ scenes: 1, images: 1, videos: 0 });
+  });
+  it("rejects unknown, duplicate and incomplete scenes", () => {
+    expect(kinds({ scenes: [], media: [record({ scenes: ["scene-x"] })] })).toEqual(["unknown_scene"]);
+    expect(kinds({ scenes: [scene(), scene()] })).toEqual(["duplicate_scene"]);
+    expect(kinds({ scenes: [scene({ sourceFile: "" })], media: [record({ scenes: ["scene-junction-01"] })] })).toEqual(["scene_incomplete", "unknown_scene"]);
+    expect(kinds({ scenes: [scene({ kind: "spaceship" })] })).toEqual(["scene_incomplete"]);
+    expect(kinds({ scenes: [scene({ thirdPartyAssets: ["tree model"] })] })).toEqual(["scene_incomplete"]);
+  });
+  it("a video needs a poster image; variants must exist and have the right kind", () => {
+    expect(run({ media: [poster, video()] }).approvedFiles).toEqual(["clip-poster.webp", "clip.mp4"]);
+    expect(kinds({ media: [video({ variants: {} })] })).toEqual(["video_without_poster"]);
+    expect(kinds({ media: [video({ variants: { poster: "missing.webp" } })] })).toEqual(["unknown_variant"]);
+    expect(kinds({ media: [poster, video({ variants: { poster: "clip-poster.webp", webm: "clip-poster.webp" } })] })).toEqual(["variant_kind_mismatch"]);
+    expect(kinds({ media: [record({ variants: { thumbnail: "sc-1.webp" } })] })).toEqual(["unknown_variant"]); // a file is not its own variant
+    expect(run({ media: [poster, video()] }).summary).toMatchObject({ images: 1, videos: 1 });
+  });
+});
+
 describe("media approval in the catalogue report", () => {
   const q: Question = {
     id: "q-1", topicId: "priority", categoryType: "Grundstoff", points: 5, questionCode: null, licenseClasses: ["B"], sourceType: "original",

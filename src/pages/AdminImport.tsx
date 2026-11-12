@@ -188,7 +188,7 @@ export function AdminImport() {
         {manifestError && <p className="feedback bad small" role="alert">{manifestError}</p>}
         {manifestResult && (
           <div className="stack" dir="ltr" data-testid="manifest-report">
-            <p className="small"><strong>Media manifest</strong> — files: {manifestResult.summary.media}; approved: {manifestResult.summary.approved}; original: {manifestResult.summary.original}; licensed: {manifestResult.summary.licensed}; AI-generated: {manifestResult.summary.aiGenerated}; scenarios: {manifestResult.summary.scenarios}.</p>
+            <p className="small"><strong>Media manifest</strong> — files: {manifestResult.summary.media}; approved: {manifestResult.summary.approved}; original: {manifestResult.summary.original}; licensed: {manifestResult.summary.licensed}; AI-generated: {manifestResult.summary.aiGenerated}; scenarios: {manifestResult.summary.scenarios}; reusable scenes: {manifestResult.summary.scenes}; images: {manifestResult.summary.images}; videos: {manifestResult.summary.videos}.</p>
             {manifestResult.issues.length > 0 && <ul className="list small">{manifestResult.issues.map((i, n) => <li key={n}>{i.subject}: {i.kind}{i.detail ? ` — ${i.detail}` : ""}</li>)}</ul>}
           </div>
         )}
