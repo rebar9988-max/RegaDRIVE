@@ -64,6 +64,7 @@ const holdsWorkbench = (f) => /\.js$/.test(f) && /dr-content/.test(readFileSync(
 gate(info?.adminUi === false && !assets.some((f) => f.startsWith("AdminImport")), "public /admin/import route is not built into production");
 gate(!assets.filter((f) => /^index-/.test(f)).some(holdsWorkbench), "owner content workbench is not in the student bundle");
 gate(assets.filter(holdsWorkbench).every((f) => /^DrContent-/.test(f)), "owner content workbench exists only in the /dr workbench chunk");
+gate(!assets.some((f) => /^mountMedia-/.test(f) || (/\.js$/.test(f) && readFileSync(`dist/assets/${f}`, "utf8").includes("__rdMountMedia"))), "browser-test hook is not in the production bundle");
 gate(info?.rulesVersion === KLASSE_B, `build uses current exam rules ${KLASSE_B}`);
 // Owner decision (2026-11-06): the public app may go live while content is still in review. The production
 // build shows approved items only (currently none) with "under review" states; this is reported, not blocking.

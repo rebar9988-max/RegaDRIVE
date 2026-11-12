@@ -381,6 +381,70 @@ try {
     await ctx.close();
   });
 
+  await test("media viewer: image zoom and full screen, video poster, five plays in the exam, broken file fallback (synthetic test pattern only)", async () => {
+    const ctx = await browser.newContext({ ...devices["iPhone 13"], bypassCSP: true, serviceWorkers: "block" });
+    const page = await ctx.newPage();
+    const png = readFileSync("tests/fixtures/media/sample-test-pattern.png");
+    const webm = readFileSync("tests/fixtures/media/sample-test-pattern.webm");
+    await page.route("**/media/test-image.png", (r) => r.fulfill({ status: 200, contentType: "image/png", body: png }));
+    await page.route("**/media/test-video.webm", (r) => r.fulfill({ status: 200, contentType: "video/webm", body: webm }));
+    await page.route("**/media/test-poster.png", (r) => r.fulfill({ status: 200, contentType: "image/png", body: png }));
+    await page.route("**/media/missing.png", (r) => r.fulfill({ status: 404, body: "" }));
+    await page.goto(`${BASE}/practice?topic=priority`);
+    await page.locator("[data-testid=question-card]").waitFor();
+    // Render the viewer directly through the app's own component via the test hook.
+    const ok = await page.evaluate(() => typeof window.__rdMountMedia === "function");
+    assert.ok(ok, "test hook available in the preview build");
+    await page.evaluate(() => window.__rdMountMedia([
+      { kind: "image", key: "media/test-image.png", alt: { ckb: "وێنەی تاقیکردنەوە", de: "Testbild" } },
+      { kind: "video", key: "media/test-video.webm", posterKey: "media/test-poster.png", alt: { ckb: "ڤیدیۆی تاقیکردنەوە", de: "Testvideo" } },
+      { kind: "image", key: "media/missing.png", alt: { ckb: "نییە", de: "Fehlt" } },
+    ], true));
+    const host = page.locator("[data-testid=media-test-host]");
+    await host.waitFor();
+    // Image: loads, zooms in steps, zoom out returns, buttons are touch targets with a label.
+    const img = host.locator("[data-testid=media-image] img").first();
+    await page.waitForFunction(() => { const i = document.querySelector("[data-testid=media-test-host] [data-testid=media-image] img"); return i && i.complete && i.naturalWidth > 0; });
+    const zin = host.locator("[data-testid=media-image] [data-testid=zoom-in]").first();
+    assert.ok(await host.locator("[data-testid=media-image] [data-testid=zoom-out]").first().isDisabled(), "cannot zoom out below 100 %");
+    await zin.click(); await zin.click();
+    assert.equal(await img.getAttribute("data-zoom"), "2");
+    await zin.click(); assert.ok(await zin.isDisabled(), "maximum zoom 300 %");
+    for (const b of await host.locator(".q-media-tools button").all()) {
+      const box = await b.boundingBox();
+      assert.ok(box.width >= 44 && box.height >= 44, "media buttons are touch targets");
+      assert.ok((await b.getAttribute("aria-label")).length > 2, "media buttons have a label");
+    }
+    // Full screen on the image frame.
+    await host.locator("[data-testid=media-image] [data-testid=fullscreen]").first().click();
+    await page.waitForFunction(() => document.fullscreenElement?.matches("[data-testid=media-image]"));
+    await page.evaluate(() => document.exitFullscreen());
+    // Video: poster, no autoplay, play limit counted and enforced.
+    const v = host.locator("[data-testid=media-video] video");
+    assert.equal(await v.getAttribute("preload"), "none");
+    assert.ok((await v.getAttribute("poster")).endsWith("/media/test-poster.png"));
+    assert.equal(await v.evaluate((e) => e.paused), true, "never autoplays");
+    assert.match(await host.locator("[data-testid=plays-left]").textContent(), /5 \/ 5/);
+    for (let i = 0; i < 5; i++) {
+      await v.evaluate((e) => { e.muted = true; e.currentTime = 0; return e.play(); });
+      await page.waitForFunction((n) => document.querySelector("[data-testid=media-test-host] [data-testid=plays-left]")?.textContent?.includes(`${n} / 5`) || (n === 0), 4 - i);
+      await v.evaluate((e) => e.pause());
+    }
+    // The fifth play was allowed to run (it was not interrupted); now starting a sixth is stopped.
+    await page.waitForFunction(() => !document.querySelector("[data-testid=media-test-host] video")?.hasAttribute("controls"));
+    assert.ok((await host.locator("[data-testid=plays-left]").textContent()).length > 10, "used-up message shown");
+    await v.evaluate((e) => e.play().catch(() => undefined));
+    await page.waitForTimeout(300);
+    assert.equal(await v.evaluate((e) => e.paused), true, "a sixth play is stopped");
+    // A missing file shows a readable fallback with the alt text kept for screen readers.
+    await host.locator("[data-testid=media-failed]").waitFor();
+    assert.equal(await host.locator("[data-testid=media-failed]").getAttribute("aria-label"), "نییە");
+    await axe(page, "media viewer");
+    assert.equal(await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth), 0);
+    await page.screenshot({ path: `${OUT}/media-viewer-iphone.png`, fullPage: true });
+    await ctx.close();
+  });
+
   await test("home: weak-topics empty state starts a real practice; country button is translated; broken screen recovers", async () => {
     const ctx = await browser.newContext({ ...devices["iPhone 13"], bypassCSP: true });
     const page = await ctx.newPage();

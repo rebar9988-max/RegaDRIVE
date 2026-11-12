@@ -9,7 +9,7 @@ const ICONS = { home: "House", book: "BookOpen", check: "CheckCircle", exam: "Tr
   bookmark: "BookmarkSimple", pin: "MapPin", user: "UserCircle", lock: "Lock", gear: "Gear", info: "Info", flame: "Flame", target: "Target", star: "Star", arrow: "ArrowRight",
   sparkle: "Sparkle", bell: "Bell", calendar: "CalendarCheck", car: "Car", play: "Play", wifi: "WifiHigh", shield: "ShieldCheck", devices: "Devices", close: "X",
   download: "DownloadSimple", signout: "SignOut", trash: "Trash", cloudUp: "CloudArrowUp", cloudDown: "CloudArrowDown", globe: "Globe", verified: "SealCheck", alert: "WarningCircle",
-  zoomIn: "MagnifyingGlassPlus", zoomOut: "MagnifyingGlassMinus", fullscreen: "CornersOut", replay: "ArrowCounterClockwise" };
+  zoomIn: "MagnifyingGlassPlus", zoomOut: "MagnifyingGlassMinus", fullscreen: "CornersOut" };
 const extra = process.argv.slice(2);
 for (const pair of extra) { const [k, v] = pair.split("="); ICONS[k] = v; }
 

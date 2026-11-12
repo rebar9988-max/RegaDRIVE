@@ -12,7 +12,7 @@ const ids = () => ["q1", "q2", "q3"];
 describe("exam session", () => {
   it("has no time limit by default, as the official exam, and only counts the time used", () => {
     const s = newExamSession(7, V, null, 1_000);
-    expect(s).toMatchObject({ seed: 7, pos: 0, answers: {}, flagged: [], durationMs: null });
+    expect(s).toMatchObject({ seed: 7, pos: 0, answers: {}, flagged: [], plays: {}, durationMs: null });
     expect(remainingMs(s, 1_000 + 10 * 3_600_000)).toBeNull();
     expect(elapsedMs(s, 62_500)).toBe(61_500);
     expect(formatClock(elapsedMs(s, 62_500), "down")).toBe("01:01");

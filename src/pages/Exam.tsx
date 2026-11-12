@@ -11,6 +11,7 @@ import { EXAM_PRACTICE_LIMIT_MINUTES, KLASSE_B_RULES_2026, scoreExam, type ExamR
 import { isQuestionAnswerCorrect } from "../lib/answers";
 import { recordAnswer } from "../lib/progress";
 import { kv } from "../lib/storage";
+import { recordPlay } from "../lib/mediaPlays";
 import { EXAM_SESSION_KEY, elapsedMs, formatClock, isAnswered, newExamSession, remainingMs, restoreExamSession, type ExamSession } from "../lib/examSession";
 
 const rules = KLASSE_B_RULES_2026;
@@ -193,7 +194,8 @@ export function Exam() {
         </div>
       </header>
       <QuestionCard key={q.id} question={q} mode="exam" sessionId={`exam-${session.seed}`} index={session.pos} total={questions.length}
-        selected={session.answers[q.id] ?? []} onSelect={(ids) => patch({ answers: { ...session.answers, [q.id]: ids } })} />
+        selected={session.answers[q.id] ?? []} onSelect={(ids) => patch({ answers: { ...session.answers, [q.id]: ids } })}
+        plays={{ counts: session.plays ?? {}, onPlay: (key) => setSession((s) => (s ? { ...s, plays: recordPlay(s.plays ?? {}, key) } : s)) }} />
       <div className="q-actions">
         <button type="button" className="btn btn-secondary" disabled={session.pos === 0} onClick={() => go(session.pos - 1)} data-testid="exam-prev"><Bi t={T.previous} /></button>
         <button type="button" className="btn btn-secondary" aria-pressed={isFlagged} data-testid="exam-flag"
