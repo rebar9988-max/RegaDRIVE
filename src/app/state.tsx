@@ -1,6 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { kv } from "../lib/storage";
-import { emptyProgress, type ProgressState } from "../lib/progress";
+import { emptyProgress, normalizeProgress, type ProgressState } from "../lib/progress";
 import { langDir } from "./i18n";
 import { defaultSettings, normalizeSettings, type Settings } from "./settings";
 
@@ -27,10 +27,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const loaded = useRef(false);
 
   useEffect(() => {
-    Promise.all([kv.get<unknown>("settings"), kv.get<ProgressState>("progress")])
+    Promise.all([kv.get<unknown>("settings"), kv.get<unknown>("progress")])
       .then(([s, p]) => {
         if (s) setSettingsState(normalizeSettings(s));
-        if (p && p.version === 1) setProgress({ ...emptyProgress(), ...p });
+        // Stored data is rebuilt field by field, so a damaged or outdated record can never break the app.
+        const clean = normalizeProgress(p);
+        if (clean) setProgress(clean);
       })
       .catch(() => setSaveError(true))
       .finally(() => { loaded.current = true; setReady(true); });

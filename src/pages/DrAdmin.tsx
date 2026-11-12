@@ -128,7 +128,7 @@ function Login({ to, onDone }: { to: string; onDone: () => void }) {
   return (
     <main className="dr-login">
       <div className="card">
-        <img src="/brand/regadrive-logo.svg" width={96} height={96} alt="RegaDRIVE" />
+        <img src="/brand/regadrive-logo.webp" width={96} height={96} alt="RegaDRIVE" />
         <h1 style={{ fontSize: "1.3rem" }}>SUPER ADMIN · /dr</h1>
         <p style={{ color: "var(--muted)" }}>کۆدی پارێزراو تەنها دەنێردرێت بۆ <bdi dir="ltr">{to || "Gmail ـی خاوەن"}</bdi>. ٥ خولەک کار دەکات.</p>
         <CodeForm purpose="login" onDone={onDone} />
@@ -254,7 +254,7 @@ export function DrAdmin() {
   };
   const logout = async () => { await api("/api/dr/auth/logout", {}); setData(null); setAuth((a) => ({ ...a, ok: false })); void checkSession(); };
 
-  if (!auth.checked) return <div className="dr dr-login" aria-busy="true"><img src="/brand/regadrive-logo.svg" width={96} height={96} alt="RegaDRIVE" /></div>;
+  if (!auth.checked) return <div className="dr dr-login" aria-busy="true"><img src="/brand/regadrive-logo.webp" width={96} height={96} alt="RegaDRIVE" /></div>;
   if (auth.error) return <div className="dr dr-login"><div className="card"><div className="dr-msg err" role="alert">{auth.error}</div></div></div>;
   if (!auth.ok) return <div className="dr" dir="rtl" lang="ckb"><Login to={auth.to} onDone={() => void checkSession()} /></div>;
 
@@ -366,7 +366,7 @@ export function DrAdmin() {
         <div className="dr-grid"><Tile value={db.codesSent24h} label="نێردراو (24h)" /><Tile value={db.mailFailures24h} label="شکستی ناردن (24h)" /></div>
       </Card>);
       case "design": return (<Card title="کۆنترۆڵی دیزاین" en="Design Control">
-        <img src="/brand/regadrive-logo.svg" width={96} height={96} alt="RegaDRIVE logo" />
+        <img src="/brand/regadrive-logo.webp" width={96} height={96} alt="RegaDRIVE logo" />
         <div className="dr-swatches" aria-label="Palette">{["--primary", "--primary-bright", "--success", "--warning", "--danger", "--ink", "--canvas"].map((v) => <span key={v} className="dr-swatch" title={v} style={{ background: `var(${v})` }} />)}</div>
         <Note>لۆگۆ و ڕەنگەکان پارێزراون. گۆڕینیان تەنها بە PR و پشتڕاستکردنەوەی تۆ دەکرێت، نەک لە پانێڵەوە.</Note>
       </Card>);
@@ -398,7 +398,7 @@ export function DrAdmin() {
   return (
     <div className="dr" dir="rtl" lang="ckb">
       <header className="dr-top">
-        <img src="/brand/regadrive-logo.svg" width={40} height={40} alt="" />
+        <img src="/brand/regadrive-logo.webp" width={40} height={40} alt="" />
         <div className="dr-top-title"><strong>Rega<span>DRIVE</span></strong><small>SUPER ADMIN · <bdi dir="ltr">{data?.owner ?? ""}</bdi></small></div>
         <button type="button" className="btn btn-secondary btn-sm" onClick={logout}>دەرچوون</button>
       </header>

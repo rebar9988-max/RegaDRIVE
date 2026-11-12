@@ -60,5 +60,5 @@ export function App() {
   if (ready && settings.country === null) return <CountrySelection />;
   if (ready && settings.country === "IT") return <ItalyPending />;
   // Wait for stored settings/progress so the first paint has the right language and no layout jump.
-  return <Shell>{ready ? <ErrorBoundary resetKey={path}><Suspense fallback={<div aria-busy="true" className="route-loading" />}><div key={path}>{route(path)}</div></Suspense></ErrorBoundary> : <div className="splash" aria-busy="true"><img className="splash-logo" src="/brand/regadrive-logo.svg" width={112} height={112} alt="RegaDRIVE" /></div>}</Shell>;
+  return <Shell>{ready ? <ErrorBoundary resetKey={path}><Suspense fallback={<div aria-busy="true" className="route-loading" />}><div key={path}>{route(path)}</div></Suspense></ErrorBoundary> : <div className="splash" aria-busy="true"><img className="splash-logo" src="/brand/regadrive-logo.webp" width={112} height={112} alt="RegaDRIVE" /></div>}</Shell>;
 }
