@@ -84,6 +84,8 @@ await check("critical routes and official assets", async () => {
 });
 await check("security headers", async () => {
   const r = await get("/");
+  // Pages are delivered exactly as built, so no third-party script can be injected into them.
+  assert.match(r.headers.get("cache-control") ?? "", /no-transform/, "HTML is marked no-transform");
   assert.match(r.headers.get("content-security-policy") ?? "", /default-src 'self'/);
   assert.equal(r.headers.get("x-content-type-options"), "nosniff");
 });

@@ -5,6 +5,7 @@ import { signById } from "../content/signs";
 import { topicById } from "../content/topics";
 import { isQuestionAnswerCorrect } from "../lib/answers";
 import { QuestionMedia } from "./QuestionMedia";
+import type { PlayCounts } from "../lib/mediaPlays";
 import { recordAnswer, toggleBookmark } from "../lib/progress";
 import { useApp } from "../app/state";
 import { langDir } from "../app/i18n";
@@ -27,9 +28,11 @@ interface Props {
   /** Practice: the answer already checked in this session, restored when the learner comes back to the question. */
   checkedAnswer?: string[];
   onChecked?: (ids: string[]) => void;
+  /** Exam: video play counts (five plays per clip), stored by the exam so a reload cannot reset them. */
+  plays?: { counts: PlayCounts; onPlay: (key: string) => void };
 }
 
-export function QuestionCard({ question: q, mode, sessionId, index, total, selected: controlled, onSelect, onNext, checkedAnswer, onChecked }: Props) {
+export function QuestionCard({ question: q, mode, sessionId, index, total, selected: controlled, onSelect, onNext, checkedAnswer, onChecked, plays }: Props) {
   const { progress, update } = useApp();
   const label = useBiText();
   const [local, setLocal] = useState<string[]>(checkedAnswer ?? []);
@@ -82,7 +85,7 @@ export function QuestionCard({ question: q, mode, sessionId, index, total, selec
       <fieldset className="options" aria-describedby={`${legendId}-hint`}>
         <legend id={legendId} className="q-prompt"><Bi t={q.prompt} /></legend>
         {sign && <SignIcon sign={sign} className="q-sign" label={`${label(sign.name)} (${sign.stvoNumber})`} />}
-        {q.media?.map((m) => <QuestionMedia key={m.key} media={m} />)}
+        {q.media?.map((m) => <QuestionMedia key={m.key} media={m} plays={mode === "exam" ? plays : undefined} />)}
         <p id={`${legendId}-hint`} className="muted small q-hint"><Bi t={isNumber ? T.numberHint : T.multipleHint} inline /></p>
         {isNumber && (
           <label className={`option${reveal ? (correct ? " is-correct" : " is-wrong") : ""}`} style={{ gridTemplateColumns: "1fr" }}>

@@ -2,6 +2,8 @@
  * In-progress exam simulation. Kept in IndexedDB so a reload, a closed tab or a lost connection never
  * loses the learner's answers. Pure helpers only; the page owns reading and writing.
  */
+import { readPlayCounts } from "./mediaPlays";
+
 export const EXAM_SESSION_KEY = "exam-session";
 
 export interface ExamSession {
@@ -17,10 +19,12 @@ export interface ExamSession {
   answers: Record<string, string[]>;
   /** Questions the learner marked to look at again before handing in. */
   flagged: string[];
+  /** Video plays per media key (at most five each). Optional: sessions saved before this field existed have none. */
+  plays?: Record<string, number>;
 }
 
 export function newExamSession(seed: number, rulesVersion: string, limitMinutes: number | null, now: number): ExamSession {
-  return { version: 1, seed, rulesVersion, startedAt: now, durationMs: limitMinutes === null ? null : limitMinutes * 60_000, pos: 0, answers: {}, flagged: [] };
+  return { version: 1, seed, rulesVersion, startedAt: now, durationMs: limitMinutes === null ? null : limitMinutes * 60_000, pos: 0, answers: {}, flagged: [], plays: {} };
 }
 
 /** Time left of the practice limit; null when the simulation has no limit. */
@@ -52,7 +56,7 @@ export function restoreExamSession(raw: unknown, rulesVersion: string, questionI
   const answers: Record<string, string[]> = {};
   for (const [id, a] of Object.entries(s.answers)) if (known.has(id) && isStringArray(a)) answers[id] = [...a];
   const pos = Number.isInteger(s.pos) ? Math.min(Math.max(0, s.pos!), ids.length - 1) : 0;
-  return { version: 1, seed: s.seed!, rulesVersion, startedAt: s.startedAt!, durationMs: s.durationMs!, pos, answers, flagged: s.flagged.filter((id) => known.has(id)) };
+  return { version: 1, seed: s.seed!, rulesVersion, startedAt: s.startedAt!, durationMs: s.durationMs!, pos, answers, flagged: s.flagged.filter((id) => known.has(id)), plays: readPlayCounts(s.plays) };
 }
 
 export const isAnswered = (answers: Record<string, string[]>, id: string) => (answers[id]?.length ?? 0) > 0;

@@ -20,13 +20,13 @@
     "node": ">=22"
   },
   "dependencies": {
-    "@phosphor-icons/react": "^2.1.10",
     "react": "^19.3.1",
     "react-dom": "^19.3.1"
   },
   "devDependencies": {
     "@cloudflare/workers-types": "^5.20261106.1",
     "@eslint/js": "^10.0.1",
+    "@phosphor-icons/react": "^2.1.10",
     "@types/node": "^26.6.6",
     "@types/react": "^19.3.0",
     "@types/react-dom": "^19.3.0",

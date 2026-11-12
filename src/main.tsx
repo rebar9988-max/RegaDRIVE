@@ -11,6 +11,9 @@ createRoot(document.getElementById("root")!).render(
   </StrictMode>,
 );
 
+// Preview builds only: a hook for the browser tests (removed from production builds by the bundler).
+if (import.meta.env.VITE_CONTENT_MODE === "preview") void import("./testing/mountMedia").then((m) => m.installMediaTestHook());
+
 if ("serviceWorker" in navigator && import.meta.env.PROD) {
   window.addEventListener("load", () => {
     navigator.serviceWorker.register("/sw.js").catch(() => { /* offline support is optional */ });
