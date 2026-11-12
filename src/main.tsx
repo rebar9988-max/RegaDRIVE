@@ -2,6 +2,7 @@ import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import { App } from "./App";
 import { AppProvider } from "./app/state";
+import { afterLoad } from "./lib/afterLoad";
 import { keepCurrent } from "./lib/swUpdate";
 import "./styles/app.css";
 import "./styles/premium-light.css";
@@ -16,7 +17,8 @@ createRoot(document.getElementById("root")!).render(
 if (import.meta.env.VITE_CONTENT_MODE === "preview") void import("./testing/mountMedia").then((m) => m.installMediaTestHook());
 
 if ("serviceWorker" in navigator && import.meta.env.PROD) {
-  window.addEventListener("load", () => {
+  // Installed after the first screen (its precache would otherwise compete with the first paint for bandwidth).
+  afterLoad(() => {
     navigator.serviceWorker.register("/sw.js").then((reg) => keepCurrent(reg)).catch(() => { /* offline support is optional */ });
   });
 }

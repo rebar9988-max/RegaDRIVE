@@ -3,6 +3,7 @@ import { ErrorBoundary } from "./components/ErrorBoundary";
 import { decodeLocationPart, useRouteLocation } from "./app/router";
 import { CountrySelection, ItalyPending } from "./app/CountrySelection";
 import { useApp } from "./app/state";
+import { afterLoad } from "./lib/afterLoad";
 
 // Route-based code splitting: the first paint needs only the shell and the home page. Every other screen is its
 // own chunk, fetched on demand, warmed up when the browser is idle and precached by the service worker for offline use.
@@ -57,13 +58,8 @@ export function App() {
   const location = useRouteLocation();
   const path = location.split("?")[0]!;
   const { ready, settings } = useApp();
-  useEffect(() => {
-    // After the first paint, fetch the other screens in the background so navigation never waits or flickers.
-    const w = window as Window & { requestIdleCallback?: (cb: () => void, o?: { timeout: number }) => number; cancelIdleCallback?: (h: number) => void };
-    if (typeof w.requestIdleCallback === "function") { const h = w.requestIdleCallback(warmUp, { timeout: 4000 }); return () => w.cancelIdleCallback?.(h); }
-    const t = window.setTimeout(warmUp, 1500);
-    return () => window.clearTimeout(t);
-  }, []);
+  // After the first screen has loaded, fetch the other screens in the background so navigation never waits or flickers.
+  useEffect(() => afterLoad(warmUp), []);
   if (path === "/dr" || path.startsWith("/dr/")) return <Suspense fallback={<div aria-busy="true" />}><DrAdmin /></Suspense>;
   if (ready && settings.country === null) return <CountrySelection />;
   if (ready && settings.country === "IT") return <ItalyPending />;
