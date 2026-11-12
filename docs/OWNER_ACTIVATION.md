@@ -7,8 +7,11 @@ Each step below needs an explicit decision by the owner. None of them is done by
 2. Create a Cloudflare API token limited to *Workers Scripts: Edit* on that account (not a Rega24/R&L token). Store it as the GitHub secret `CLOUDFLARE_API_TOKEN`, and the account ID as `CLOUDFLARE_ACCOUNT_ID`.
 3. Add to `wrangler.jsonc`: `"routes": [{ "pattern": "www.regaplatform.com", "custom_domain": true }]`. (Done in the repository. Cloudflare only attaches the domain if the zone `regaplatform.com` is in the token's account.)
 4. Content approval is required before the first deploy. The production build publishes only content that passed human review (see `docs/CONTENT_REVIEW.md`), and preflight blocks deployment with fewer than 30 approved questions.
-5. Run *Actions → Deploy to Cloudflare (manual)* on `main` with the confirmation `DEPLOY-REGADRIVE`. The workflow:
-   - runs the full CI on the exact commit, then `preflight --stage=deploy` with every gate fatal;
+5. *Actions → Deploy to Cloudflare* runs by itself after CI succeeds on a push to `main` (owner rule 2026-11-12: only
+   the newest successful version is published), and only if that commit is still the newest `main`; it can also be run
+   by hand on `main` with the confirmation `DEPLOY-REGADRIVE`. Open apps pick up the new release when shown again (or
+   hourly) and reload only while hidden (`src/lib/swUpdate.ts`). The workflow:
+   - requires green CI on the exact commit (manual runs repeat it), then `preflight --stage=deploy` with every gate fatal;
    - runs `scripts/domain-check.mjs`, which refuses to overwrite a site that is not RegaDRIVE;
    - records the last known-good version and deploys;
    - runs `scripts/smoke.mjs` against the live domain;
@@ -29,6 +32,13 @@ Daily request caps are set below each provider's free limits (`worker/ai/gateway
 
 ## 3. Production database (D1)
 Note (2026-11-11): student e-mail accounts use their own database `regadrive-students` (binding `STUDENT_DB`, switch `STUDENT_AUTH_ENABLED`), see `docs/STUDENT_EMAIL_AUTH_IMPLEMENTATION.md`. The steps below remain the gate for the content/payments production database.
+Done (2026-11-12, owner-approved): the content database `regadrive-content` (binding `CONTENT_DB`, migrations
+`migrations-content/` = the content part of `migrations/`, verified statement by statement by `npm run check:migrations`)
+is created, migrated (21 tables, 16 triggers, 0 questions) and bound, and the R2 bucket `regadrive-media` is bound as
+`MEDIA`. Both stay unused until the owner finishes the activation: set the secret `OWNER_DATABASE_ACTIVATION` (never in
+config) in Cloudflare, then switch `DATABASE_PRODUCTION_ENABLED`, `CONTENT_ADMIN_ENABLED` and
+`CONTENT_IMPORT_EXECUTION_ENABLED` to `true` in a reviewed PR together with the matching `scripts/preflight.mjs` change, and
+set `ADMIN_OWNER_TOKEN_SHA256`. Payments stay off; no licensed content exists.
 Note (2026-11-07): `regadrive-db` is already bound as `DB` for the `/dr` owner control center only (`docs/DR_ADMIN.md`). The steps below are still required before any **student** data is stored.
 Prerequisites: a reviewed privacy policy, retention and deletion rules, and a working e-mail provider for verification.
 1. `wrangler d1 create regadrive` (a new, separate database).

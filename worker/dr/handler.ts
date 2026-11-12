@@ -10,6 +10,7 @@ import type { D1Like } from "./db";
 import { invalidateOverrides, loadOverrides } from "./db";
 import { featureByKey, resolveFeatures, type FeatureState } from "./features";
 import { contentProgress, type ContentDb, type ContentProgress } from "../content/store";
+import type { MediaBucket } from "../content/media";
 import type { Flags } from "../../src/lib/shared/flags";
 
 export interface DrEnv {
@@ -22,6 +23,8 @@ export interface DrEnv {
   REGADRIVE_RESEND_API_KEY?: string;
   /** Owner-activated content database for the question bank. Not bound in production (wrangler.jsonc). */
   CONTENT_DB?: ContentDb;
+  /** R2 `regadrive-media`: question images and videos (worker/content/media.ts). */
+  MEDIA?: MediaBucket;
 }
 
 export interface MailMessage { from: string; to: string; subject: string; text: string; html: string }
@@ -314,7 +317,7 @@ export async function handleDr(req: Request, env: DrEnv, deps: DrDeps = {}): Pro
     if (!flags?.contentAdminEnabled) missing.push("content administration is off (CONTENT_ADMIN_ENABLED)");
     if (!flags?.contentImportExecutionEnabled) missing.push("stored imports are off (CONTENT_IMPORT_EXECUTION_ENABLED)");
     if (!env.CONTENT_DB) missing.push("no content database is bound (CONTENT_DB)");
-    missing.push("no media storage is configured (R2 bucket)");
+    if (!env.MEDIA) missing.push("no media storage is bound (MEDIA, R2 bucket regadrive-media)");
     const storageActive = !!env.CONTENT_DB && !!flags?.databaseProductionEnabled && !!flags?.contentImportExecutionEnabled;
     let progress: ContentProgress | null = null;
     if (storageActive && env.CONTENT_DB) { try { progress = await contentProgress(env.CONTENT_DB); } catch { missing.push("content database is not readable (migrations not applied?)"); } }

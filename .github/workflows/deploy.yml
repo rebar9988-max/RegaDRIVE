@@ -1,6 +1,14 @@
-name: Deploy to Cloudflare (manual)
-# Manual only, main only. Needs RegaDRIVE-only secrets CLOUDFLARE_API_TOKEN + CLOUDFLARE_ACCOUNT_ID.
+name: Deploy to Cloudflare
+# Main only. Needs RegaDRIVE-only secrets CLOUDFLARE_API_TOKEN + CLOUDFLARE_ACCOUNT_ID.
+# Owner rule (2026-11-12): only the newest successful version is published on www.regaplatform.com.
+#  - automatic: after CI succeeds on a push to main, for that commit only if it is still the newest main;
+#  - manual: workflow_dispatch with DEPLOY-REGADRIVE (runs CI again on the exact commit first).
+# An older commit is never released: every path checks "newest main" again right before the upload.
 on:
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
+    branches: [main]
   workflow_dispatch:
     inputs:
       confirm:
@@ -14,7 +22,15 @@ concurrency:
 jobs:
   # Release gate, before any CI minutes are spent: only the newest main, and never the commit already live.
   guard:
-    if: github.ref == 'refs/heads/main' && inputs.confirm == 'DEPLOY-REGADRIVE'
+    # Automatic path: a successful CI run of a push to main in this repository, and only for the commit that is
+    # main right now (the run's commit equals the checked-out newest main). A newer push gets its own CI and run.
+    if: >-
+      github.ref == 'refs/heads/main' && (
+        (github.event_name == 'workflow_dispatch' && inputs.confirm == 'DEPLOY-REGADRIVE') ||
+        (github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success' &&
+         github.event.workflow_run.event == 'push' && github.event.workflow_run.head_branch == 'main' &&
+         github.event.workflow_run.head_repository.full_name == github.repository &&
+         github.event.workflow_run.head_sha == github.sha))
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     outputs:
@@ -26,13 +42,16 @@ jobs:
       - name: Never republish the commit production already serves
         id: live
         run: node scripts/check-not-already-live.mjs https://www.regaplatform.com
+  # Manual path only: the automatic path starts from a green CI run on this exact commit (checked in guard).
   ci:
     needs: guard
-    if: needs.guard.outputs.deploy == 'true'
+    if: needs.guard.outputs.deploy == 'true' && github.event_name == 'workflow_dispatch'
     uses: ./.github/workflows/ci.yml
   deploy:
     needs: [guard, ci]   # green CI on this exact SHA is mandatory
-    if: needs.guard.outputs.deploy == 'true'
+    if: >-
+      !cancelled() && needs.guard.result == 'success' && needs.guard.outputs.deploy == 'true' &&
+      (needs.ci.result == 'success' || (github.event_name == 'workflow_run' && needs.ci.result == 'skipped'))
     runs-on: ubuntu-24.04
     environment: production
     env:

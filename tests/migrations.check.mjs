@@ -198,4 +198,25 @@ for (const t of ["email_challenges", "student_sessions", "student_progress"]) as
 assert.equal(sdb.prepare("SELECT student_id FROM student_auth_events").get().student_id, null, "events keep no reference after deletion");
 assert.equal(Object.values(sdb.prepare("PRAGMA integrity_check").get())[0], "ok");
 
-console.log(`migrations OK: ${tables.length} tables, constraints verified; student database: ${stables.length} tables, constraints verified`);
+// ── Content database (regadrive-content, migrations-content/) ─────────────
+// Its schema is the content part of ./migrations, copied statement by statement: the same rules protect it.
+const stmts = (sql) => sql.split("\n").map((l) => l.replace(/\s*--.*$/, "")).join("\n").split(/;\s*(?:\n|$)/).map((x) => x.replace(/\s+/g, " ").trim()).filter(Boolean);
+const cfiles = readdirSync("migrations-content").filter((f) => f.endsWith(".sql")).sort();
+assert.deepEqual(cfiles, ["0001_content_base.sql", "0002_content_import.sql", "0003_license_rights_media_provenance.sql"], "content migrations: fixed, ordered set");
+const orig = (f) => stmts(readFileSync(`migrations/${f}`, "utf8"));
+const base = new Set(orig("0001_init.sql"));
+for (const st of stmts(readFileSync("migrations-content/0001_content_base.sql", "utf8"))) assert.ok(base.has(st), `content 0001 statement not copied verbatim from migrations/0001_init.sql: ${st.slice(0, 80)}`);
+assert.deepEqual(stmts(readFileSync("migrations-content/0002_content_import.sql", "utf8")), orig("0002_content_import.sql"), "content 0002 equals migrations/0002");
+assert.deepEqual(stmts(readFileSync("migrations-content/0003_license_rights_media_provenance.sql", "utf8")), orig("0005_license_rights_media_provenance.sql"), "content 0003 equals migrations/0005");
+const cdb = new DatabaseSync(":memory:");
+for (const f of cfiles) {
+  const sql = readFileSync(`migrations-content/${f}`, "utf8");
+  assert.ok(!/\b(DROP\s+TABLE|DELETE\s+FROM|TRUNCATE)\b/i.test(sql.replace(/--.*$/gm, "")), `${f}: forward-only, no data removal`);
+  cdb.exec(sql);
+}
+const ctables = cdb.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'").all().map((r) => r.name);
+for (const t of ["topics","questions","answer_options","content_licenses","media_assets","question_media","question_versions","import_batches","import_rollbacks","media_provenance"]) assert.ok(ctables.includes(t), `content database: missing table ${t}`);
+for (const t of ["users","students","purchase_orders","payment_events","sessions","dr_sessions"]) assert.ok(!ctables.includes(t), `content database must not hold ${t}`);
+assert.equal(Object.values(cdb.prepare("PRAGMA integrity_check").get())[0], "ok");
+
+console.log(`migrations OK: ${tables.length} tables, constraints verified; student database: ${stables.length} tables, constraints verified; content database: ${ctables.length} tables, copied verbatim`);

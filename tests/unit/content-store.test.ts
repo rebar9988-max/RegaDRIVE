@@ -6,6 +6,8 @@ import { readFlags } from "../../src/lib/shared/flags";
 import type { D1Stmt } from "../../worker/dr/db";
 import type { MediaManifestEntry } from "../../src/lib/shared/importer";
 import { TOPICS } from "../../src/content/topics";
+import { readFileSync } from "node:fs";
+import { serveMedia, storeMedia, type MediaBucket } from "../../worker/content/media";
 
 // D1 is SQLite: run the real migrations on node:sqlite behind the D1 interface (batch = one transaction).
 interface SqliteStatement { get(...p: unknown[]): unknown; all(...p: unknown[]): unknown[]; run(...p: unknown[]): unknown }
@@ -225,6 +227,93 @@ describe("admin routes for stored imports", () => {
     expect((await call(env, "/api/admin/import/commit", { format: "json", data: fixture, media: MEDIA })).status).toBe(422);
     expect((await call(env, "/api/admin/import/rollback", { batchId: stored.batchId, reason: "test" })).status).toBe(200);
     expect(count("questions")).toBe(0);
-    expect((await call(env, "/api/admin/media/upload", {})).status).toBe(503); // no object storage
+    expect((await call(env, "/api/admin/media/upload", {})).status).toBe(503); // no media bucket bound
+  });
+
+  it("upload media only with the activation and the bucket, deduplicated by content", async () => {
+    const { db, count } = setup({ media: false });
+    const bucket = fakeBucket();
+    const png = new Uint8Array(readFileSync("tests/fixtures/media/sample-test-pattern.png"));
+    const upload = async (env: Record<string, unknown>, name: string, bytes: Uint8Array) =>
+      handleAdmin(new Request("https://regadrive.test/api/admin/media/upload", { method: "POST", headers: { authorization: `Bearer ${TOKEN}`, "x-file-name": name }, body: bytes as BodyInit }),
+        { ...env, ADMIN_OWNER_TOKEN_SHA256: await sha(TOKEN) }, readFlags(env), json, { sink: { write: () => undefined }, now: NOW });
+    expect((await upload({ ...ACTIVE, CONTENT_DB: db, MEDIA: bucket, OWNER_DATABASE_ACTIVATION: "no" }, "a.png", png)).status).toBe(503);
+    expect((await upload({ ...ACTIVE, CONTENT_DB: db }, "a.png", png)).status).toBe(503);
+    expect(bucket.objects.size + count("media_assets")).toBe(0);
+    const env = { ...ACTIVE, CONTENT_DB: db, MEDIA: bucket };
+    const first = await (await upload(env, "scene.png", png)).json() as { stored: boolean; published: boolean; key: string; duplicate: boolean };
+    expect(first).toMatchObject({ stored: true, published: false, duplicate: false });
+    expect(first.key).toMatch(/^media\/[0-9a-f]{64}\.png$/);
+    expect((await (await upload(env, "again.png", png)).json() as { duplicate: boolean }).duplicate).toBe(true);
+    expect(count("media_assets")).toBe(1);
+    expect(bucket.objects.size).toBe(1);
+    // Type by magic bytes: a PNG renamed .webp, and an SVG, are refused and nothing is stored.
+    expect((await upload(env, "scene.webp", png)).status).toBe(422);
+    expect((await upload(env, "x.png", new TextEncoder().encode("<svg xmlns='http://www.w3.org/2000/svg'/>"))).status).toBe(422);
+    expect(count("media_assets")).toBe(1);
+  });
+});
+
+function fakeBucket() {
+  const objects = new Map<string, Uint8Array>();
+  const bucket: MediaBucket & { objects: typeof objects } = {
+    objects,
+    put: async (key, value) => { objects.set(key, value); return {}; },
+    get: async (key, opts) => {
+      const b = objects.get(key);
+      if (!b) return null;
+      const r = opts?.range;
+      const offset = !r ? 0 : "suffix" in r ? b.length - r.suffix : r.offset;
+      if (offset >= b.length) throw new Error("InvalidRange");
+      const length = !r ? b.length : "suffix" in r ? r.suffix : r.length ?? b.length - offset;
+      const part = b.subarray(offset, offset + length);
+      return { body: new Blob([part as BlobPart]).stream(), size: b.length, range: r ? { offset, length: part.length } : undefined, httpEtag: '"e"' };
+    },
+  };
+  return bucket;
+}
+
+describe("media serving", () => {
+  const png = new Uint8Array(readFileSync("tests/fixtures/media/sample-test-pattern.png"));
+  const get = (db: ContentDb, bucket: MediaBucket, key: string, headers: Record<string, string> = {}) => serveMedia(new Request(`https://regadrive.test/${key}`, { headers }), db, bucket);
+
+  it("serves a file only while a published question uses it", async () => {
+    const { db, raw } = setup({ media: false });
+    const bucket = fakeBucket();
+    const stored = await storeMedia(db, bucket, "scene.png", png, "owner", NOW);
+    if (!stored.ok) throw new Error("upload failed");
+    expect((await get(db, bucket, stored.key)).status).toBe(404); // stored, not used
+    raw.exec(`INSERT INTO topics VALUES ('t-media','x','x','Grundstoff') ON CONFLICT DO NOTHING`);
+    raw.prepare(`INSERT INTO questions (id,topic_id,points,category_type,license_classes,source_type,content_version,review_status,prompt_ckb,prompt_de,explanation_ckb,explanation_de,content_hash) VALUES ('qm','t-media',3,'Grundstoff','["B"]','original','v','pending','p','p','e','e','hq')`).run();
+    raw.prepare("INSERT INTO question_media VALUES ('qm', ?, 'stimulus', 0, 'Bild', NULL)").run(stored.id);
+    expect((await get(db, bucket, stored.key)).status).toBe(404); // used by a hidden draft
+    // Publish through the real gates: owner approval of this content, media provenance and an instructor review of this exact file.
+    raw.prepare(`INSERT INTO content_reviews VALUES ('ra','qm','question','APPROVED','Owner','content_owner','pass','evidence/a','hq',${NOW})`).run();
+    raw.exec("UPDATE questions SET stage = 'APPROVED' WHERE id = 'qm'");
+    expect(() => raw.exec("UPDATE questions SET publication_status = 'published' WHERE id = 'qm'")).toThrow(/media/);
+    raw.prepare(`INSERT INTO media_provenance (media_id, origin, author, tool, source_file, created_at) VALUES (?, 'original_regadrive', 'RegaDRIVE', 'FFmpeg test pattern', 'tests/fixtures/media', ${NOW})`).run(stored.id);
+    raw.prepare(`INSERT INTO content_reviews VALUES ('rm', ?, 'media', 'EDUCATIONAL_REVIEW', 'Instructor', 'driving_instructor', 'pass', 'evidence/m', ?, ${NOW})`).run(stored.id, stored.sha256);
+    raw.exec("UPDATE questions SET publication_status = 'published' WHERE id = 'qm'");
+    const ok = await get(db, bucket, stored.key);
+    expect(ok.status).toBe(200);
+    expect(ok.headers.get("content-type")).toBe("image/png");
+    expect(ok.headers.get("x-content-type-options")).toBe("nosniff");
+    expect(ok.headers.get("content-security-policy")).toContain("default-src 'none'");
+    expect(new Uint8Array(await ok.arrayBuffer())).toEqual(png);
+    const part = await get(db, bucket, stored.key, { range: "bytes=0-9" });
+    expect(part.status).toBe(206);
+    expect(part.headers.get("content-range")).toBe(`bytes 0-9/${png.length}`);
+    expect((await part.arrayBuffer()).byteLength).toBe(10);
+    expect((await get(db, bucket, stored.key, { range: `bytes=${png.length + 5}-` })).status).toBe(416);
+    expect((await get(db, bucket, stored.key, { range: "bytes=9-3" })).status).toBe(416);
+    raw.exec("UPDATE questions SET publication_status = 'hidden' WHERE id = 'qm'");
+    expect((await get(db, bucket, stored.key)).status).toBe(404); // unpublished: offline at once
+  });
+
+  it("refuses keys that are not content-addressed media", async () => {
+    const { db } = setup({ media: false });
+    for (const key of ["media/../index.html", "media/abc.png", `media/${"a".repeat(64)}.svg`, `media/${"a".repeat(64)}.png/x`]) {
+      expect((await get(db, fakeBucket(), key)).status).toBe(404);
+    }
   });
 });

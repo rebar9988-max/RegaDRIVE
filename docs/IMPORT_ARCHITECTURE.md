@@ -51,9 +51,9 @@ licensor data files ──► JSON / CSV in the RegaDRIVE format (docs/import/)
 | Item | State | Needs |
 | --- | --- | --- |
 | Licence contract | not bought | owner |
-| Content database binding (`CONTENT_DB`) and migrations 0001–0005 applied | not bound, not applied | owner approval (`docs/OWNER_ACTIVATION.md` step 3), then a reviewed PR that also updates `scripts/preflight.mjs` |
+| Content database `regadrive-content` (`CONTENT_DB`, `migrations-content/`) | bound and migrated 2026-11-12; unused until activation | owner: activation secret + flags (`docs/OWNER_ACTIVATION.md` step 3) |
 | `CONTENT_ADMIN_ENABLED`, `CONTENT_IMPORT_EXECUTION_ENABLED`, owner admin token | off | owner (step 5) |
-| Media storage (R2 bucket) and upload route | not configured, route answers 503 | owner approval; check the free tier first |
+| Media storage R2 `regadrive-media` (`MEDIA`), `POST /api/admin/media/upload`, `GET /media/<sha256>.<ext>` | bound 2026-11-12; upload answers 503 until activation; only files of published questions are served | owner activation (same as the database) |
 | Serving stored questions to learners and showing official content | not built / off | after the licence; `OFFICIAL_QUESTION_BANK_ENABLED` + activation phrase |
 | Converter from the licensor's delivery format | not built | the format is only known with the licence |
 | Review and publish buttons in `/dr` (today: preview and status only) | not built | content database |

@@ -568,6 +568,8 @@ try {
       assert.deepEqual(await panel.locator(".lang-option-code").allTextContents(), ["CKB", "KMR", "DE", "AR"], `${name}: exactly the four supported languages`);
       assert.equal(await panel.locator(".lang-check svg").count(), 1, `${name}: exactly one checkmark`);
       assert.deepEqual(await panel.locator(".lang-flag").evaluateAll((els) => els.map((e) => e.getAttribute("src"))), ["/flags/kurdistan.png", "/flags/kurdistan.png", "/flags/de.png", "/flags/arabic.png"], `${name}: every language shows its flag`);
+      // The images are inserted when the panel opens: wait (bounded) for them to finish, then require every one to have loaded.
+      await page.waitForFunction(() => [...document.querySelectorAll("[data-testid=header-lang-panel] .lang-flag")].every((e) => e.complete), null, { timeout: 5000 }).catch(() => undefined);
       assert.ok(await panel.locator(".lang-flag").evaluateAll((els) => els.every((e) => e.complete && e.naturalWidth > 0)), `${name}: all flag images load`);
       assert.equal(await panel.locator(".lang-option[aria-pressed=true] .lang-check svg").count(), 1, `${name}: the checkmark marks the active language`);
       const box = await panel.boundingBox();
