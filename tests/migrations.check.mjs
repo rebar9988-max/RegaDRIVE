@@ -37,7 +37,9 @@ db.exec(`DELETE FROM users WHERE id='u2'`);
 for (const t of ["content_reviews","question_translations","media_assets","question_media","question_versions","import_batches","import_errors"]) {
   assert.ok(db.prepare("SELECT 1 FROM sqlite_master WHERE type='table' AND name=?").get(t), `missing table ${t}`);
 }
-db.exec(`INSERT INTO content_licenses VALUES ('LIC-FIXTURE','Fixture Licensor','test only',${now},NULL,'fixture')`);
+const licCols = "id,licensor,scope,valid_from,valid_until,evidence_ref,status,verified_by,verified_at,right_question_text,right_official_media,right_translation,right_own_media,right_online,right_offline,catalogue_versions,license_classes";
+// Fully verified fixture licence with every right, so the 0002 rules below are tested on their own.
+db.exec(`INSERT INTO content_licenses (${licCols}) VALUES ('LIC-FIXTURE','Fixture Licensor','test only',${now - 1000},NULL,'fixture','verified','Owner',${now},1,1,1,1,1,1,'["2026-01-01"]','["B"]')`);
 const insOff = (id, code, pub = "hidden") => `INSERT INTO questions (id,topic_id,question_code,points,category_type,license_classes,source_type,license_id,content_version,review_status,publication_status,prompt_ckb,prompt_de,explanation_ckb,explanation_de,catalogue_version,content_hash) VALUES ('${id}','speed','${code}',4,'Grundstoff','["B"]','licensed_official','LIC-FIXTURE','v','draft','${pub}','','Platzhalter','','','2026-01-01','h1')`;
 throws(insOff("o0", "0.0.00-000", "published"), "imports can never insert published content");
 db.exec(insOff("o1", "0.0.00-001"));
@@ -65,9 +67,100 @@ db.exec(`INSERT INTO question_versions VALUES ('o1',1,'h1','2026-01-01','{}','b1
 throws(`INSERT INTO question_versions VALUES ('o1',2,'h1','2026-01-01','{}','b1','owner',${now})`, "same content twice is a duplicate version");
 db.exec(`INSERT INTO question_translations VALUES ('o1','prompt','ckb','کوردی','draft','t',${now})`);
 throws(`INSERT INTO question_translations VALUES ('o1','prompt','fa','x','draft','t',${now})`, "only Sorani translations");
+
+// ── 0005: licence rights, country separation, versioned wording, media provenance, rollback records ──
+for (const t of ["import_rollbacks","scenario_sheets","scenario_questions","scene_library","media_provenance","media_scene_use","media_variants"]) {
+  assert.ok(db.prepare("SELECT 1 FROM sqlite_master WHERE type='table' AND name=?").get(t), `missing table ${t}`);
+}
+const pub = (id) => `UPDATE questions SET publication_status='published' WHERE id='${id}'`;
+const status = (id) => db.prepare("SELECT publication_status AS s FROM questions WHERE id=?").get(id).s;
+const approve = (id, hash, n) => { db.exec(`INSERT INTO content_reviews VALUES ('ra-${id}-${n}','${id}','question','APPROVED','Owner','content_owner','pass','evidence','${hash}',${now})`); db.exec(`UPDATE questions SET stage='APPROVED' WHERE id='${id}'`); };
+// A new licence starts as a draft with no rights at all.
+db.exec(`INSERT INTO content_licenses (id,licensor,scope,valid_from,evidence_ref) VALUES ('LIC-NEW','arge tp 21 (fixture)','Klasse B',${now - 1000},'contract-ref')`);
+const lic = db.prepare("SELECT * FROM content_licenses WHERE id='LIC-NEW'").get();
+assert.equal(lic.status, "draft"); assert.equal(lic.country, "DE");
+for (const r of ["right_question_text","right_official_media","right_translation","right_own_media","right_online","right_offline"]) assert.equal(lic[r], 0, `${r} is off until confirmed`);
+throws(`UPDATE content_licenses SET status='verified' WHERE id='LIC-NEW'`, "verification needs owner and date");
+throws(`INSERT INTO content_licenses (id,licensor,scope,valid_from,evidence_ref,status) VALUES ('LIC-X','x','x',${now},'e','verified')`, "cannot be inserted verified without owner and date");
+throws(`UPDATE content_licenses SET status='bought' WHERE id='LIC-NEW'`, "licence status domain");
+const insLic = (id, code, lic2, extra = "") => `INSERT INTO questions (id,topic_id,question_code,points,category_type,license_classes,source_type,license_id,content_version,review_status,prompt_ckb,prompt_de,explanation_ckb,explanation_de,catalogue_version,content_hash${extra ? ",country" : ""}) VALUES ('${id}','speed','${code}',3,'Grundstoff','["B"]','licensed_official','${lic2}','v','draft','','Platzhalter zwei','','','2026-04-01','hx-${id}'${extra})`;
+db.exec(insLic("o2", "0.0.00-002", "LIC-NEW"));
+approve("o2", "hx-o2", 1);
+throws(pub("o2"), "an unverified licence publishes nothing");
+db.exec(`UPDATE content_licenses SET status='verified', verified_by='Owner', verified_at=${now} WHERE id='LIC-NEW'`);
+throws(pub("o2"), "verified but without the right to the question text");
+db.exec(`UPDATE content_licenses SET right_question_text=1, right_online=1 WHERE id='LIC-NEW'`);
+throws(pub("o2"), "catalogue release not covered by the licence");
+db.exec(`UPDATE content_licenses SET catalogue_versions='["2026-04-01"]' WHERE id='LIC-NEW'`);
+db.exec(`UPDATE content_licenses SET valid_until=${now - 5000} WHERE id='LIC-NEW'`);
+throws(pub("o2"), "expired licence");
+db.exec(`UPDATE content_licenses SET valid_until=NULL WHERE id='LIC-NEW'`);
+// Sorani text on licensed wording needs the translation right.
+db.exec(`UPDATE questions SET prompt_ckb='کوردی' WHERE id='o2'`);
+throws(pub("o2"), "Sorani text without translation right");
+db.exec(`INSERT INTO question_translations VALUES ('o2','prompt','ckb','کوردی','draft','t',${now})`);
+throws(`UPDATE question_translations SET status='approved' WHERE question_id='o2'`, "translation cannot be approved without the right");
+throws(`INSERT INTO question_translations VALUES ('o2','explanation','ckb','کوردی','approved','t',${now})`, "nor inserted as approved");
+db.exec(`UPDATE content_licenses SET right_translation=1 WHERE id='LIC-NEW'`);
+db.exec(`UPDATE question_translations SET status='approved' WHERE question_id='o2'`);
+db.exec(pub("o2"));
+assert.equal(status("o2"), "published");
+// Losing the licence hides its content at once; original content is untouched.
+db.exec(`UPDATE content_licenses SET status='suspended' WHERE id='LIC-NEW'`);
+assert.equal(status("o2"), "hidden", "suspended licence hides its questions");
+assert.equal(status("o1"), "published", "other licences are not affected");
+throws(pub("o2"), "cannot publish under a suspended licence");
+db.exec(`UPDATE content_licenses SET status='verified' WHERE id='LIC-NEW'`);
+assert.equal(status("o2"), "hidden", "re-verifying never republishes by itself");
+// Country separation.
+throws(`UPDATE questions SET country='FR' WHERE id='o2'`, "country domain");
+throws(insLic("oi", "0.0.00-009", "LIC-NEW", ",'IT'"), "an Italian question cannot use a German licence");
+// Licensed wording changes only to a recorded version; the official number never changes.
+throws(`UPDATE questions SET prompt_de='neu', content_hash='h-new' WHERE id='o2'`, "new wording without a recorded version");
+throws(`UPDATE questions SET prompt_de='neu' WHERE id='o2'`, "new wording under the old hash");
+db.exec(`INSERT INTO question_versions VALUES ('o2',1,'hx-o2','2026-04-01','{}','b1','owner',${now}), ('o2',2,'h-new','2026-04-01','{}','b1','owner',${now})`);
+throws(`UPDATE questions SET question_code='9.9.99-999', content_hash='h-new' WHERE id='o2'`, "official number is fixed");
+db.exec(pub("o2"));
+db.exec(`UPDATE questions SET prompt_de='neu', content_hash='h-new' WHERE id='o2'`);
+assert.equal(status("o2"), "hidden", "changed content goes offline until approved again");
+assert.equal(db.prepare("SELECT stage FROM questions WHERE id='o2'").get().stage, "DRAFT");
+throws(pub("o2"), "the old approval does not cover the new content");
+// Media: provenance and instructor review of the exact file before publication; media rights of the licence.
+db.exec(`INSERT INTO scenario_sheets VALUES ('sc1','Kreuzung ohne Zeichen','[]','["StVO §8 Abs. 1"]','Rechts vor links beachten','Instructor',${now},${now})`);
+throws(`INSERT INTO scenario_sheets VALUES ('sc2','x','[]','[]','y',NULL,NULL,${now})`, "scenario needs a legal reference");
+db.exec(`INSERT INTO media_assets VALUES ('m5','image','media/${"c".repeat(64)}.webp','${"c".repeat(64)}','image/webp',1000,NULL,NULL,NULL,NULL,'owner',${now})`);
+throws(`INSERT INTO question_media VALUES ('o2','m5','stimulus',0,'Bild',NULL)`, "own media on a licensed question needs the right");
+db.exec(`UPDATE content_licenses SET right_own_media=1 WHERE id='LIC-NEW'`);
+db.exec(`INSERT INTO question_media VALUES ('o2','m5','stimulus',0,'Bild',NULL)`);
+approve("o2", "h-new", 2);
+throws(pub("o2"), "media without provenance");
+throws(`INSERT INTO media_provenance VALUES ('m5','original_regadrive','Studio',NULL,NULL,'[]',0,'sc1',${now})`, "original media needs tool and source file");
+throws(`INSERT INTO media_provenance VALUES ('m5','licensed','Licensor',NULL,NULL,'[]',0,'sc1',${now})`, "media without a licence id is not licensed media");
+throws(`INSERT INTO media_provenance VALUES ('m5','screenshot','x','t','s','[]',0,'sc1',${now})`, "origin domain");
+db.exec(`INSERT INTO media_provenance VALUES ('m5','original_regadrive','Studio','Blender 4.2','archive/sc1.blend','[]',0,'sc1',${now})`);
+throws(pub("o2"), "media without an instructor review");
+db.exec(`INSERT INTO content_reviews VALUES ('rm1','m5','media','EDUCATIONAL_REVIEW','Instructor','driving_instructor','pass','sheet','${"d".repeat(64)}',${now})`);
+throws(pub("o2"), "review of another file version does not count");
+db.exec(`INSERT INTO content_reviews VALUES ('rm2','m5','media','EDUCATIONAL_REVIEW','Instructor','driving_instructor','pass','sheet','${"c".repeat(64)}',${now})`);
+db.exec(pub("o2"));
+assert.equal(status("o2"), "published");
+// Reusable scenes, variants, rollback record.
+db.exec(`INSERT INTO scene_library VALUES ('scene-junction-01','Kreuzung innerorts','junction','Blender 4.2','archive/junction-01.blend','Studio','[]',1,${now})`);
+throws(`INSERT INTO scene_library VALUES ('scene-x','x','spaceship','Blender','a','b','[]',1,${now})`, "scene kind domain");
+db.exec(`INSERT INTO media_scene_use VALUES ('m5','scene-junction-01')`);
+throws(`DELETE FROM scene_library WHERE id='scene-junction-01'`, "a scene in use cannot be deleted");
+throws(`INSERT INTO media_variants VALUES ('m5','poster','m5')`, "a file is not its own variant");
+db.exec(`INSERT INTO media_variants VALUES ('m5','thumbnail','m1')`);
+throws(`INSERT INTO import_rollbacks VALUES ('b1','','reason',0,0,${now})`, "rollback needs an actor");
+db.exec(`INSERT INTO import_rollbacks VALUES ('b1','owner','wrong file',1,0,${now})`);
+throws(`INSERT INTO import_rollbacks VALUES ('b1','owner','again',0,0,${now})`, "a batch is rolled back once");
+
 const ic = db.prepare("PRAGMA integrity_check").get();
 assert.equal(Object.values(ic)[0], "ok");
 assert.equal(db.prepare("PRAGMA foreign_key_check").all().length, 0);
+
+// Forward-only: no content migration drops a table or deletes rows.
+for (const f of readdirSync("migrations").filter((f) => f.endsWith(".sql"))) assert.ok(!/DROP\s+TABLE|DELETE\s+FROM|TRUNCATE/i.test(readFileSync(`migrations/${f}`, "utf8").replace(/--.*$/gm, "")), `${f}: forward-only`);
 
 // ── migrations-students: separate student D1 (regadrive-students), applied to its own database ──
 const sdb = new DatabaseSync(":memory:");

@@ -1,0 +1,21 @@
+{
+  "_note": "TEMPLATE — fill in from the SIGNED contract only. Leave status \"draft\" and every right false until the contract says otherwise. The contract document itself is never stored here; only its reference.",
+  "licenses": [
+    {
+      "id": "[[e.g. ARGE-TP21-B-2027]]",
+      "country": "DE",
+      "licensor": "[[contract partner as named in the contract]]",
+      "scope": "[[what the contract covers, in your words]]",
+      "status": "draft",
+      "validFrom": "[[YYYY-MM-DD]]",
+      "validUntil": null,
+      "evidenceRef": "[[contract number / archive reference]]",
+      "verifiedBy": null,
+      "verifiedOn": null,
+      "catalogueVersions": [],
+      "licenseClasses": ["B"],
+      "rights": { "questionText": false, "officialMedia": false, "translation": false, "ownMedia": false, "online": false, "offline": false },
+      "attributionText": null
+    }
+  ]
+}

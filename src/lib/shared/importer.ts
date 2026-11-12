@@ -4,6 +4,7 @@
  * DRAFT / hidden / reviewStatus "draft" regardless of the input.
  */
 import type { AnswerType, Bilingual, MediaKind, Question, QuestionCategory, QuestionPoints } from "../../content/types";
+import { licenseAllows, type LicenseRecord } from "./license";
 
 export const MAX_ROWS = 5000;
 export const MAX_PAYLOAD_BYTES = 5 * 1024 * 1024;
@@ -38,6 +39,14 @@ export interface MediaManifestEntry { file: string; kind: MediaKind; key: string
 export interface ImportContext {
   knownTopics: ReadonlySet<string>;
   knownLicenses: ReadonlySet<string>;
+  /**
+   * Licence register. When given, a licensed row is accepted only under a licence that is verified, in force
+   * on `today`, covers the row's catalogue release and classes and grants the question texts; Sorani text
+   * additionally needs the translation right. Without a register only the id is checked (local preview).
+   */
+  licenses?: ReadonlyMap<string, LicenseRecord>;
+  /** YYYY-MM-DD, required with `licenses`. */
+  today?: string;
   /** Already stored official questions by code → content hash (for update/duplicate detection). */
   existing: ReadonlyMap<string, string>;
   /** Files the owner attached (validated by media.ts). Missing references are errors. */
@@ -197,6 +206,16 @@ function validateRow(q: ImportQuestion, ctx: ImportContext): { errors: RowIssue[
     if (!q.questionCode) e("questionCode", "required for licensed official questions");
     else if (!(ctx.codePattern ?? DEFAULT_CODE_PATTERN).test(q.questionCode)) e("questionCode", "does not match the official code format");
     if (!q.licenseId) e("licenseId", "licensed content needs a documented licence id");
+    else if (ctx.licenses) {
+      const lic = ctx.licenses.get(q.licenseId);
+      const lctx = { today: ctx.today ?? "", country: "DE" as const, catalogueVersion: q.catalogueVersion, licenseClasses: Array.isArray(q.licenseClasses) ? q.licenseClasses : [] };
+      if (!lic) e("licenseId", `unknown licence '${q.licenseId}' — register the licence first`);
+      else {
+        for (const r of licenseAllows(lic, "import", lctx).reasons) e("licenseId", r);
+        const hasSorani = !!q.prompt?.ckb || !!q.explanation?.ckb || (q.options ?? []).some((o) => !!o.ckb) || (q.media ?? []).some((m) => !!m.altCkb);
+        if (hasSorani && !lic.rights?.translation) e("licenseId", "right not granted: translation — Sorani text cannot be attached to this licensed question");
+      }
+    }
     else if (!ctx.knownLicenses.has(q.licenseId)) e("licenseId", `unknown licence '${q.licenseId}' — register the licence first`);
     if (!q.catalogueVersion) e("catalogueVersion", "required for licensed official questions");
   }
