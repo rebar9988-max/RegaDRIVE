@@ -905,9 +905,11 @@ try {
     // Owner instruction 2026-11-12: the primary navigation is Learn, Practice, Exam; everything else is under "More".
     assert.deepEqual(hrefs, ["/", "/learn", "/practice", "/exam", "/more"]);
     await page.locator('.tabbar a[href="/more"]').click();
-    await page.locator('main .list a[href="/account"]').waitFor();
+    await page.locator('main .list a[href="/progress"]').waitFor();
     const more = await page.locator("main .list a").evaluateAll((els) => els.map((e) => e.getAttribute("href")));
-    for (const href of ["/account", "/progress", "/settings", "/signs", "/vocabulary", "/about"]) assert.ok(more.includes(href), `${href} stays reachable from More`);
+    assert.ok(!more.includes("/account"), "Account is not listed in More (it lives in the header button)");
+    assert.ok(await page.locator('.topbar a[href="/account"]').count() === 1, "header Account button stays");
+    for (const href of ["/progress", "/settings", "/signs", "/vocabulary", "/about"]) assert.ok(more.includes(href), `${href} stays reachable from More`);
     await page.locator('.tabbar a[href="/learn"]').click();
     await page.locator(".lesson-list > li").first().waitFor(); // the screen's code is loaded on demand
     const all = await page.locator(".lesson-list > li").count();
