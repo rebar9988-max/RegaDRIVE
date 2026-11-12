@@ -17,7 +17,8 @@ export function More() {
     <div>
       <header className="page-head"><h1><Bi t={T.nav.more} /></h1></header>
       <ul className="list" style={{ listStyle: "none", padding: 0, margin: 0 }}>
-        {MORE_LINKS.map((l) => (
+        {/* Account is reachable from the header button; it is intentionally not repeated in this list. */}
+        {MORE_LINKS.filter((l) => l.href !== "/account").map((l) => (
           <li key={l.href}>
             <Link href={l.href} className="card card-link list-item">
               <span className="tile-icon"><Icon name={l.icon} /></span><Bi t={l.t} /><Icon name="arrow" className="flip-rtl" />
