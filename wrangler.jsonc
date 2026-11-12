@@ -9,7 +9,9 @@
   "assets": {
     "directory": "./dist",
     "binding": "ASSETS",
-    "not_found_handling": "single-page-application",
+    // Files that exist are served directly. Everything else reaches the Worker, which serves the app for its real
+    // routes and a real 404 (noindex) for unknown paths and missing files (worker/pages.ts).
+    "not_found_handling": "none",
     "run_worker_first": ["/api/*"]
   },
   // Workers AI (free daily allocation). Used only when AI is enabled and the gateway's free-only guard passes.
