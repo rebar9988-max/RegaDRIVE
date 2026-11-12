@@ -6,13 +6,13 @@ import { Icon } from "./Icon";
 import { useBiText } from "./Bi";
 
 /** The four learner languages, in the order of the owner's brief. Names are written in their own language. */
-type LangOption = { id: Lang; code: string; native: string };
-const SORANI: LangOption = { id: "ckb", code: "CKB", native: "کوردی (سۆرانی)" };
+type LangOption = { id: Lang; code: string; native: string; flag: string };
+const SORANI: LangOption = { id: "ckb", code: "CKB", native: "کوردی (سۆرانی)", flag: "/flags/kurdistan.png" };
 const OPTIONS: LangOption[] = [
   SORANI,
-  { id: "kmr", code: "KMR", native: "Kurmancî (Badînî)" },
-  { id: "de", code: "DE", native: "Deutsch" },
-  { id: "ar", code: "AR", native: "العربية" },
+  { id: "kmr", code: "KMR", native: "Kurmancî (Badînî)", flag: "/flags/kurdistan.png" },
+  { id: "de", code: "DE", native: "Deutsch", flag: "/flags/de.png" },
+  { id: "ar", code: "AR", native: "العربية", flag: "/flags/iraq.png" },
 ];
 const TITLE = { ckb: "زمان", de: "Sprache", kmr: "Ziman", ar: "اللغة" };
 const PANEL_WIDTH = 288;
@@ -129,6 +129,7 @@ export function LanguageMenu() {
                 return (
                   <li key={o.id}>
                     <button type="button" className="lang-option" aria-pressed={active} onClick={() => choose(o.id)} data-testid={`header-lang-${o.id}`}>
+                      <img className="lang-flag" src={o.flag} width={30} height={20} alt="" />
                       <span className="lang-native" lang={o.id} dir={langDir(o.id)}>{o.native}</span>
                       <span className="lang-option-code" dir="ltr">{o.code}</span>
                       <span className="lang-check" aria-hidden="true">{active && <Icon name="check" />}</span>

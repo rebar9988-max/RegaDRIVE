@@ -567,6 +567,8 @@ try {
       assert.equal(await trigger.getAttribute("aria-expanded"), "true");
       assert.deepEqual(await panel.locator(".lang-option-code").allTextContents(), ["CKB", "KMR", "DE", "AR"], `${name}: exactly the four supported languages`);
       assert.equal(await panel.locator(".lang-check svg").count(), 1, `${name}: exactly one checkmark`);
+      assert.deepEqual(await panel.locator(".lang-flag").evaluateAll((els) => els.map((e) => e.getAttribute("src"))), ["/flags/kurdistan.png", "/flags/kurdistan.png", "/flags/de.png", "/flags/iraq.png"], `${name}: every language shows its flag`);
+      assert.ok(await panel.locator(".lang-flag").evaluateAll((els) => els.every((e) => e.complete && e.naturalWidth > 0)), `${name}: all flag images load`);
       assert.equal(await panel.locator(".lang-option[aria-pressed=true] .lang-check svg").count(), 1, `${name}: the checkmark marks the active language`);
       const box = await panel.boundingBox();
       const vp = page.viewportSize();
