@@ -53,6 +53,9 @@ function route(path: string) {
   return C ? <C /> : <NotFound />;
 }
 
+/** Pages that hold no German learning content, so they stay reachable while Italy has none (account, settings, more, about). */
+const ITALY_SHARED_PATHS = new Set(["/account", "/settings", "/more", "/about"]);
+
 export function App() {
   // Pathname and query identify a page; a new query (e.g. another practice filter) remounts it (from PR #22).
   const location = useRouteLocation();
@@ -62,14 +65,13 @@ export function App() {
   useEffect(() => afterLoad(warmUp), []);
   if (path === "/dr" || path.startsWith("/dr/")) return <Suspense fallback={<div aria-busy="true" />}><DrAdmin /></Suspense>;
   if (ready && settings.country === null) return <CountrySelection />;
-  if (ready && settings.country === "IT") return <ItalyPending />;
   // Until stored settings are read, and while the shell's code arrives, show the logo only: no layout jump and
   // nothing that would need the app shell, the icons or the content.
   const splash = <div className="splash" aria-busy="true"><img className="splash-logo" src="/brand/regadrive-logo.webp" width={112} height={112} alt="RegaDRIVE" /></div>;
   if (!ready) return splash;
   return (
     <Suspense fallback={splash}>
-      <Shell><ErrorBoundary resetKey={path}><Suspense fallback={<div aria-busy="true" className="route-loading" />}><div key={location}>{route(path)}</div></Suspense></ErrorBoundary></Shell>
+      <Shell><ErrorBoundary resetKey={path}><Suspense fallback={<div aria-busy="true" className="route-loading" />}><div key={location}>{settings.country === "IT" && !ITALY_SHARED_PATHS.has(path) ? <ItalyPending /> : route(path)}</div></Suspense></ErrorBoundary></Shell>
     </Suspense>
   );
 }

@@ -477,7 +477,7 @@ try {
     await ctx.close();
   });
 
-  await test("home: weak-topics empty state starts a real practice; country button is translated; broken screen recovers", async () => {
+  await test("home: weak-topics empty state starts a real practice; no in-app country switch; broken screen recovers", async () => {
     const ctx = await browser.newContext({ ...devices["iPhone 13"], bypassCSP: true });
     const page = await ctx.newPage();
     await page.goto(BASE);
@@ -491,11 +491,14 @@ try {
     await btn.click();
     await page.locator("[data-testid=question-card]").waitFor();
     assert.equal(new URL(page.url()).pathname, "/practice");
-    // The country button speaks the learner's language.
-    assert.equal(await page.locator("button.country-switch").getAttribute("aria-label"), "گۆڕینی وڵات");
+    // Country is chosen once at entry: no switch in the header or navigation. Changing it needs a confirmed reset in Settings.
+    assert.equal(await page.locator(".country-switch, [data-testid=country-change]").count(), 0, "no country switch inside the app");
     await page.goto(`${BASE}/settings`);
+    await page.locator("[data-testid=country-reset-start]").click();
+    await page.locator("[data-testid=country-reset-cancel]").click();
+    assert.equal(await page.locator(".country-card").count(), 0, "cancel keeps the saved country");
     await page.click("[data-testid=lang-de]");
-    assert.equal(await page.locator("button.country-switch").getAttribute("aria-label"), "Land wechseln");
+    assert.equal(await page.locator(".country-switch").count(), 0);
     await page.click("[data-testid=lang-ckb]");
     await ctx.close();
     // A screen whose code cannot be loaded shows a recoverable message instead of a blank app.
@@ -520,19 +523,9 @@ try {
     await page.waitForSelector("[data-testid=lang-ckb]");
     await page.addStyleTag({ content: "[data-testid=preview-banner] { display: none !important; }" });
     const layout = () => page.evaluate(() => [".topbar .brand", ".sidenav", ".tabbar"].map((s) => { const r = document.querySelector(s)?.getBoundingClientRect(); return r && r.width ? [Math.round(r.left), Math.round(r.right)] : null; }));
-    const detail = () => page.evaluate(() => [".topbar", ".topbar > :first-child", ".topbar .brand", ".topbar > :last-child", ".country-switch", ".notification-menu"].map((s) => { const r = document.querySelector(s)?.getBoundingClientRect(); return `${s}=${r ? `${Math.round(r.left)}..${Math.round(r.right)}` : "none"}`; }).join(" ") + ` scrollW=${document.documentElement.scrollWidth} clientW=${document.documentElement.clientWidth}`);
+    const detail = () => page.evaluate(() => [".topbar", ".topbar > :first-child", ".topbar .brand", ".topbar > :last-child", ".notification-menu"].map((s) => { const r = document.querySelector(s)?.getBoundingClientRect(); return `${s}=${r ? `${Math.round(r.left)}..${Math.round(r.right)}` : "none"}`; }).join(" ") + ` scrollW=${document.documentElement.scrollWidth} clientW=${document.documentElement.clientWidth}`);
     const before = await layout();
     const beforeDetail = await detail();
-    // While settings load, Shell shows a hidden placeholder instead of the country button; it must take the same space.
-    await page.evaluate(() => {
-      const btn = document.querySelector("button.country-switch");
-      const ph = document.createElement("span");
-      ph.className = "country-switch"; ph.setAttribute("aria-hidden", "true"); ph.style.visibility = "hidden"; ph.textContent = "🇩🇪";
-      btn.after(ph); btn.style.display = "none";
-    });
-    assert.deepEqual(await layout(), before, "loading placeholder keeps the header in place");
-    await page.evaluate(() => { document.querySelector("span.country-switch").remove(); document.querySelector("button.country-switch").style.display = ""; });
-    assert.deepEqual(await layout(), before);
     for (const lang of ["kmr", "ar", "de", "ckb"]) {
       await page.click(`[data-testid=lang-${lang}]`);
       assert.equal(await page.getAttribute("html", "lang"), lang);

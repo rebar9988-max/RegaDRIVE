@@ -33,13 +33,12 @@ export function CountrySelection() {
   </main>;
 }
 
+/** Shown inside the app shell for Italy until its content is reviewed. There is no country switch here: the only way back is the confirmed reset in Settings. */
 export function ItalyPending() {
-  const { setSettings } = useApp();
   const tx = useText();
-  return <main className="country-entry" id="main"><section className="country-panel">
+  return <section className="card stack" data-testid="italy-pending">
     <span className="country-flag" aria-hidden="true">🇮🇹</span>
     <h1>{tx(T.italy)} — <span lang="it">Patente B</span></h1>
     <p>{tx(T.italyPending)}</p>
-    <button type="button" className="country-switch" onClick={() => setSettings({ country: null })} data-testid="country-change">{tx(T.changeCountry)}</button>
-  </section></main>;
+  </section>;
 }
