@@ -143,17 +143,17 @@ try {
       const cards = await page.locator("[data-testid=question-card]").count();
       if (cards > 0) assert.equal(await page.locator("[data-testid=question-card] legend .bi > span").first().getAttribute("dir"), "rtl");
       await page.goto(`${base}/settings`);
-      // Measure only after stored settings have loaded: before that the header has no country button yet.
+      // Measure only after stored settings have loaded.
       await page.waitForSelector("[data-testid=lang-ckb]");
       // Four languages; the layout never mirrors or moves, only the words change.
       const layout = () => page.evaluate(() => [".topbar .brand", ".sidenav", ".tabbar"].map((s) => { const r = document.querySelector(s)?.getBoundingClientRect(); return r && r.width ? [Math.round(r.left), Math.round(r.right)] : null; }));
-      // The shell paints a splash screen (no country button in the header yet) until settings load from storage.
-      // The language buttons only exist once the app is ready, so wait for them, the country button the learner
-      // chose above, and the web fonts (font-display: swap) before taking the baseline; otherwise the header's
+      // The shell paints a splash screen until settings load from storage. The language buttons only exist once the
+      // app is ready, so wait for them and the web fonts (font-display: swap) before taking the baseline; otherwise
       // late arrivals would be mistaken for a layout move caused by switching language.
       await page.waitForSelector("[data-testid=lang-kmr]", { timeout: 20000 });
-      await page.waitForSelector(".country-switch", { timeout: 20000 });
       await page.evaluate(() => document.fonts.ready);
+      // The country is chosen once at entry (PR #63): no country switch in the header or navigation.
+      assert.equal(await page.locator(".country-switch, [data-testid=country-change]").count(), 0, "no country switch inside the app");
       const before = await layout();
       for (const lang of ["kmr", "ar", "de", "ckb"]) {
         await page.click(`[data-testid=lang-${lang}]`);
