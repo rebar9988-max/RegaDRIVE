@@ -282,7 +282,7 @@ a { color: var(--primary); }
 .acct-rows { list-style: none; margin: 0; padding: 0; display: grid; }
 .acct-rows > li + li { border-top: 1px solid var(--border); }
 .acct-card:not(.acct-card-flush) > .acct-rows { margin-inline: -16px; border-block: 1px solid var(--border); }
-.acct-row { display: flex; align-items: center; gap: 12px; width: 100%; min-height: 56px; padding: 8px 16px; border: 0; background: none; color: var(--ink); font: inherit; font-weight: 700; text-align: start; text-decoration: none; cursor: pointer; }
+.acct-row { display: flex; align-items: center; gap: 12px; width: 100%; min-height: 56px; padding: 8px 16px; border: 0; background: none; color: var(--ink); font: inherit; font-weight: 700; text-align: right; text-decoration: none; cursor: pointer; }
 .acct-row:hover:not(:disabled) { background: var(--rd-mint); }
 .acct-row:focus-visible { outline: 3px solid var(--rd-emerald); outline-offset: -3px; border-radius: 12px; }
 .acct-row:disabled { color: #5b7268; cursor: not-allowed; }
@@ -290,8 +290,9 @@ a { color: var(--primary); }
 .acct-row-icon { flex: none; display: grid; place-items: center; width: 36px; height: 36px; border-radius: 12px; background: var(--rd-mint); color: var(--primary); }
 .acct-row-icon svg { width: 20px; height: 20px; }
 .acct-row-icon.is-danger { background: var(--danger-bg); color: var(--danger-ink); }
-.acct-row-label { flex: 1 1 auto; min-width: 0; overflow-wrap: anywhere; }
-.acct-row-value { flex: 0 1 auto; min-width: 0; max-width: 50%; color: var(--muted); font-size: .9rem; font-weight: 600; text-align: end; overflow-wrap: anywhere; }
+.acct-row-text { flex: 1 1 auto; display: grid; gap: 1px; min-width: 0; }
+.acct-row-label { min-width: 0; overflow-wrap: anywhere; }
+.acct-row-value { min-width: 0; color: var(--muted); font-size: .86rem; font-weight: 600; overflow-wrap: anywhere; }
 .acct-row-action { flex: none; color: var(--primary); font-size: .9rem; font-weight: 800; }
 .acct-row .flip-rtl { color: var(--muted); }
 
@@ -302,7 +303,7 @@ a { color: var(--primary); }
 .acct-stat { display: grid; align-content: start; justify-items: center; gap: 2px; min-width: 0; padding: 12px 6px; border-radius: 16px; background: var(--rd-mint); text-align: center; }
 .acct-stat-value { font: 800 1.35rem/1.2 var(--font-de); color: var(--ink); font-variant-numeric: tabular-nums; }
 .acct-stat-of { font-size: .72em; font-weight: 700; color: var(--muted); }
-.acct-stat-label { font-size: .78rem; font-weight: 700; line-height: 1.35; color: var(--rd-emerald-deep); overflow-wrap: anywhere; hyphens: auto; }
+.acct-stat-label { font-size: .78rem; font-weight: 700; line-height: 1.35; color: var(--rd-emerald-deep); overflow-wrap: break-word; }
 .acct-link { display: flex; align-items: center; justify-content: space-between; gap: 8px; min-height: 44px; padding-inline: 4px; color: var(--primary); font-weight: 800; text-decoration: none; }
 .acct-link:focus-visible { outline: 3px solid var(--rd-emerald); outline-offset: 2px; border-radius: 10px; }
 .acct-link .flip-rtl { color: var(--primary); }
@@ -312,7 +313,7 @@ a { color: var(--primary); }
 .acct-sync-copy { display: grid; gap: 2px; min-width: 0; }
 .acct-sync-title { margin: 0; font-size: 1rem; font-weight: 800; }
 .acct-sync-copy p, .acct-sync > p { margin: 0; }
-.acct .auth-actions .btn { flex: 1 1 140px; }
+.acct .auth-actions .btn { flex: 1 1 220px; }
 
 /* Messages appear next to the action that caused them; an empty live region takes no space. */
 .acct-status:empty { position: absolute; width: 1px; height: 1px; overflow: hidden; }

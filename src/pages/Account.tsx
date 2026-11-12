@@ -94,7 +94,7 @@ const S = {
   allSettings: { ckb: "هەموو ڕێکخستنەکان", de: "Alle Einstellungen", kmr: "Hemû mîheng", ar: "كل الإعدادات" },
   answered: { ckb: "وەڵامدراوە", de: "Beantwortet", kmr: "Bersivandî", ar: "تمت الإجابة" },
   masteredShort: { ckb: "فێربووە", de: "Gemeistert", kmr: "Fêrbûyî", ar: "متقَن" },
-  exams: { ckb: "تاقیکردنەوەی ڕاهێنان", de: "Prüfungssimulationen", kmr: "Ezmûnên ceribandinê", ar: "امتحانات تجريبية" },
+  exams: { ckb: "تاقیکردنەوەی ڕاهێنان", de: "Simulationen", kmr: "Ezmûnên ceribandinê", ar: "امتحانات تجريبية" },
   details: { ckb: "بینینی وردەکاری", de: "Details ansehen", kmr: "Hûrguliyan bibîne", ar: "عرض التفاصيل" },
   syncTitle: { ckb: "پاشەکەوت لە هەژمار", de: "Sicherung im Konto", kmr: "Parastina di hesabê de", ar: "النسخ الاحتياطي في الحساب" },
   lastBackup: { ckb: "دوایین پاشەکەوت:", de: "Zuletzt gesichert:", kmr: "Parastina dawî:", ar: "آخر نسخ احتياطي:" },
@@ -335,8 +335,10 @@ export function Account() {
   const row = (icon: IconName, label: Bilingual, value?: ReactNode, extra?: { danger?: boolean }) => (
     <>
       <span className={`acct-row-icon${extra?.danger ? " is-danger" : ""}`}><Icon name={icon} /></span>
-      <Tx t={label} className="acct-row-label" />
-      {value !== undefined && <span className="acct-row-value">{value}</span>}
+      <span className="acct-row-text">
+        <Tx t={label} className="acct-row-label" />
+        {value !== undefined && <span className="acct-row-value">{value}</span>}
+      </span>
     </>
   );
   const rowBtn = (key: Exclude<Busy, null>, icon: IconName, label: Bilingual, onClick: () => void, testid: string, danger = false) => (
