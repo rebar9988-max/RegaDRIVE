@@ -2,7 +2,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useRef, use
 import { kv } from "../lib/storage";
 import { emptyProgress, normalizeProgress, type ProgressState } from "../lib/progress";
 import { langDir } from "./i18n";
-import { defaultSettings, normalizeSettings, type CountryId, type Settings } from "./settings";
+import { countryKey, defaultSettings, normalizeSettings, type CountryId, type Settings } from "./settings";
 
 export type { Settings } from "./settings";
 
@@ -19,7 +19,7 @@ interface Ctx {
 const AppCtx = createContext<Ctx | null>(null);
 
 /** Progress is stored per country. Germany keeps the original key, so existing learners lose nothing. */
-export const progressKey = (country: CountryId | null) => (country === "IT" ? "progress:IT" : "progress");
+export const progressKey = (country: CountryId | null) => countryKey("progress", country);
 
 export function AppProvider({ children }: { children: ReactNode }) {
   const [ready, setReady] = useState(false);

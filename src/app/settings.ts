@@ -4,6 +4,8 @@ import { isLang, type Lang } from "./i18n";
 /** lang: the learner's reading language. withGerman: show the German original under it (ignored when lang is "de"). */
 export type CountryId = "DE" | "IT";
 export interface Settings { country: CountryId | null; lang: Lang; withGerman: boolean; masteryThreshold: number; dailyGoal: number }
+/** Storage key for per-country data. Germany keeps the original key (no migration); every other country gets its own. */
+export const countryKey = (base: string, country: CountryId | null) => (country === "IT" ? `${base}:IT` : base);
 export const defaultSettings: Settings = { country: null, lang: "ckb", withGerman: true, masteryThreshold: MASTERY_THRESHOLD_DEFAULT, dailyGoal: 10 };
 
 /** Reads stored settings, including the earlier { langMode: "bi" | "ckb" | "de" } format. */

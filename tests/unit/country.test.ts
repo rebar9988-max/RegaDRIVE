@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { progressKey } from "../../src/app/state";
-import { defaultSettings, normalizeSettings } from "../../src/app/settings";
+import { countryKey, defaultSettings, normalizeSettings } from "../../src/app/settings";
 
 describe("country preference", () => {
   it("requires an explicit country for new users", () => {
@@ -19,5 +19,12 @@ describe("country preference", () => {
   it("keeps progress of Germany and Italy under separate keys", () => {
     expect(progressKey("DE")).toBe("progress");
     expect(progressKey("IT")).not.toBe(progressKey("DE"));
+  });
+  it("scopes exam and practice resume data per country, Germany keeping the original keys", () => {
+    for (const base of ["exam-session", "practice-resume"]) {
+      expect(countryKey(base, "DE")).toBe(base);
+      expect(countryKey(base, null)).toBe(base);
+      expect(countryKey(base, "IT")).not.toBe(base);
+    }
   });
 });

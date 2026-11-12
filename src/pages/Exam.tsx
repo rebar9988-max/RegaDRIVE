@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useApp } from "../app/state";
+import { countryKey } from "../app/settings";
 import { T } from "../app/strings";
 import { Bi, useBiText } from "../components/Bi";
 import { Icon } from "../components/Icon";
@@ -18,7 +19,8 @@ const rules = KLASSE_B_RULES_2026;
 const examQuestions = (seed: number) => buildMockExam(CONTENT.questions, seed, rules);
 
 export function Exam() {
-  const { update } = useApp();
+  const { update, settings } = useApp();
+  const sessionKey = countryKey(EXAM_SESSION_KEY, settings.country);
   const label = useBiText();
   // undefined: stored session not read yet. null: no exam running.
   const [session, setSession] = useState<ExamSession | null | undefined>(undefined);
@@ -40,14 +42,14 @@ export function Exam() {
   // Offer an unfinished exam again after a reload or a closed tab.
   useEffect(() => {
     let alive = true;
-    kv.get<unknown>(EXAM_SESSION_KEY)
+    kv.get<unknown>(sessionKey)
       .then((raw) => { if (alive) { setPaused(restoreExamSession(raw, rules.version, (seed) => examQuestions(seed).map((q) => q.id))); setSession(null); } })
       .catch(() => { if (alive) setSession(null); });
     return () => { alive = false; };
-  }, []);
+  }, [sessionKey]);
 
   // Every change is saved immediately; a failed write must never interrupt the exam.
-  useEffect(() => { if (session) kv.set(EXAM_SESSION_KEY, session).catch(() => undefined); }, [session]);
+  useEffect(() => { if (session) kv.set(sessionKey, session).catch(() => undefined); }, [session, sessionKey]);
 
   const patch = (p: Partial<ExamSession>) => setSession((s) => (s ? { ...s, ...p } : s));
 
@@ -72,11 +74,11 @@ export function Exam() {
       for (const a of scored) next = recordAnswer(next, `exam-${s.seed}`, a.questionId, a.correct, at);
       return { ...next, examHistory: [...next.examHistory, { at, passed: result.passed, errorPoints: result.errorPoints, totalPoints: result.totalPoints, rulesVersion: result.rulesVersion }].slice(-50) };
     });
-    kv.del(EXAM_SESSION_KEY).catch(() => undefined);
+    kv.del(sessionKey).catch(() => undefined);
     setSession(null);
     setFinished({ session: s, result, timedOut });
     window.scrollTo(0, 0);
-  }, [update]);
+  }, [update, sessionKey]);
 
   // Clock. With a practice limit the exam is handed in automatically when the time is over; without one it only counts up.
   useEffect(() => {
