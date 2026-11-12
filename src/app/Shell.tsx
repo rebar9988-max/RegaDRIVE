@@ -9,20 +9,20 @@ import type { Bilingual } from "../content/types";
 
 const TABS: { href: string; icon: IconName; t: Bilingual }[] = [
   { href: "/", icon: "home", t: T.nav.home },
+  // Primary student navigation: learn, practise, take an exam. Everything else lives under "More".
   { href: "/learn", icon: "book", t: T.nav.learn },
+  { href: "/practice", icon: "check", t: T.nav.practice },
   { href: "/exam", icon: "exam", t: T.nav.exam },
-  { href: "/progress", icon: "chart", t: T.nav.progress },
-  { href: "/settings", icon: "gear", t: T.nav.settings },
+  { href: "/more", icon: "more", t: T.nav.more },
 ];
 export const MORE_LINKS: { href: string; icon: IconName; t: Bilingual }[] = [
-  { href: "/practice", icon: "check", t: T.nav.practice },
-  { href: "/signs", icon: "sign", t: T.nav.signs },
+  { href: "/account", icon: "user", t: T.nav.account },
   { href: "/progress", icon: "chart", t: T.nav.progress },
+  { href: "/settings", icon: "gear", t: T.nav.settings },
+  { href: "/signs", icon: "sign", t: T.nav.signs },
   { href: "/vocabulary", icon: "words", t: T.nav.vocab },
   { href: "/services", icon: "pin", t: T.nav.services },
-  { href: "/account", icon: "user", t: T.nav.account },
   { href: "/access", icon: "lock", t: T.nav.access },
-  { href: "/settings", icon: "gear", t: T.nav.settings },
   { href: "/about", icon: "info", t: T.nav.about },
 ];
 
@@ -46,7 +46,7 @@ export function Shell({ children }: { children: ReactNode }) {
           <span className="brand-name" lang="en">Rega<span>DRIVE</span></span>
         </Link>
         <div className="header-tools">
-          {settings.country && <button type="button" className="country-switch" onClick={() => setSettings({ country: null })} aria-label="گۆڕینی وڵات">{settings.country === "DE" ? "🇩🇪" : "🇮🇹"}</button>}
+          {settings.country && <button type="button" className="country-switch" onClick={() => setSettings({ country: null })} aria-label={label(T.changeCountry)}>{settings.country === "DE" ? "🇩🇪" : "🇮🇹"}</button>}
           {/* While stored settings load, keep the country button's space so the logo does not jump when it appears. */}
           {!ready && !settings.country && <span className="country-switch" aria-hidden="true" style={{ visibility: "hidden" }}>🇩🇪</span>}
           {!online && <span className="offline-pill" role="status" data-testid="offline-pill">{label(T.offline)}</span>}
@@ -58,7 +58,7 @@ export function Shell({ children }: { children: ReactNode }) {
       </header>
       <div className="layout">
         <nav className="sidenav" aria-label={label({ ckb: "ڕێنیشاندەری سەرەکی", de: "Hauptnavigation", kmr: "Navîgasyona sereke", ar: "التنقل الرئيسي" })}>
-          {[...TABS, ...MORE_LINKS.filter((l) => !TABS.some((t) => t.href === l.href))].map((l) => (
+          {[...TABS.filter((t) => t.href !== "/more"), ...MORE_LINKS].map((l) => (
             <Link key={l.href} href={l.href} className="navlink" aria-current={isActive(path, l.href) ? "page" : undefined}>
               <Icon name={l.icon} /><Bi t={l.t} />
             </Link>

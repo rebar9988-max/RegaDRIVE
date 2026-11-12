@@ -9,12 +9,14 @@ import { CONTENT } from "../app/content";
 import { topicById } from "../content/topics";
 import { dayKey, questionStatus, streakDays, weakTopics } from "../lib/progress";
 import type { Bilingual } from "../content/types";
+import { KLASSE_B_RULES_2026 } from "../lib/shared/exam";
 
-const TILES: { href: string; icon: IconName; t: Bilingual; sub: Bilingual }[] = [
-  { href: "/learn", icon: "book", t: T.lessons, sub: { ckb: "هەنگاو بە هەنگاو فێربە", de: "Schritt für Schritt lernen", kmr: "Gav bi gav fêr bibe", ar: "تعلّم خطوة بخطوة" } },
-  { href: "/signs", icon: "sign", t: { ckb: "نیشانەکانی هاتوچۆ", de: "Verkehrszeichen", kmr: "Nîşaneyên trafîkê", ar: "إشارات المرور" }, sub: { ckb: "هێماکان بناسە", de: "Schilder verstehen", kmr: "Nîşaneyan nas bike", ar: "افهم الإشارات" } },
-  { href: "/practice", icon: "check", t: { ckb: "پرسیارەکان", de: "Fragen üben", kmr: "Pirsan biceribîne", ar: "تدرّب على الأسئلة" }, sub: { ckb: "زانیارییەکانت تاقی بکەرەوە", de: "Dein Wissen anwenden", kmr: "Zanîna xwe biceribîne", ar: "طبّق معرفتك" } },
-  { href: "/exam", icon: "trophy", t: T.mockExam, sub: { ckb: "ئامادەکاری بە ڕاهێنان", de: "Mit Simulationen vorbereiten", kmr: "Bi simulasyonan amade bibe", ar: "استعد بالمحاكاة" } },
+type TileKey = "lessons" | "signs" | "questions" | "exam";
+const TILES: { href: string; icon: IconName; t: Bilingual; sub: Bilingual; needs: TileKey }[] = [
+  { href: "/learn", icon: "book", t: T.lessons, sub: { ckb: "هەنگاو بە هەنگاو فێربە", de: "Schritt für Schritt lernen", kmr: "Gav bi gav fêr bibe", ar: "تعلّم خطوة بخطوة" }, needs: "lessons" },
+  { href: "/signs", icon: "sign", t: { ckb: "نیشانەکانی هاتوچۆ", de: "Verkehrszeichen", kmr: "Nîşaneyên trafîkê", ar: "إشارات المرور" }, sub: { ckb: "هێماکان بناسە", de: "Schilder verstehen", kmr: "Nîşaneyan nas bike", ar: "افهم الإشارات" }, needs: "signs" },
+  { href: "/practice", icon: "check", t: { ckb: "پرسیارەکان", de: "Fragen üben", kmr: "Pirsan biceribîne", ar: "تدرّب على الأسئلة" }, sub: { ckb: "زانیارییەکانت تاقی بکەرەوە", de: "Dein Wissen anwenden", kmr: "Zanîna xwe biceribîne", ar: "طبّق معرفتك" }, needs: "questions" },
+  { href: "/exam", icon: "trophy", t: T.mockExam, sub: { ckb: "ئامادەکاری بە ڕاهێنان", de: "Mit Simulationen vorbereiten", kmr: "Bi simulasyonan amade bibe", ar: "استعد بالمحاكاة" }, needs: "exam" },
 ];
 const OVERALL = { ckb: "پێشکەوتنی گشتی", de: "Dein Lernfortschritt", kmr: "Pêşketina giştî", ar: "تقدّمك في التعلّم" };
 
@@ -34,6 +36,14 @@ export function Home() {
   const percent = lessons.length ? (completed / lessons.length) * 100 : 0;
   const nextLesson = lessons.find((l) => !progress.completedLessons.includes(l.id)) ?? lessons[0];
   const started = answered > 0 || progress.completedLessons.length > 0;
+  // What can really be opened today. Unavailable areas get a quiet "coming soon" label, never a fake entry.
+  const available: Record<TileKey, boolean> = {
+    lessons: lessons.length > 0,
+    signs: CONTENT.signs.length > 0,
+    questions: qs.length > 0,
+    exam: qs.filter((q) => q.categoryType === "Grundstoff").length >= KLASSE_B_RULES_2026.grundstoffCount && qs.filter((q) => q.categoryType === "Zusatzstoff").length >= KLASSE_B_RULES_2026.zusatzstoffCount,
+  };
+  const soon = <span className="badge badge-soon" data-testid="coming-soon"><Bi t={T.comingSoon} inline /></span>;
 
   return (
     <div className="dashboard" data-testid="home">
@@ -63,7 +73,7 @@ export function Home() {
               de: `${completed} von ${lessons.length} Lektionen abgeschlossen`,
               kmr: `${completed} ji ${lessons.length} dersan temam bûn`,
               ar: `الدروس المكتملة: ${completed} من ${lessons.length}`,
-            } : { ckb: "وانەکان لە پێداچوونەوەدان", de: "Lektionen werden fachlich geprüft", kmr: "Ders tên kontrolkirin", ar: "الدروس قيد مراجعة المختصين" }} /></p>
+            } : T.comingSoon} /></p>
           </div>
           <ProgressRing value={percent} label={label(OVERALL)} />
           <Icon name="arrow" className="flip-rtl overview-arrow" />
@@ -86,6 +96,7 @@ export function Home() {
                 <span className="tile-icon"><Icon name={t.icon} /></span>
                 <strong><Bi t={t.t} /></strong>
                 <span className="tile-subtitle small muted"><Bi t={t.sub} /></span>
+                {!available[t.needs] && soon}
               </Link>
             ))}
           </div>
@@ -109,19 +120,24 @@ export function Home() {
           <div className="card stat"><span className="stat-icon"><Icon name="flame" /></span><span className="stat-value">{streak}</span><span className="stat-label muted"><Bi t={T.streak} /></span></div>
           <div className="card stat"><span className="stat-icon"><Icon name="star" /></span><span className="stat-value">{mastered}/{qs.length}</span><span className="stat-label muted"><Bi t={T.mastered} /></span></div>
         </div>
-        <section className="card" aria-labelledby="next-title">
-          <h2 id="next-title" className="section-title"><Bi t={T.nextLesson} /></h2>
-          {!nextLesson ? <p className="small muted"><Bi t={T.contentInReview} /></p> : (
+        {nextLesson && (
+          <section className="card" aria-labelledby="next-title">
+            <h2 id="next-title" className="section-title"><Bi t={T.nextLesson} /></h2>
             <Link href={`/learn/${nextLesson.id}`} className="card-link next-lesson-link">
               <span className="tile-icon"><Icon name="book" /></span>
               <span className="stack"><Bi t={nextLesson.title} /><span className="small muted"><span className="num">{nextLesson.minutes}</span> {label(T.minutes)}</span></span>
               <Icon name="arrow" className="flip-rtl" />
             </Link>
-          )}
-        </section>
+          </section>
+        )}
         <section className="card" aria-labelledby="weak-title">
           <h2 id="weak-title" className="section-title"><Bi t={T.weakTopics} /></h2>
-          {weak.length === 0 ? <p className="small muted"><Bi t={T.noWeakTopics} /></p> : (
+          {weak.length === 0 ? (
+            <div className="stack empty-state" data-testid="weak-empty">
+              <p className="small muted"><Bi t={available.questions ? T.weakEmpty : T.practiceSoon} /></p>
+              {available.questions && <Link href="/practice" className="btn btn-primary" data-testid="weak-start"><Bi t={T.startPractice} /></Link>}
+            </div>
+          ) : (
             <ul className="list unstyled-list">
               {weak.map((id) => <li key={id}><Link href={`/practice?topic=${id}`} className="chip"><Bi t={topicById(id)!.title} inline /></Link></li>)}
             </ul>

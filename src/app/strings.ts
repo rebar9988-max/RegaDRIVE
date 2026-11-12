@@ -89,5 +89,13 @@ export const T = {
     almost: b("نزیکیت لە ئامادەبوون", "Fast prüfungsreif", "Tu nêzîkî amadebûnê yî", "أوشكت على الجاهزية"),
     ready: b("ئامادەیت بۆ تاقیکردنەوە", "Prüfungsreif", "Tu ji bo ezmûnê amade yî", "جاهز للامتحان"),
   },
+  comingSoon: b("بەم زووانە", "Demnächst", "Di demeke nêz de", "قريبًا"),
+  startPractice: b("دەست بە ڕاهێنان بکە", "Übung starten", "Dest bi rahênanê bike", "ابدأ التدريب"),
+  weakEmpty: b("دوای تەواوکردنی ڕاهێنان، بابەتە لاوازەکانت لێرە دەردەکەون.", "Nach abgeschlossenen Übungen erscheinen hier deine schwachen Themen.", "Piştî qedandina rahênanan, mijarên te yên lawaz li vir xuya dibin.", "بعد إكمال التدريبات ستظهر مواضيعك الضعيفة هنا."),
+  practiceSoon: b("ڕاهێنان دوای بڵاوکردنەوەی پرسیارە پەسەندکراوەکان بەردەست دەبێت.", "Das Üben ist verfügbar, sobald geprüfte Fragen veröffentlicht sind.", "Rahênan piştî weşandina pirsên pejirandî berdest dibe.", "سيتوفر التدريب بعد نشر الأسئلة المعتمدة."),
+  changeCountry: b("گۆڕینی وڵات", "Land wechseln", "Welat biguherîne", "تغيير البلد"),
+  errorTitle: b("هەڵەیەک ڕوویدا", "Etwas ist schiefgelaufen", "Çewtiyek çêbû", "حدث خطأ"),
+  errorBody: b("پێشکەوتنەکەت پارێزراوە. تکایە پەڕەکە نوێ بکەرەوە.", "Dein Fortschritt ist gespeichert. Bitte lade die Seite neu.", "Pêşketina te parastî ye. Ji kerema xwe rûpelê nû bike.", "تقدّمك محفوظ. يرجى إعادة تحميل الصفحة."),
+  reload: b("نوێکردنەوەی پەڕە", "Seite neu laden", "Rûpelê nû bike", "إعادة تحميل الصفحة"),
   reviewMistakes: b("پێداچوونەوەی هەڵەکان", "Fehler wiederholen", "Şaşiyan dubare bike", "راجع أخطاءك"),
 };
