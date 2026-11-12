@@ -1,6 +1,6 @@
 import { lazy, Suspense, useEffect, type ComponentType } from "react";
 import { ErrorBoundary } from "./components/ErrorBoundary";
-import { usePath } from "./app/router";
+import { decodeLocationPart, useRouteLocation } from "./app/router";
 import { CountrySelection, ItalyPending } from "./app/CountrySelection";
 import { useApp } from "./app/state";
 
@@ -38,7 +38,11 @@ function route(path: string) {
   const p = path.replace(/\/+$/, "") || "/";
   if (p === "/") return <Home />;
   if (p === "/learn") return <Learn />;
-  if (p.startsWith("/learn/")) return <LessonDetail id={decodeURIComponent(p.slice(7))} />;
+  if (p.startsWith("/learn/")) {
+    // A malformed escape in the URL shows the missing-page state instead of throwing (from PR #22).
+    const id = decodeLocationPart(p.slice(7));
+    return id === null ? <NotFound /> : <LessonDetail id={id} />;
+  }
   if (p === "/admin/import" && AdminImport) return <Suspense fallback={<div aria-busy="true" />}><AdminImport /></Suspense>;
   const map: Record<string, ComponentType> = {
     "/signs": Signs, "/practice": Practice, "/exam": Exam, "/progress": ProgressPage, "/vocabulary": Vocabulary,
@@ -49,7 +53,9 @@ function route(path: string) {
 }
 
 export function App() {
-  const path = usePath();
+  // Pathname and query identify a page; a new query (e.g. another practice filter) remounts it (from PR #22).
+  const location = useRouteLocation();
+  const path = location.split("?")[0]!;
   const { ready, settings } = useApp();
   useEffect(() => {
     // After the first paint, fetch the other screens in the background so navigation never waits or flickers.
@@ -67,7 +73,7 @@ export function App() {
   if (!ready) return splash;
   return (
     <Suspense fallback={splash}>
-      <Shell><ErrorBoundary resetKey={path}><Suspense fallback={<div aria-busy="true" className="route-loading" />}><div key={path}>{route(path)}</div></Suspense></ErrorBoundary></Shell>
+      <Shell><ErrorBoundary resetKey={path}><Suspense fallback={<div aria-busy="true" className="route-loading" />}><div key={location}>{route(path)}</div></Suspense></ErrorBoundary></Shell>
     </Suspense>
   );
 }
