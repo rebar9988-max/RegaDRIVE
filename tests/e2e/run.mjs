@@ -509,6 +509,68 @@ try {
     await ctx.close();
   });
 
+  await test("header language selector: one compact control, four languages, checkmark, saved choice, bottom sheet on phones", async () => {
+    for (const [name, opts] of [["desktop", { viewport: { width: 1280, height: 900 } }], ["tablet", { viewport: { width: 820, height: 1100 } }], ["phone 360", { viewport: { width: 360, height: 740 } }], ["phone 320", { viewport: { width: 320, height: 700 } }]]) {
+      // bypassCSP only so the axe test script can be injected; the app itself keeps its strict CSP.
+      const ctx = await browser.newContext({ ...opts, bypassCSP: true });
+      const page = await ctx.newPage();
+      const errors = [];
+      page.on("pageerror", (e) => errors.push(e.message));
+      await page.goto(BASE);
+      await page.waitForSelector("[data-testid=home]");
+      await page.addStyleTag({ content: "[data-testid=preview-banner] { display: none !important; }" });
+      assert.equal(await page.locator(".language-switch").count(), 0, `${name}: no large language buttons on the home page`);
+      assert.equal(await page.locator(".topbar .brand-name").count(), 0, `${name}: no duplicate RegaDRIVE text in the header`);
+      assert.equal(await page.locator(".topbar .brand img").count(), 1, `${name}: the official logo stays`);
+      const trigger = page.locator("[data-testid=header-lang-trigger]");
+      assert.equal((await trigger.locator(".lang-code").textContent()).trim(), "CKB", `${name}: Sorani is the default`);
+      const overflow = () => page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
+      assert.equal(await overflow(), 0, `${name}: no horizontal overflow with the selector`);
+      const tb = await trigger.boundingBox();
+      assert.ok(tb.width >= 40 && tb.height >= 40, `${name}: the selector is a comfortable touch target (${tb.width}x${tb.height})`);
+
+      await trigger.click();
+      const panel = page.locator("[data-testid=header-lang-panel]");
+      await panel.waitFor();
+      assert.equal(await trigger.getAttribute("aria-expanded"), "true");
+      assert.deepEqual(await panel.locator(".lang-option-code").allTextContents(), ["CKB", "KMR", "DE", "AR"], `${name}: exactly the four supported languages`);
+      assert.equal(await panel.locator(".lang-check svg").count(), 1, `${name}: exactly one checkmark`);
+      assert.equal(await panel.locator(".lang-option[aria-pressed=true] .lang-check svg").count(), 1, `${name}: the checkmark marks the active language`);
+      const box = await panel.boundingBox();
+      const vp = page.viewportSize();
+      assert.ok(box.x >= -1 && box.x + box.width <= vp.width + 1, `${name}: the panel stays inside the screen`);
+      if (vp.width <= 640) assert.ok(Math.abs(box.y + box.height - vp.height) <= 1, `${name}: phones get a bottom sheet`);
+      else assert.ok(box.y >= tb.y + tb.height - 1, `${name}: wide screens get a dropdown under the button`);
+      await axe(page, `language selector open (${name})`);
+      await page.keyboard.press("Escape");
+      assert.equal(await panel.count(), 0, `${name}: Escape closes the selector`);
+      assert.ok(await trigger.evaluate((el) => el === document.activeElement), `${name}: focus returns to the button`);
+
+      const headerBox = () => page.evaluate(() => [".topbar .brand", ".lang-trigger"].map((s) => { const r = document.querySelector(s).getBoundingClientRect(); return [Math.round(r.left), Math.round(r.right)]; }));
+      const before = await headerBox();
+      for (const [id, code] of [["kmr", "KMR"], ["de", "DE"], ["ar", "AR"], ["ckb", "CKB"]]) {
+        await trigger.click();
+        await page.click(`[data-testid=header-lang-${id}]`);
+        assert.equal(await page.getAttribute("html", "lang"), id);
+        assert.equal(await page.getAttribute("html", "dir"), "rtl", "the layout never mirrors");
+        assert.equal((await trigger.locator(".lang-code").textContent()).trim(), code);
+        assert.equal(await panel.count(), 0, `${name}: choosing a language closes the selector`);
+        assert.deepEqual(await headerBox(), before, `${name}: the header does not move in ${id}`);
+        assert.equal(await overflow(), 0, `${name}: no horizontal overflow in ${id}`);
+      }
+      await trigger.click();
+      await page.click("[data-testid=header-lang-ar]");
+      await page.waitForTimeout(400);
+      await page.reload();
+      await page.waitForSelector("[data-testid=home]");
+      assert.equal(await page.getAttribute("html", "lang"), "ar", `${name}: the saved language is kept after a reload`);
+      assert.equal((await page.locator("[data-testid=header-lang-trigger] .lang-code").textContent()).trim(), "AR");
+      await page.screenshot({ path: `${OUT}/header-lang-${name.replace(" ", "-")}.png` });
+      assert.deepEqual(errors, []);
+      await ctx.close();
+    }
+  });
+
   await test("languages: Sorani, Kurmanji, Arabic and German change the words, never the layout", async () => {
     for (const viewport of [{ width: 1280, height: 900 }, { width: 390, height: 844 }]) {
       // bypassCSP only so the axe test script can be injected; the app itself keeps its strict CSP.
@@ -521,13 +583,15 @@ try {
       // The preview-only test banner (never shown in production) has a different length per language.
       await page.addStyleTag({ content: "[data-testid=preview-banner] { display: none !important; }" });
       // Horizontal edges and vertical positions: nothing may move sideways or up and down.
-      const boxes = () => page.evaluate(() => [".topbar .brand", ".language-switch", ".hero-logo", ".tabbar", ".sidenav", ".overview-card", ".learning-cta", ".home-menu"].map((sel) => {
+      const boxes = () => page.evaluate(() => [".topbar .brand", ".lang-trigger", ".hero-logo", ".tabbar", ".sidenav", ".overview-card", ".learning-cta", ".home-menu"].map((sel) => {
         const el = document.querySelector(sel); const r = el?.getBoundingClientRect();
         return r && r.width > 0 ? [sel, Math.round(r.left), Math.round(r.right), Math.round(r.top + scrollY), Math.round(r.height)] : [sel, null];
       }));
       const before = await boxes();
       for (const lang of ["kmr", "ar", "de", "ckb"]) {
-        await page.click(`[data-testid=switch-${lang}]`);
+        await page.click("[data-testid=header-lang-trigger]");
+        await page.click(`[data-testid=header-lang-${lang}]`);
+        assert.equal(await page.locator("[data-testid=header-lang-panel]").count(), 0, "the selector closes after choosing");
         assert.equal(await page.getAttribute("html", "lang"), lang);
         assert.equal(await page.getAttribute("html", "dir"), "rtl", "the layout never mirrors");
         assert.deepEqual(await boxes(), before, `layout moved after switching to ${lang}`);
@@ -755,7 +819,7 @@ try {
     await page.goto(BASE);
     await page.waitForSelector("[data-testid=home]");
     assert.equal(await page.locator(".bi > .de:not(.ghost)").count(), 0, "German is the main text, not a second line");
-    assert.equal(await page.locator("[lang=ckb]:not(.language-switch button)").count(), 0);
+    assert.equal(await page.locator("[lang=ckb]").count(), 0);
     await page.screenshot({ path: `${OUT}/home-desktop-de.png` });
     await page.goto(`${BASE}/settings`);
     await page.click("[data-testid=lang-kmr]");
@@ -806,7 +870,8 @@ try {
     const errors = [];
     page.on("pageerror", (e) => errors.push(e.message));
     await page.goto(BASE);
-    await page.locator(".language-switch button[lang=ckb]").click();
+    await page.click("[data-testid=header-lang-trigger]");
+    await page.click("[data-testid=header-lang-ckb]");
     const hrefs = await page.locator(".tabbar a").evaluateAll((els) => els.map((e) => e.getAttribute("href")));
     // Owner instruction 2026-11-12: the primary navigation is Learn, Practice, Exam; everything else is under "More".
     assert.deepEqual(hrefs, ["/", "/learn", "/practice", "/exam", "/more"]);

@@ -5,6 +5,7 @@ import { T } from "./strings";
 import { CONTENT_MODE } from "./content";
 import { Bi, useBiText } from "../components/Bi";
 import { Icon, type IconName } from "../components/Icon";
+import { LanguageMenu } from "../components/LanguageMenu";
 import type { Bilingual } from "../content/types";
 
 const TABS: { href: string; icon: IconName; t: Bilingual }[] = [
@@ -43,9 +44,9 @@ export function Shell({ children }: { children: ReactNode }) {
         </div>
         <Link href="/" className="brand" aria-label="RegaDRIVE">
           <img src="/brand/regadrive-logo.webp" width={58} height={58} alt="" />
-          <span className="brand-name" lang="en">Rega<span>DRIVE</span></span>
         </Link>
         <div className="header-tools">
+          <LanguageMenu />
           {settings.country && <button type="button" className="country-switch" onClick={() => setSettings({ country: null })} aria-label={label(T.changeCountry)}>{settings.country === "DE" ? "🇩🇪" : "🇮🇹"}</button>}
           {/* While stored settings load, keep the country button's space so the logo does not jump when it appears. */}
           {!ready && !settings.country && <span className="country-switch" aria-hidden="true" style={{ visibility: "hidden" }}>🇩🇪</span>}
