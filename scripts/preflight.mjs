@@ -56,7 +56,14 @@ const info = existsSync("dist/build-info.json") ? JSON.parse(readFileSync("dist/
 gate(info !== null && existsSync("dist/index.html") && existsSync("dist/brand/regadrive-logo.webp"), "production build with official logo present");
 gate(info?.contentMode === "production", "build is a production content build (no unapproved preview content)");
 gate(v.CONTENT_MODE === "production", "Worker CONTENT_MODE=production");
-gate(info?.adminUi === false && !(existsSync("dist/assets") && readdirSync("dist/assets").some((f) => f.startsWith("AdminImport"))), "owner import UI is not in the production bundle");
+// Owner instruction 2026-11-12: the import / licence / media preview is part of the /dr owner workbench. It must
+// stay out of the student bundle and the public /admin/import route must not be built into production; it may
+// exist only in the chunk that /dr loads after the owner signed in.
+const assets = existsSync("dist/assets") ? readdirSync("dist/assets") : [];
+const holdsWorkbench = (f) => /\.js$/.test(f) && /dr-content/.test(readFileSync(`dist/assets/${f}`, "utf8"));
+gate(info?.adminUi === false && !assets.some((f) => f.startsWith("AdminImport")), "public /admin/import route is not built into production");
+gate(!assets.filter((f) => /^index-/.test(f)).some(holdsWorkbench), "owner content workbench is not in the student bundle");
+gate(assets.filter(holdsWorkbench).every((f) => /^DrContent-/.test(f)), "owner content workbench exists only in the /dr workbench chunk");
 gate(info?.rulesVersion === KLASSE_B, `build uses current exam rules ${KLASSE_B}`);
 // Owner decision (2026-11-06): the public app may go live while content is still in review. The production
 // build shows approved items only (currently none) with "under review" states; this is reported, not blocking.

@@ -580,6 +580,23 @@ try {
     await page.locator("[data-testid=summary]").waitFor();
     const summary = await page.textContent("[data-testid=summary]");
     assert.ok(summary.includes("new: 2") && summary.includes("invalid: 0"), summary);
+    // The owner workbench: bank progress, workflow, storage status (needs the /dr session), licence checklist.
+    assert.ok((await page.textContent("[data-testid=content-progress]")).includes("NOT complete"));
+    assert.ok((await page.textContent("[data-testid=content-workflow]")).includes("EDUCATIONAL_REVIEW"));
+    await page.waitForFunction(() => document.querySelector("[data-testid=content-storage]")?.textContent?.includes("Sign in at /dr"));
+    assert.ok((await page.textContent("[data-testid=license-report]")).includes("No licence on record"));
+    assert.ok((await page.textContent("[data-testid=media-table]")).includes("fixture.png"));
+    // A draft licence (not bought / not verified) rejects every licensed row; a verified one with rights accepts them.
+    const licence = (over) => ({ licenses: [{ id: "LIC-FIXTURE", country: "DE", licensor: "Fixture", scope: "test", status: "verified", validFrom: "2026-01-01", validUntil: null, evidenceRef: "c-1", verifiedBy: "Owner", verifiedOn: "2026-01-02", catalogueVersions: ["2026-01-01"], licenseClasses: ["B"], rights: { questionText: true, officialMedia: true, translation: true, ownMedia: true, online: true, offline: true }, ...over }] });
+    const register = (over) => ({ name: "register.json", mimeType: "application/json", buffer: Buffer.from(JSON.stringify(licence(over))) });
+    await page.setInputFiles("[data-testid=register-file]", register({ status: "draft", verifiedBy: null, verifiedOn: null }));
+    await page.click("[data-testid=validate]");
+    await page.waitForFunction(() => document.querySelector("[data-testid=summary]")?.textContent?.includes("invalid: 2"));
+    assert.ok((await page.textContent("[data-testid=preview]")).includes("not verified by the owner"));
+    await page.setInputFiles("[data-testid=register-file]", register({}));
+    assert.ok((await page.textContent("[data-testid=license-report]")).includes("✓ Right: Sorani translation"));
+    await page.click("[data-testid=validate]");
+    await page.waitForFunction(() => document.querySelector("[data-testid=summary]")?.textContent?.includes("invalid: 0"));
     // Coverage is measured, never assumed: 2 valid records of 1,600, nothing ready, plan per topic shown.
     const report = await page.textContent("[data-testid=catalog-report]");
     assert.ok(report.includes("of target 1600") && report.includes("NOT complete"), report);
@@ -593,7 +610,8 @@ try {
     assert.ok(await page.locator("[data-testid=commit]").isDisabled(), "import execution disabled");
     assert.equal(await page.locator("text=draft · hidden").count(), 2, "imports are draft and hidden");
     await axe(page, "/admin/import");
-    // Without the licence registered, every row is rejected.
+    // Without the licence registered (no id and no register file), every row is rejected.
+    await page.setInputFiles("[data-testid=register-file]", []);
     await page.fill("[data-testid=licences]", "");
     await page.click("[data-testid=validate]");
     await page.waitForFunction(() => document.querySelector("[data-testid=summary]")?.textContent?.includes("invalid: 2"));
