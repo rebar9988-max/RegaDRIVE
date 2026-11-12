@@ -56,9 +56,31 @@ export interface MediaRecord {
   scenarioId: string;
   createdOn: string;
   reviews: MediaReview[];
+  /** Reusable scenes from the library this picture or clip was built from. */
+  scenes?: string[];
+  /** Delivery variants, by file name of other records in this manifest. */
+  variants?: Partial<Record<VariantRole, string>>;
 }
 
-export interface MediaManifest { scenarios: ScenarioSheet[]; media: MediaRecord[] }
+export type SceneKind = "road" | "junction" | "roundabout" | "motorway" | "crossing" | "vehicle" | "sign" | "character" | "environment" | "rig";
+export const SCENE_KINDS: readonly SceneKind[] = ["road", "junction", "roundabout", "motorway", "crossing", "vehicle", "sign", "character", "environment", "rig"];
+/** poster: still frame shown before a video plays. thumbnail: small preview for lists. mp4 / webm: the other container of the same clip. */
+export type VariantRole = "poster" | "thumbnail" | "mp4" | "webm";
+const VARIANT_KIND: Record<VariantRole, MediaKind> = { poster: "image", thumbnail: "image", mp4: "video", webm: "video" };
+
+/** A self-made, reusable building block of the 3D library (road segment, junction, vehicle, sign, camera rig …). */
+export interface SceneRecord {
+  id: string;
+  name: string;
+  kind: SceneKind;
+  tool: string;
+  sourceFile: string;
+  author: string;
+  thirdPartyAssets: string[];
+  version: number;
+}
+
+export interface MediaManifest { scenarios: ScenarioSheet[]; media: MediaRecord[]; scenes?: SceneRecord[] }
 
 export type MediaIssueKind =
   | "duplicate_file" | "duplicate_scenario" | "bad_hash" | "bad_date" | "unknown_origin"
@@ -66,7 +88,9 @@ export type MediaIssueKind =
   | "missing_author" | "missing_tool" | "missing_source_file" | "third_party_asset_without_licence"
   | "unknown_scenario" | "scenario_incomplete" | "scenario_not_approved" | "scenario_without_question"
   | "file_not_attached" | "hash_mismatch" | "kind_mismatch"
-  | "no_instructor_review" | "review_of_other_version" | "failed_review";
+  | "no_instructor_review" | "review_of_other_version" | "failed_review"
+  | "duplicate_scene" | "scene_incomplete" | "unknown_scene"
+  | "unknown_variant" | "variant_kind_mismatch" | "video_without_poster";
 
 export interface MediaIssue { subject: string; kind: MediaIssueKind; detail?: string }
 
@@ -80,7 +104,7 @@ export interface ManifestResult {
   issues: MediaIssue[];
   /** Files with no issue at all: provenance complete, scenario approved, this exact file passed the instructor review. */
   approvedFiles: string[];
-  summary: { scenarios: number; media: number; approved: number; original: number; licensed: number; aiGenerated: number };
+  summary: { scenarios: number; media: number; approved: number; original: number; licensed: number; aiGenerated: number; scenes: number; images: number; videos: number };
 }
 
 const DATE = /^\d{4}-\d{2}-\d{2}$/;
@@ -92,7 +116,8 @@ const ASSET = /^.{2,}\s[—-]\s.{2,}\s[—-]\s.{2,}$/;
 export function parseMediaManifest(text: string): MediaManifest {
   const data = JSON.parse(text) as Partial<MediaManifest>;
   if (!data || typeof data !== "object" || !Array.isArray(data.scenarios) || !Array.isArray(data.media)) throw new Error('media manifest: expected { "scenarios": [...], "media": [...] }');
-  return { scenarios: data.scenarios, media: data.media };
+  if (data.scenes !== undefined && !Array.isArray(data.scenes)) throw new Error('media manifest: "scenes" must be a list');
+  return { scenarios: data.scenarios, media: data.media, scenes: data.scenes ?? [] };
 }
 
 export function validateMediaManifest(m: MediaManifest, ctx: ManifestContext): ManifestResult {
@@ -111,6 +136,18 @@ export function validateMediaManifest(m: MediaManifest, ctx: ManifestContext): M
     if (!filled(s.approvedBy) || !DATE.test(s.approvedOn ?? "")) add(id, "scenario_not_approved", "a named driving instructor approves the sheet before rendering");
     if (issues.length === before) scenarioOk.add(id);
   }
+
+  const scenes = new Set<string>();
+  const sceneOk = new Set<string>();
+  for (const sc of m.scenes ?? []) {
+    const id = filled(sc?.id) ? sc.id : "(scene without id)";
+    if (scenes.has(id)) { add(id, "duplicate_scene"); continue; }
+    scenes.add(id);
+    const assetsOk = Array.isArray(sc.thirdPartyAssets) && sc.thirdPartyAssets.every((a) => filled(a) && ASSET.test(a));
+    if (!filled(sc.name) || !SCENE_KINDS.includes(sc.kind) || !filled(sc.tool) || !filled(sc.sourceFile) || !filled(sc.author) || !Number.isInteger(sc.version) || sc.version < 1 || !assetsOk) add(id, "scene_incomplete", "name, kind, tool, source file, author, version and the licence of every bundled asset are required");
+    else sceneOk.add(id);
+  }
+  const kindOf = new Map(m.media.filter((r) => filled(r?.file)).map((r) => [r.file, r.kind]));
 
   const seen = new Set<string>();
   const approvedFiles: string[] = [];
@@ -135,6 +172,14 @@ export function validateMediaManifest(m: MediaManifest, ctx: ManifestContext): M
 
     if (!scenarios.has(r.scenarioId)) add(file, "unknown_scenario", r.scenarioId);
     else if (!scenarioOk.has(r.scenarioId)) add(file, "scenario_not_approved", r.scenarioId);
+
+    for (const id of Array.isArray(r.scenes) ? r.scenes : []) if (!sceneOk.has(id)) add(file, "unknown_scene", scenes.has(id) ? `${id} is incomplete` : id);
+    for (const [role, target] of Object.entries(r.variants ?? {}) as [VariantRole, string][]) {
+      if (!(role in VARIANT_KIND) || !kindOf.has(target) || target === file) add(file, "unknown_variant", `${role}: ${target}`);
+      else if (kindOf.get(target) !== VARIANT_KIND[role]) add(file, "variant_kind_mismatch", `${role} must be ${VARIANT_KIND[role] === "image" ? "an image" : "a video"}`);
+    }
+    // A video is never shown without a still frame: learners answer while looking at the end frame.
+    if (r.kind === "video" && !filled(r.variants?.poster)) add(file, "video_without_poster", "add the poster image as variants.poster");
 
     const att = ctx.attached?.get(file);
     if (ctx.attached) {
@@ -161,6 +206,9 @@ export function validateMediaManifest(m: MediaManifest, ctx: ManifestContext): M
       original: m.media.filter((r) => r.origin === "original_regadrive").length,
       licensed: m.media.filter((r) => r.origin === "licensed").length,
       aiGenerated: m.media.filter((r) => r.aiGenerated === true).length,
+      scenes: (m.scenes ?? []).length,
+      images: m.media.filter((r) => r.kind === "image").length,
+      videos: m.media.filter((r) => r.kind === "video").length,
     },
   };
 }
