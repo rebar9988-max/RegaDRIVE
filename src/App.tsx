@@ -1,14 +1,14 @@
 import { lazy, Suspense, useEffect, type ComponentType } from "react";
 import { ErrorBoundary } from "./components/ErrorBoundary";
 import { usePath } from "./app/router";
-import { Shell } from "./app/Shell";
 import { CountrySelection, ItalyPending } from "./app/CountrySelection";
 import { useApp } from "./app/state";
-import { Home } from "./pages/Home";
 
 // Route-based code splitting: the first paint needs only the shell and the home page. Every other screen is its
 // own chunk, fetched on demand, warmed up when the browser is idle and precached by the service worker for offline use.
 const pages = {
+  shell: () => import("./app/Shell"),
+  home: () => import("./pages/Home"),
   learn: () => import("./pages/Learn"),
   signs: () => import("./pages/Signs"),
   practice: () => import("./pages/Practice"),
@@ -16,6 +16,8 @@ const pages = {
   misc: () => import("./pages/Misc"),
 };
 const page = <M, K extends keyof M>(load: () => Promise<M>, name: K) => lazy(() => load().then((m) => ({ default: m[name] as ComponentType })));
+const Shell = lazy(() => pages.shell().then((m) => ({ default: m.Shell })));
+const Home = page(pages.home, "Home");
 const Learn = page(pages.learn, "Learn");
 const LessonDetail = lazy(() => pages.learn().then((m) => ({ default: m.LessonDetail })));
 const Signs = page(pages.signs, "Signs");
@@ -59,6 +61,13 @@ export function App() {
   if (path === "/dr" || path.startsWith("/dr/")) return <Suspense fallback={<div aria-busy="true" />}><DrAdmin /></Suspense>;
   if (ready && settings.country === null) return <CountrySelection />;
   if (ready && settings.country === "IT") return <ItalyPending />;
-  // Wait for stored settings/progress so the first paint has the right language and no layout jump.
-  return <Shell>{ready ? <ErrorBoundary resetKey={path}><Suspense fallback={<div aria-busy="true" className="route-loading" />}><div key={path}>{route(path)}</div></Suspense></ErrorBoundary> : <div className="splash" aria-busy="true"><img className="splash-logo" src="/brand/regadrive-logo.webp" width={112} height={112} alt="RegaDRIVE" /></div>}</Shell>;
+  // Until stored settings are read, and while the shell's code arrives, show the logo only: no layout jump and
+  // nothing that would need the app shell, the icons or the content.
+  const splash = <div className="splash" aria-busy="true"><img className="splash-logo" src="/brand/regadrive-logo.webp" width={112} height={112} alt="RegaDRIVE" /></div>;
+  if (!ready) return splash;
+  return (
+    <Suspense fallback={splash}>
+      <Shell><ErrorBoundary resetKey={path}><Suspense fallback={<div aria-busy="true" className="route-loading" />}><div key={path}>{route(path)}</div></Suspense></ErrorBoundary></Shell>
+    </Suspense>
+  );
 }

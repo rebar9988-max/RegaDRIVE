@@ -1,7 +1,14 @@
-import { House, BookOpen, CheckCircle, Trophy, List, Warning, ChartBar, Translate, BookmarkSimple, MapPin, UserCircle, Lock, Gear, Info, Flame, Target, Star, ArrowRight, Sparkle, Bell, CalendarCheck, Car, Play, WifiHigh, ShieldCheck, Devices, X, DownloadSimple, SignOut, Trash, CloudArrowUp, CloudArrowDown, Globe, SealCheck, WarningCircle } from "@phosphor-icons/react";
-const icons = { home: House, book: BookOpen, check: CheckCircle, exam: Trophy, trophy: Trophy, more: List, sign: Warning, chart: ChartBar, words: Translate, bookmark: BookmarkSimple, pin: MapPin, user: UserCircle, lock: Lock, gear: Gear, info: Info, flame: Flame, target: Target, star: Star, arrow: ArrowRight, sparkle: Sparkle, bell: Bell, calendar: CalendarCheck, car: Car, play: Play, wifi: WifiHigh, shield: ShieldCheck, devices: Devices, close: X, download: DownloadSimple, signout: SignOut, trash: Trash, cloudUp: CloudArrowUp, cloudDown: CloudArrowDown, globe: Globe, verified: SealCheck, alert: WarningCircle };
-export type IconName = keyof typeof icons;
+import { ICON_PATHS } from "./icons.generated";
+
+/**
+ * Icons: bold outlines from Phosphor Icons (MIT licence), generated into icons.generated.ts by
+ * scripts/generate-icons.mjs so the app ships only the shapes it draws. Decorative: always aria-hidden.
+ */
+export type IconName = keyof typeof ICON_PATHS;
 export function Icon({ name, className }: { name: IconName; className?: string }) {
-  const Component = icons[name];
-  return <Component className={className} size={24} weight="bold" aria-hidden="true" focusable="false" />;
+  return (
+    <svg xmlns="http://www.w3.org/2000/svg" width={24} height={24} viewBox="0 0 256 256" fill="currentColor" className={className} aria-hidden="true" focusable="false">
+      {ICON_PATHS[name].map((d) => <path key={d} d={d} />)}
+    </svg>
+  );
 }
