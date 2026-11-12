@@ -19,11 +19,17 @@
   // D1 `regadrive-db` (owner-approved 2026-11-07) is used ONLY by the /dr owner control center (dr_* tables,
   // migrations/0003_dr_admin.sql). No student record is ever written there.
   // D1 `regadrive-students` (owner-approved 2026-11-11) holds ONLY student accounts (migrations-students/).
-  // The content/payments production database stays OFF (DATABASE_PRODUCTION_ENABLED=false).
+  // D1 `regadrive-content` (owner-approved 2026-11-12) holds ONLY the question bank (migrations-content/). It is
+  // bound but stays unused until the owner activates it (DATABASE_PRODUCTION_ENABLED + the OWNER_DATABASE_ACTIVATION
+  // secret + CONTENT_IMPORT_EXECUTION_ENABLED, docs/OWNER_ACTIVATION.md). Payments stay OFF.
   "d1_databases": [
     { "binding": "DB", "database_name": "regadrive-db", "database_id": "bd9f0f57-3b67-49ab-9597-f8ce9b305c88", "migrations_dir": "migrations" },
-    { "binding": "STUDENT_DB", "database_name": "regadrive-students", "database_id": "4b6065a1-812c-44c3-8558-b50e66e18764", "migrations_dir": "migrations-students" }
+    { "binding": "STUDENT_DB", "database_name": "regadrive-students", "database_id": "4b6065a1-812c-44c3-8558-b50e66e18764", "migrations_dir": "migrations-students" },
+    { "binding": "CONTENT_DB", "database_name": "regadrive-content", "database_id": "0da73ba6-e478-4db9-94cf-63cf8cd63891", "migrations_dir": "migrations-content" }
   ],
+  // R2 `regadrive-media` (owner-approved 2026-11-12): question images and videos, content-addressed keys only.
+  // Uploads need the same owner activation as the content database; /media/* serves only files of published questions.
+  "r2_buckets": [{ "binding": "MEDIA", "bucket_name": "regadrive-media" }],
   "vars": {
     "APP_ENV": "production",
     "CONTENT_MODE": "production",

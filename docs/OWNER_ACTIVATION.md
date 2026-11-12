@@ -29,6 +29,13 @@ Daily request caps are set below each provider's free limits (`worker/ai/gateway
 
 ## 3. Production database (D1)
 Note (2026-11-11): student e-mail accounts use their own database `regadrive-students` (binding `STUDENT_DB`, switch `STUDENT_AUTH_ENABLED`), see `docs/STUDENT_EMAIL_AUTH_IMPLEMENTATION.md`. The steps below remain the gate for the content/payments production database.
+Done (2026-11-12, owner-approved): the content database `regadrive-content` (binding `CONTENT_DB`, migrations
+`migrations-content/` = the content part of `migrations/`, verified statement by statement by `npm run check:migrations`)
+is created, migrated (21 tables, 16 triggers, 0 questions) and bound, and the R2 bucket `regadrive-media` is bound as
+`MEDIA`. Both stay unused until the owner finishes the activation: set the secret `OWNER_DATABASE_ACTIVATION` (never in
+config) in Cloudflare, then switch `DATABASE_PRODUCTION_ENABLED`, `CONTENT_ADMIN_ENABLED` and
+`CONTENT_IMPORT_EXECUTION_ENABLED` to `true` in a reviewed PR together with the matching `scripts/preflight.mjs` change, and
+set `ADMIN_OWNER_TOKEN_SHA256`. Payments stay off; no licensed content exists.
 Note (2026-11-07): `regadrive-db` is already bound as `DB` for the `/dr` owner control center only (`docs/DR_ADMIN.md`). The steps below are still required before any **student** data is stored.
 Prerequisites: a reviewed privacy policy, retention and deletion rules, and a working e-mail provider for verification.
 1. `wrangler d1 create regadrive` (a new, separate database).

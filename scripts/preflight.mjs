@@ -31,12 +31,14 @@ for (const k of ["PAYMENTS_ENABLED", "CHECKOUT_ENABLED", "LIVE_PAYMENT_WEBHOOKS_
   "OFFICIAL_QUESTION_BANK_ENABLED", "CONTENT_ADMIN_ENABLED", "CONTENT_IMPORT_EXECUTION_ENABLED", "PUBLIC_OFFICIAL_MOCK_EXAMS_ENABLED", "CONTENT_AUTO_SYNC_ENABLED", "SUBSCRIPTIONS_ENABLED"]) gate(v[k] === "false", `${k}=false`);
 gate(!Object.keys(v).some((k) => k.startsWith("OWNER_")), "no owner activation present in config");
 // Allowed D1 bindings: the owner-approved (2026-11-07) /dr database, and the owner-approved (2026-11-11) separate
-// student-accounts database. They must stay two different databases with their own migration folders.
+// student-accounts database, and the owner-approved (2026-11-12) separate content database. They stay different
+// databases with their own migration folders.
 const d1 = cfg.d1_databases ?? [];
 const DR_DB = { binding: "DB", database_name: "regadrive-db", database_id: "bd9f0f57-3b67-49ab-9597-f8ce9b305c88", migrations_dir: "migrations" };
 const STUDENT_DB = { binding: "STUDENT_DB", database_name: "regadrive-students", database_id: "4b6065a1-812c-44c3-8558-b50e66e18764", migrations_dir: "migrations-students" };
 const same = (a, b) => Object.keys(b).every((k) => a[k] === b[k]);
-gate(d1.every((d) => same(d, DR_DB) || same(d, STUDENT_DB)) && d1.length <= 2 && new Set(d1.map((d) => d.database_id)).size === d1.length, "D1: only regadrive-db (/dr) and the separate regadrive-students database");
+const CONTENT_DB = { binding: "CONTENT_DB", database_name: "regadrive-content", database_id: "0da73ba6-e478-4db9-94cf-63cf8cd63891", migrations_dir: "migrations-content" };
+gate(d1.every((d) => same(d, DR_DB) || same(d, STUDENT_DB) || same(d, CONTENT_DB)) && d1.length <= 3 && new Set(d1.map((d) => d.database_id)).size === d1.length && new Set(d1.map((d) => d.binding)).size === d1.length, "D1: only regadrive-db (/dr), regadrive-students and the separate regadrive-content database");
 const studentAuthOn = v.STUDENT_AUTH_ENABLED === "true";
 gate(!studentAuthOn || d1.some((d) => same(d, STUDENT_DB)), "student accounts enabled only with the separate student database bound");
 gate(v.STUDENT_AUTH_ENABLED === undefined || ["true", "false"].includes(v.STUDENT_AUTH_ENABLED), "STUDENT_AUTH_ENABLED is true or false");
@@ -44,7 +46,9 @@ gate(!studentAuthOn || /^RegaDRIVE <[^@\s]+@regaplatform\.com>$/.test(v.STUDENT_
 gate(v.APP_ENV === "production" && v.MAIL_API_URL === undefined, "APP_ENV=production and no test mail sink in config (mail goes only to Resend)");
 gate(existsSync("migrations-students") && !readdirSync("migrations-students").some((f) => readFileSync(`migrations-students/${f}`, "utf8").includes("dr_")), "student migrations never touch /dr tables");
 gate(/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(v.DR_OWNER_EMAIL ?? "") && v.DR_OWNER_EMAIL === "regaplatform1@gmail.com", "/dr sign-in codes go only to the owner-chosen address");
-gate(!cfg.r2_buckets && !cfg.kv_namespaces && !cfg.durable_objects && !cfg.queues, "no billable storage bindings");
+const MEDIA = { binding: "MEDIA", bucket_name: "regadrive-media" };
+gate(!cfg.r2_buckets || (cfg.r2_buckets.length === 1 && same(cfg.r2_buckets[0], MEDIA)), "R2: only the regadrive-media bucket (free tier, owner-approved)");
+gate(!cfg.kv_namespaces && !cfg.durable_objects && !cfg.queues, "no other storage bindings (KV, Durable Objects, queues)");
 
 // 3. AI cannot incur charges
 gate(v.AI_FREE_ONLY === "true" && v.AI_PAID_FALLBACK_ENABLED === "false" && v.AI_DAILY_COST_LIMIT_EUR === "0" && v.AI_DOMAIN_SCOPE === "regadrive", "AI free-only, no paid fallback, €0 limit, regadrive scope");

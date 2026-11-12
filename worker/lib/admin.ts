@@ -1,4 +1,4 @@
-/** Owner-only content administration API. Preview/validation only while the database and storage are off. */
+/** Owner-only content administration API. Preview/validation only until the owner activates the content database. */
 import type { Flags } from "../../src/lib/shared/flags";
 import { previewImport, type MediaManifestEntry } from "../../src/lib/shared/importer";
 import { checkMedia } from "../../src/lib/shared/media";
@@ -7,6 +7,7 @@ import { authenticateOwner, type AdminEnv } from "./adminAuth";
 import { audit, consoleAuditSink, type AuditSink } from "./audit";
 import { RateLimiter } from "./rateLimit";
 import { commitImport, contentProgress, rollbackImport, type ContentDb } from "../content/store";
+import { storeMedia, type MediaBucket } from "../content/media";
 
 const limiter = new RateLimiter(30, 60_000);
 const MAX_MEDIA_BYTES = 26 * 1024 * 1024;
@@ -14,8 +15,8 @@ const MAX_MEDIA_BYTES = 26 * 1024 * 1024;
 export interface AdminDeps { sink?: AuditSink; now?: number; knownLicenses?: ReadonlySet<string> }
 type Json = (body: unknown, status?: number) => Response;
 
-/** CONTENT_DB: the owner-activated content database. Not bound in production (wrangler.jsonc). */
-export type AdminRuntimeEnv = AdminEnv & { CONTENT_DB?: ContentDb };
+/** CONTENT_DB / MEDIA: the content database and media bucket. Bound, but used only after the owner's activation. */
+export type AdminRuntimeEnv = AdminEnv & { CONTENT_DB?: ContentDb; MEDIA?: MediaBucket };
 
 export async function handleAdmin(req: Request, env: AdminRuntimeEnv, flags: Flags, json: Json, deps: AdminDeps = {}): Promise<Response> {
   const sink = deps.sink ?? consoleAuditSink;
@@ -65,8 +66,8 @@ export async function handleAdmin(req: Request, env: AdminRuntimeEnv, flags: Fla
   }
 
   if (path === "/api/admin/import/commit" || path === "/api/admin/import/rollback" || path === "/api/admin/media/upload" || path.startsWith("/api/admin/content/")) {
-    // Stored imports need the owner-activated content database AND its own binding. Neither exists in production
-    // today, so every one of these routes answers 503 and writes nothing.
+    // Stored imports need the owner-activated content database AND its binding. Until the owner activates it
+    // (docs/OWNER_ACTIVATION.md), every one of these routes answers 503 and writes nothing.
     const db = env.CONTENT_DB;
     const reason = !flags.contentImportExecutionEnabled ? "CONTENT_IMPORT_EXECUTION disabled (requires owner-activated production database)"
       : !flags.databaseProductionEnabled ? "production content database not activated by the owner"
@@ -97,9 +98,22 @@ export async function handleAdmin(req: Request, env: AdminRuntimeEnv, flags: Fla
       await audit(sink, actor, action, r.ok ? "allowed" : "failed", r.ok ? { batch: r.batchId, removed: r.removed, restored: r.restored } : { error: r.error, detail: r.detail ?? null });
       return json(r, r.ok ? 200 : 422);
     }
-    // Media upload needs object storage (R2), which is not configured.
-    await audit(sink, actor, action, "denied", { reason: "storage not configured" });
-    return json({ error: "IMPORT_EXECUTION_DISABLED", reason: "storage not configured" }, 503);
+    if (path === "/api/admin/media/upload" && req.method === "POST") {
+      if (!env.MEDIA) {
+        await audit(sink, actor, action, "denied", { reason: "media storage not bound" });
+        return json({ error: "IMPORT_EXECUTION_DISABLED", reason: "media storage not bound" }, 503);
+      }
+      const name = req.headers.get("x-file-name") ?? "";
+      if (Number(req.headers.get("content-length") ?? "0") > MAX_MEDIA_BYTES) { await audit(sink, actor, action, "denied", { reason: "too large" }); return json({ error: "TOO_LARGE" }, 413); }
+      const bytes = new Uint8Array(await req.arrayBuffer());
+      if (bytes.length > MAX_MEDIA_BYTES) return json({ error: "TOO_LARGE" }, 413);
+      const r = await storeMedia(db, env.MEDIA, name, bytes, actor, now);
+      await audit(sink, actor, action, r.ok ? "allowed" : "failed", r.ok ? { id: r.id, key: r.key, bytes: r.bytes, duplicate: r.duplicate } : { file: name.slice(0, 120), errors: r.errors.length });
+      // Stored, never shown: a file is served only once a published question uses it.
+      return json(r.ok ? { stored: true, published: false, ...r } : { stored: false, ...r }, r.ok ? 200 : 422);
+    }
+    await audit(sink, actor, action, "denied", { reason: "unknown content route" });
+    return json({ error: "NOT_FOUND" }, 404);
   }
 
   await audit(sink, actor, action, "denied", { reason: "unknown admin route" });

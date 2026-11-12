@@ -17,6 +17,7 @@ import { applyOverrides } from "./dr/features";
 import { QUESTIONS } from "../src/content/questions";
 import { handlePage } from "./pages";
 import { contentFor } from "../src/content/access";
+import { serveMedia } from "./content/media";
 
 export interface Env extends FlagEnv, AiEnv, AdminEnv, DrEnv, StudentEnv {
   /** "preview" only for local/CI; production shows and explains approved content only. */
@@ -182,6 +183,13 @@ export default {
     if (url.pathname.startsWith("/api/")) {
       try { return await handleApi(req, env); }
       catch { return json({ error: "INTERNAL" }, 500); }
+    }
+    if ((req.method === "GET" || req.method === "HEAD") && url.pathname.startsWith("/media/")) {
+      // Question media: only once the owner activated the content database, and only files of published questions.
+      if (readFlags(env).databaseProductionEnabled && env.CONTENT_DB && env.MEDIA) {
+        try { return await serveMedia(req, env.CONTENT_DB, env.MEDIA); }
+        catch { return new Response("Unavailable", { status: 503, headers: { "content-type": "text/plain; charset=utf-8", "cache-control": "no-store" } }); }
+      }
     }
     if (req.method === "GET" || req.method === "HEAD") return handlePage(req, env.ASSETS);
     return env.ASSETS.fetch(req);
