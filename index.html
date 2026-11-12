@@ -25,7 +25,8 @@
     <link rel="preload" as="font" href="/fonts/noto-sans-arabic-latin.woff2" type="font/woff2" crossorigin />
   </head>
   <body>
-    <div id="root"></div>
+    <!-- The same logo splash React shows first (src/App.tsx), painted from the HTML before the script runs; React replaces it. -->
+    <div id="root"><div class="splash" aria-busy="true"><img class="splash-logo" src="/brand/regadrive-logo.webp" width="112" height="112" alt="RegaDRIVE" /></div></div>
     <noscript>RegaDRIVE requires JavaScript. · RegaDRIVE پێویستی بە JavaScript هەیە.</noscript>
     <script type="module" src="/src/main.tsx"></script>
   </body>

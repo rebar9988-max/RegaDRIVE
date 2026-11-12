@@ -1,8 +1,8 @@
-/* Noto Sans Arabic (OFL): the main file holds the Arabic block (Sorani, Arabic) at weights 400–900; the original full
+/* Noto Sans Arabic (OFL): the main and Latin files hold weights 400–900 (the app uses 400–850); the original full
    file serves only the rarely used extended and presentation-form ranges, so it is downloaded only when needed. */
 @font-face { font-family: 'Rega Arabic'; src: url('/fonts/noto-sans-arabic-arabic-ext.woff2') format('woff2'); font-weight: 100 900; font-display: swap; unicode-range: U+0870-089F,U+08A0-08FF,U+FB50-FDFF,U+FE70-FEFC; }
 @font-face { font-family: 'Rega Arabic'; src: url('/fonts/noto-sans-arabic-arabic.woff2') format('woff2'); font-weight: 400 900; font-display: swap; unicode-range: U+0600-06FF,U+0750-077F,U+200C-200E; }
-@font-face { font-family: 'Rega Arabic'; src: url('/fonts/noto-sans-arabic-latin.woff2') format('woff2'); font-weight: 100 900; font-display: swap; unicode-range: U+0000-00FF,U+2000-206F,U+20AC; }
+@font-face { font-family: 'Rega Arabic'; src: url('/fonts/noto-sans-arabic-latin.woff2') format('woff2'); font-weight: 400 900; font-display: swap; unicode-range: U+0000-00FF,U+2000-206F,U+20AC; }
 /* RegaDRIVE — MagicPath calm blue and midnight design system. */
 :root {
   --primary: #3b648c; --primary-bright: #3b648c; --primary-deep: #2b4d6e;
