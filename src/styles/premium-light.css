@@ -61,7 +61,8 @@ body { background: var(--canvas); }
 .tabbar { background: rgb(255 255 255 / 97%); border: 1px solid var(--border); box-shadow: 0 2px 4px rgb(6 95 70 / 5%), 0 12px 32px rgb(6 95 70 / 14%); }
 @media (max-width: 1099px) {
   .tabbar { inset-inline: 10px; bottom: calc(10px + env(safe-area-inset-bottom, 0px)); border-radius: 26px; padding: 6px; }
-  .main { padding-bottom: calc(var(--tabbar-h, 76px) + 40px); }
+  /* The floating tab bar sits above the home indicator, so the content clears it by the same safe-area inset. */
+  .main { padding-bottom: calc(var(--tabbar-h, 76px) + 40px + env(safe-area-inset-bottom, 0px)); }
 }
 .tab { color: var(--muted); border-radius: 18px; transition: background var(--ease-press), color var(--ease-press), box-shadow var(--ease-press), transform var(--ease-press); }
 .tab:hover { color: var(--primary); background: var(--rd-mint); }
@@ -253,3 +254,84 @@ a { color: var(--primary); }
   .btn-primary[aria-busy='true']::after { animation: none; }
 }
 @media (max-width: 480px) { .overview-card { border-radius: 22px; } }
+
+/* ── Student account: compact profile, learning progress, settings ─────── */
+/* Tokens only from this file and app.css. Contrast (WCAG AA): #0b6b45 on #e3f7ea 6.1:1, #7a5200 on #fff4d6 7.0:1,
+   #923f49 on #fff 7.3:1 and on #faedef 6.4:1, #456458 on #ecf8f1 5.6:1, #065f46 on #ecf8f1 7.4:1. */
+.acct-page { width: 100%; max-width: 640px; margin-inline: auto; min-width: 0; }
+.acct-head { margin-bottom: 14px; }
+.acct { display: grid; gap: 22px; min-width: 0; }
+.acct-section { display: grid; gap: 8px; min-width: 0; }
+.acct-section-title { margin: 0; padding-inline: 4px; font-size: .95rem; font-weight: 800; color: var(--muted); }
+.acct-section-title:focus:not(:focus-visible), .acct-form-title:focus:not(:focus-visible) { outline: none; }
+.acct-card { display: grid; gap: 14px; padding: 16px; min-width: 0; }
+.acct-card > p { margin: 0; }
+.acct-card-flush { padding: 6px 0; }
+
+.acct-profile { display: flex; align-items: center; gap: 14px; min-width: 0; }
+.acct-avatar { flex: none; display: grid; place-items: center; width: 56px; height: 56px; border-radius: 50%; background: var(--btn-face); color: #fff; font: 800 1.4rem/1 var(--font-de); text-shadow: 0 1px 1px rgb(0 0 0 / 18%); box-shadow: inset 0 1px 0 rgb(255 255 255 / 38%), 0 4px 10px rgb(6 95 70 / 22%); }
+.acct-id { display: grid; gap: 4px; min-width: 0; }
+.acct-name { margin: 0; font-size: 1.1rem; font-weight: 800; color: var(--ink); overflow-wrap: anywhere; }
+.acct-email { margin: 0; color: var(--muted); font-family: var(--font-de); text-align: end; unicode-bidi: isolate; overflow-wrap: anywhere; }
+.acct-tags { list-style: none; margin: 2px 0 0; padding: 0; display: flex; flex-wrap: wrap; gap: 6px; }
+.acct-tag { display: inline-flex; align-items: center; gap: 6px; max-width: 100%; min-height: 28px; padding: 3px 10px; border-radius: 999px; background: var(--rd-mint); color: var(--rd-emerald-deep); font-size: .8rem; font-weight: 700; }
+.acct-tag svg { flex: none; width: 16px; height: 16px; }
+.acct-tag.is-ok { background: var(--success-bg); color: var(--success-ink); }
+.acct-tag.is-warn { background: #fff4d6; color: #7a5200; }
+
+.acct-rows { list-style: none; margin: 0; padding: 0; display: grid; }
+.acct-rows > li + li { border-top: 1px solid var(--border); }
+.acct-card:not(.acct-card-flush) > .acct-rows { margin-inline: -16px; border-block: 1px solid var(--border); }
+.acct-row { display: flex; align-items: center; gap: 12px; width: 100%; min-height: 56px; padding: 8px 16px; border: 0; background: none; color: var(--ink); font: inherit; font-weight: 700; text-align: start; text-decoration: none; cursor: pointer; }
+.acct-row:hover:not(:disabled) { background: var(--rd-mint); }
+.acct-row:focus-visible { outline: 3px solid var(--rd-emerald); outline-offset: -3px; border-radius: 12px; }
+.acct-row:disabled { color: #5b7268; cursor: not-allowed; }
+.acct-row.is-danger { color: var(--danger-ink); }
+.acct-row-icon { flex: none; display: grid; place-items: center; width: 36px; height: 36px; border-radius: 12px; background: var(--rd-mint); color: var(--primary); }
+.acct-row-icon svg { width: 20px; height: 20px; }
+.acct-row-icon.is-danger { background: var(--danger-bg); color: var(--danger-ink); }
+.acct-row-label { flex: 1 1 auto; min-width: 0; overflow-wrap: anywhere; }
+.acct-row-value { flex: 0 1 auto; min-width: 0; max-width: 50%; color: var(--muted); font-size: .9rem; font-weight: 600; text-align: end; overflow-wrap: anywhere; }
+.acct-row-action { flex: none; color: var(--primary); font-size: .9rem; font-weight: 800; }
+.acct-row .flip-rtl { color: var(--muted); }
+
+.acct-logout { width: 100%; }
+.acct-logout svg { width: 20px; height: 20px; }
+
+.acct-stats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+.acct-stat { display: grid; align-content: start; justify-items: center; gap: 2px; min-width: 0; padding: 12px 6px; border-radius: 16px; background: var(--rd-mint); text-align: center; }
+.acct-stat-value { font: 800 1.35rem/1.2 var(--font-de); color: var(--ink); font-variant-numeric: tabular-nums; }
+.acct-stat-of { font-size: .72em; font-weight: 700; color: var(--muted); }
+.acct-stat-label { font-size: .78rem; font-weight: 700; line-height: 1.35; color: var(--rd-emerald-deep); overflow-wrap: anywhere; hyphens: auto; }
+.acct-link { display: flex; align-items: center; justify-content: space-between; gap: 8px; min-height: 44px; padding-inline: 4px; color: var(--primary); font-weight: 800; text-decoration: none; }
+.acct-link:focus-visible { outline: 3px solid var(--rd-emerald); outline-offset: 2px; border-radius: 10px; }
+.acct-link .flip-rtl { color: var(--primary); }
+
+.acct-sync { display: grid; gap: 12px; padding-top: 14px; border-top: 1px solid var(--border); }
+.acct-sync-head { display: flex; align-items: flex-start; gap: 12px; min-width: 0; }
+.acct-sync-copy { display: grid; gap: 2px; min-width: 0; }
+.acct-sync-title { margin: 0; font-size: 1rem; font-weight: 800; }
+.acct-sync-copy p, .acct-sync > p { margin: 0; }
+.acct .auth-actions .btn { flex: 1 1 140px; }
+
+/* Messages appear next to the action that caused them; an empty live region takes no space. */
+.acct-status:empty { position: absolute; width: 1px; height: 1px; overflow: hidden; }
+.acct-status .notice { display: flex; align-items: flex-start; gap: 8px; margin: 0; }
+.acct-status .notice svg { flex: none; width: 20px; height: 20px; margin-top: 2px; }
+
+.acct-delete { padding: 14px; border: 1px solid var(--danger); border-radius: 16px; background: var(--danger-bg); }
+.acct-delete-title { margin: 0; font-size: 1rem; color: var(--danger-ink); }
+.acct-delete > p { margin: 0; color: var(--ink); }
+
+/* Sign-in, registration and code forms. */
+.acct-logo { justify-self: center; width: 72px; height: 72px; margin: 0; }
+.acct-form-title { margin: 0; font-size: 1.2rem; text-align: center; }
+.acct-intro { text-align: center; }
+.acct-switch { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 8px 12px; padding-top: 12px; border-top: 1px solid var(--border); }
+.acct-switch .btn { flex: 1 1 160px; }
+
+/* Busy state for secondary actions (the primary button already shows a spinner). */
+.acct .btn-secondary[aria-busy='true'], .acct-row[aria-busy='true'] { cursor: progress; }
+.acct .btn-secondary[aria-busy='true']::after, .acct-row[aria-busy='true']::after { content: ""; flex: none; width: 16px; height: 16px; border: 2px solid rgb(8 127 79 / 30%); border-top-color: var(--rd-emerald); border-radius: 50%; animation: rd-spin .8s linear infinite; }
+@media (prefers-reduced-motion: reduce) { .acct .btn-secondary[aria-busy='true']::after, .acct-row[aria-busy='true']::after { animation: none; } }
+@media (max-width: 360px) { .acct-card { padding: 14px; } .acct-card:not(.acct-card-flush) > .acct-rows { margin-inline: -14px; } .acct-stat-value { font-size: 1.15rem; } }
