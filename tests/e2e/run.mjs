@@ -580,6 +580,15 @@ try {
     await page.locator("[data-testid=summary]").waitFor();
     const summary = await page.textContent("[data-testid=summary]");
     assert.ok(summary.includes("new: 2") && summary.includes("invalid: 0"), summary);
+    // Coverage is measured, never assumed: 2 valid records of 1,600, nothing ready, plan per topic shown.
+    const report = await page.textContent("[data-testid=catalog-report]");
+    assert.ok(report.includes("of target 1600") && report.includes("NOT complete"), report);
+    assert.ok((await page.textContent("[data-testid=plan-report]")).includes("priority (Grundstoff): 1 / 180 valid, 0 ready"));
+    // A media manifest that does not describe the attached file approves nothing.
+    await page.setInputFiles("[data-testid=manifest-file]", { name: "manifest.json", mimeType: "application/json", buffer: Buffer.from(JSON.stringify({ scenarios: [], media: [{ file: "fixture.png", kind: "image", sha256: "0".repeat(64), origin: "original_regadrive", author: "x", tool: "Blender", sourceFile: "a.blend", thirdPartyAssets: [], aiGenerated: false, scenarioId: "none", createdOn: "2026-11-01", reviews: [] }] })) });
+    const manifest = await page.textContent("[data-testid=manifest-report]");
+    assert.ok(manifest.includes("approved: 0") && manifest.includes("hash_mismatch") && manifest.includes("no_instructor_review") && manifest.includes("unknown_scenario"), manifest);
+    assert.ok((await page.textContent("[data-testid=catalog-report]")).includes("media_not_approved: 1"));
     assert.equal(await page.locator("[data-testid=preview-row]").count(), 2);
     assert.ok(await page.locator("[data-testid=commit]").isDisabled(), "import execution disabled");
     assert.equal(await page.locator("text=draft · hidden").count(), 2, "imports are draft and hidden");

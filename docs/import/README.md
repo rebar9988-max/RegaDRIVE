@@ -63,3 +63,24 @@ when a question was not rated; it is never guessed.
 - Every file is linked to its question in the import file and needs German alt text (Sorani before approval).
 - A qualified reviewer must confirm that the picture shows exactly the traffic situation of the question and does not
   contradict the answer key (EDUCATIONAL_REVIEW in `docs/CONTENT_REVIEW.md`). Generated images are never trusted unchecked.
+
+## Media manifest and scenario sheets
+
+`docs/import/media-manifest.template.json` — attach the filled file in the workbench next to the media files
+(`src/lib/shared/mediaManifest.ts`). A media file counts as approved only when all of this holds:
+
+- a **scenario sheet** exists (situation, visible signs, legal reference, expected behaviour, linked question) and a
+  named driving instructor approved it before rendering;
+- **provenance** is complete: `original_regadrive` with author, tool and the editable source file, every bundled
+  third-party asset with its licence — or `licensed` with a registered licence id; any other origin is rejected;
+- generative-AI involvement is disclosed (`aiGenerated`) and never replaces the review;
+- the manifest describes **exactly the attached file** (sha256, kind);
+- a named driving instructor passed a review of **this sha256**. A re-render needs a new review.
+
+Questions whose media is not approved are reported as `media_not_approved` and are never ready for learners.
+
+## Plan per topic
+
+`src/lib/shared/catalogPlan.ts` holds a quota per topic adding up to 1,600 (1,000 Grundstoff, 600 Zusatzstoff) and
+the planned number of questions with media. Status: **proposed** — the owner confirms or changes it. The workbench
+shows valid / quota, ready and missing per topic; a quota is never counted as content.
