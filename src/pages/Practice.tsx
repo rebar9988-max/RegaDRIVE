@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useApp } from "../app/state";
+import { countryKey } from "../app/settings";
 import { T } from "../app/strings";
 import { Bi, useBiText } from "../components/Bi";
 import { QuestionCard } from "../components/QuestionCard";
@@ -17,6 +18,7 @@ const newSession = () => `p-${Date.now().toString(36)}-${Math.random().toString(
 
 export function Practice() {
   const { progress, settings } = useApp();
+  const resumeKey = countryKey(RESUME_KEY, settings.country);
   const label = useBiText();
   const [filter, setFilter] = useState<QuestionFilter>(() => {
     const p = new URLSearchParams(location.search);
@@ -47,17 +49,17 @@ export function Practice() {
   useEffect(() => {
     if (resumed.current === filterKey) return;
     let alive = true;
-    kv.get<Resume>(RESUME_KEY).then((r) => {
+    kv.get<Resume>(resumeKey).then((r) => {
       if (!alive) return;
       resumed.current = filterKey;
       const i = r && r.filter === filterKey ? list.findIndex((x) => x.id === r.questionId) : -1;
       if (i > 0) setPos(i);
     }).catch(() => { resumed.current = filterKey; });
     return () => { alive = false; };
-  }, [filterKey, list]);
+  }, [filterKey, list, resumeKey]);
   useEffect(() => {
-    if (resumed.current === filterKey && q) kv.set(RESUME_KEY, { filter: filterKey, questionId: q.id } satisfies Resume).catch(() => undefined);
-  }, [filterKey, q]);
+    if (resumed.current === filterKey && q) kv.set(resumeKey, { filter: filterKey, questionId: q.id } satisfies Resume).catch(() => undefined);
+  }, [filterKey, q, resumeKey]);
 
   const status = (id: string) => questionStatus(progress.questions[id], settings.masteryThreshold);
   const counts = {
