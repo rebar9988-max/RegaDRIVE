@@ -445,6 +445,38 @@ try {
     await ctx.close();
   });
 
+  await test("navigation: radio keys in settings, practice filter follows the URL, malformed lesson URL shows not found (fixes from PR #22)", async () => {
+    const ctx = await browser.newContext({ viewport: { width: 1280, height: 900 } });
+    const page = await ctx.newPage();
+    await page.goto(`${BASE}/settings`);
+    await page.locator("[data-testid=lang-ckb]").waitFor();
+    assert.equal(await page.locator('[role=radiogroup] [data-testid^=lang-][tabindex="0"]').count(), 1, "one Tab stop per radio group");
+    await page.locator("[data-testid=lang-ckb]").focus();
+    await page.keyboard.press("End");
+    assert.equal(await page.getAttribute("html", "lang"), "de", "End selects the last language");
+    await page.keyboard.press("Home");
+    assert.equal(await page.getAttribute("html", "lang"), "ckb", "Home selects the first language");
+    // A practice topic in the URL, then the plain Practice link: the filter must follow the URL.
+    await page.goto(`${BASE}/practice?topic=priority`);
+    await page.locator("[data-testid=question-card]").waitFor();
+    const topicCard = await page.locator("[data-testid=question-card]").getAttribute("data-qid");
+    await page.locator('.sidenav a[href="/practice"]').click();
+    await page.waitForFunction(() => location.search === "");
+    await page.locator("[data-testid=question-card]").waitFor();
+    assert.notEqual(await page.locator("[data-testid=question-card]").getAttribute("data-qid"), topicCard, "the topic filter is cleared with the URL");
+    await page.goBack();
+    await page.waitForFunction(() => location.search === "?topic=priority");
+    assert.equal(await page.locator("[data-testid=question-card]").getAttribute("data-qid"), topicCard, "Back restores the topic filter");
+    // A malformed escape in a lesson URL shows the missing-page state, never the error screen.
+    await page.evaluate(() => { history.pushState(null, "", "/learn/%E0%A4%A"); dispatchEvent(new PopStateEvent("popstate")); });
+    await page.waitForFunction(() => location.pathname.startsWith("/learn/"));
+    await page.waitForTimeout(300);
+    assert.equal(await page.locator("[data-testid=error-boundary]").count(), 0, "no crash");
+    assert.ok((await page.textContent("main")).includes("Seite nicht gefunden") || (await page.textContent("main")).includes("نەدۆزرایەوە"), "missing-page state");
+    assert.equal(await page.locator(".topbar .brand").count(), 1);
+    await ctx.close();
+  });
+
   await test("home: weak-topics empty state starts a real practice; country button is translated; broken screen recovers", async () => {
     const ctx = await browser.newContext({ ...devices["iPhone 13"], bypassCSP: true });
     const page = await ctx.newPage();

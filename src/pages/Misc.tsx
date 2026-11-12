@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, type KeyboardEvent } from "react";
 import { Link } from "../app/router";
 import { MORE_LINKS } from "../app/Shell";
 import { useApp, useNow } from "../app/state";
@@ -179,22 +179,39 @@ export function Settings() {
   const { settings, setSettings, resetProgress, progress } = useApp();
   const label = useBiText();
   const [confirm, setConfirm] = useState(false);
+  // Radio groups: arrow keys, Home and End move the selection; one Tab stop per group (from PR #22).
+  const moveRadio = (event: KeyboardEvent<HTMLDivElement>) => {
+    const radios = Array.from(event.currentTarget.querySelectorAll<HTMLButtonElement>('button[role="radio"]:not(:disabled)'));
+    const current = radios.indexOf(event.target as HTMLButtonElement);
+    if (current < 0 || event.altKey || event.ctrlKey || event.metaKey) return;
+    let next: number;
+    switch (event.key) {
+      case "ArrowRight": case "ArrowDown": next = (current + 1) % radios.length; break;
+      case "ArrowLeft": case "ArrowUp": next = (current + radios.length - 1) % radios.length; break;
+      case "Home": next = 0; break;
+      case "End": next = radios.length - 1; break;
+      default: return;
+    }
+    event.preventDefault();
+    const radio = radios[next];
+    if (radio) { radio.focus(); radio.click(); }
+  };
   return (
     <div>
       <header className="page-head"><h1><Bi t={T.nav.settings} /></h1></header>
       <section className="card stack">
         <h2 className="section-title"><Bi t={{ ckb: "زمان", de: "Sprache", kmr: "Ziman", ar: "اللغة" }} /></h2>
-        <div className="chip-row lang-grid" role="radiogroup" aria-label={label({ ckb: "زمان", de: "Sprache", kmr: "Ziman", ar: "اللغة" })}>
+        <div className="chip-row lang-grid" role="radiogroup" onKeyDown={moveRadio} aria-label={label({ ckb: "زمان", de: "Sprache", kmr: "Ziman", ar: "اللغة" })}>
           {LANGS.map((l) => (
             <button key={l.id} type="button" role="radio" aria-checked={settings.lang === l.id} lang={l.id} dir={langDir(l.id)}
-              className="chip" onClick={() => setSettings({ lang: l.id })} data-testid={`lang-${l.id}`}>{l.native}</button>
+              className="chip" tabIndex={settings.lang === l.id ? 0 : -1} onClick={() => setSettings({ lang: l.id })} data-testid={`lang-${l.id}`}>{l.native}</button>
           ))}
         </div>
         <h3 className="section-title"><Bi t={{ ckb: "دەقی ئەڵمانی لە ژێرەوە", de: "Deutsch darunter zeigen", kmr: "Nivîsa almanî ya orîjînal li jêr", ar: "إظهار النص الألماني الأصلي أسفله" }} /></h3>
-        <div className="chip-row" role="radiogroup" aria-label={label({ ckb: "دەقی ئەڵمانی", de: "Deutscher Text", kmr: "Nivîsa almanî", ar: "النص الألماني" })}>
+        <div className="chip-row" role="radiogroup" onKeyDown={moveRadio} aria-label={label({ ckb: "دەقی ئەڵمانی", de: "Deutscher Text", kmr: "Nivîsa almanî", ar: "النص الألماني" })}>
           {([true, false] as const).map((on) => (
             <button key={String(on)} type="button" role="radio" className="chip" disabled={settings.lang === "de"}
-              aria-checked={settings.lang !== "de" && settings.withGerman === on} onClick={() => setSettings({ withGerman: on })} data-testid={`with-german-${on ? "on" : "off"}`}>
+              tabIndex={settings.lang !== "de" && settings.withGerman === on ? 0 : -1} aria-checked={settings.lang !== "de" && settings.withGerman === on} onClick={() => setSettings({ withGerman: on })} data-testid={`with-german-${on ? "on" : "off"}`}>
               {label(on ? { ckb: "پیشان بدە", de: "Anzeigen", kmr: "Nîşan bide", ar: "إظهار" } : { ckb: "پیشان مەدە", de: "Ausblenden", kmr: "Veşêre", ar: "إخفاء" })}
             </button>
           ))}
