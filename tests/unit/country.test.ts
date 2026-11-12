@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { progressKey } from "../../src/app/state";
 import { defaultSettings, normalizeSettings } from "../../src/app/settings";
 
 describe("country preference", () => {
@@ -14,5 +15,9 @@ describe("country preference", () => {
   });
   it("preserves legacy language settings", () => {
     expect(normalizeSettings({ langMode: "de" }).lang).toBe("de");
+  });
+  it("keeps progress of Germany and Italy under separate keys", () => {
+    expect(progressKey("DE")).toBe("progress");
+    expect(progressKey("IT")).not.toBe(progressKey("DE"));
   });
 });

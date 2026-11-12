@@ -2,7 +2,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useRef, use
 import { kv } from "../lib/storage";
 import { emptyProgress, normalizeProgress, type ProgressState } from "../lib/progress";
 import { langDir } from "./i18n";
-import { defaultSettings, normalizeSettings, type Settings } from "./settings";
+import { defaultSettings, normalizeSettings, type CountryId, type Settings } from "./settings";
 
 export type { Settings } from "./settings";
 
@@ -18,6 +18,9 @@ interface Ctx {
 }
 const AppCtx = createContext<Ctx | null>(null);
 
+/** Progress is stored per country. Germany keeps the original key, so existing learners lose nothing. */
+export const progressKey = (country: CountryId | null) => (country === "IT" ? "progress:IT" : "progress");
+
 export function AppProvider({ children }: { children: ReactNode }) {
   const [ready, setReady] = useState(false);
   const [settings, setSettingsState] = useState<Settings>(defaultSettings);
@@ -25,11 +28,16 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [online, setOnline] = useState(() => (typeof navigator === "undefined" ? true : navigator.onLine));
   const [saveError, setSaveError] = useState(false);
   const loaded = useRef(false);
+  /** The storage key the in-memory progress belongs to. */
+  const owner = useRef(progressKey(null));
 
   useEffect(() => {
-    Promise.all([kv.get<unknown>("settings"), kv.get<unknown>("progress")])
-      .then(([s, p]) => {
-        if (s) setSettingsState(normalizeSettings(s));
+    kv.get<unknown>("settings")
+      .then(async (s) => {
+        const next = s ? normalizeSettings(s) : defaultSettings;
+        owner.current = progressKey(next.country);
+        const p = await kv.get<unknown>(owner.current);
+        if (s) setSettingsState(next);
         // Stored data is rebuilt field by field, so a damaged or outdated record can never break the app.
         const clean = normalizeProgress(p);
         if (clean) setProgress(clean);
@@ -44,7 +52,16 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, []);
 
   // Persist after every change; never overwrite stored data before the initial load finished.
-  useEffect(() => { if (loaded.current) kv.set("progress", progress).then(() => setSaveError(false), () => setSaveError(true)); }, [progress]);
+  useEffect(() => { if (loaded.current) kv.set(owner.current, progress).then(() => setSaveError(false), () => setSaveError(true)); }, [progress]);
+  // Choosing another country loads that country's own progress; the two are never merged.
+  useEffect(() => {
+    if (!loaded.current) return;
+    const key = progressKey(settings.country);
+    if (settings.country === null || key === owner.current) return;
+    let alive = true;
+    kv.get<unknown>(key).then((p) => { if (alive) { owner.current = key; setProgress(normalizeProgress(p) ?? emptyProgress()); } }, () => setSaveError(true));
+    return () => { alive = false; };
+  }, [settings.country]);
   useEffect(() => { if (loaded.current) kv.set("settings", settings).catch(() => setSaveError(true)); }, [settings]);
 
   useEffect(() => {

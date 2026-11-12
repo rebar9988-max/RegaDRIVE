@@ -154,7 +154,7 @@ type Remote = { state: "checking" } | { state: "none" } | { state: "saved"; at: 
 const fmtDate = (t: number) => new Date(t).toLocaleString("de-DE", { dateStyle: "medium", timeStyle: "short" });
 
 export function Account() {
-  const { progress, update, settings, setSettings } = useApp();
+  const { progress, update, settings } = useApp();
   const text = useBiText();
   const [view, setView] = useState<View>("loading");
   const [student, setStudent] = useState<Student | null>(null);
@@ -560,10 +560,10 @@ export function Account() {
                   </li>
                 )}
                 <li>
-                  <button type="button" className="acct-row" onClick={() => setSettings({ country: null })} disabled={busy !== null} data-testid="settings-licence">
+                  <Link href="/settings#country" className="acct-row" data-testid="settings-licence">
                     {row("car", S.licence, <Tx t={licence} />)}
-                    <Tx t={S.change} className="acct-row-action" />
-                  </button>
+                    <Icon name="arrow" className="flip-rtl" />
+                  </Link>
                 </li>
                 <li>
                   <Link href="/settings" className="acct-row" data-testid="settings-all">

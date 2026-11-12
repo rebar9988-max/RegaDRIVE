@@ -179,6 +179,7 @@ export function Settings() {
   const { settings, setSettings, resetProgress, progress } = useApp();
   const label = useBiText();
   const [confirm, setConfirm] = useState(false);
+  const [confirmCountry, setConfirmCountry] = useState(false);
   // Radio groups: arrow keys, Home and End move the selection; one Tab stop per group (from PR #22).
   const moveRadio = (event: KeyboardEvent<HTMLDivElement>) => {
     const radios = Array.from(event.currentTarget.querySelectorAll<HTMLButtonElement>('button[role="radio"]:not(:disabled)'));
@@ -226,6 +227,19 @@ export function Settings() {
         <div className="chip-row">
           {[2, 3, 4, 5].map((n) => <button key={n} type="button" className="chip" aria-pressed={settings.masteryThreshold === n} dir="ltr" onClick={() => setSettings({ masteryThreshold: n })}>{n}</button>)}
         </div>
+      </section>
+      <section className="card stack section" id="country" data-testid="country-reset">
+        <h2 className="section-title"><Bi t={{ ckb: "وڵات و پۆلی مۆڵەت", de: "Land & Führerscheinklasse", kmr: "Welat û pola ehliyetê", ar: "البلد وفئة الرخصة" }} /></h2>
+        <p><strong>{settings.country === "IT" ? "🇮🇹 " : "🇩🇪 "}</strong>{label(settings.country === "IT" ? { ckb: "ئیتاڵیا · Patente B", de: "Italien · Patente B", kmr: "Îtalya · Patente B", ar: "إيطاليا · Patente B" } : { ckb: "ئەڵمانیا · پۆلی B", de: "Deutschland · Klasse B", kmr: "Almanya · Pola B", ar: "ألمانيا · الفئة B" })}</p>
+        {!confirmCountry
+          ? <button type="button" className="btn btn-secondary" onClick={() => setConfirmCountry(true)} data-testid="country-reset-start">{label(T.changeCountry)}</button>
+          : <div className="stack" role="alertdialog" aria-labelledby="country-reset-q">
+              <p id="country-reset-q" className="notice small">{label({ ckb: "دڵنیایت دەتەوێت وڵات بگۆڕیت؟ پێشکەوتن و ئەنجامەکانی هەر وڵاتێک جیا دەمێننەوە و تێکەڵ نابن.", de: "Land wirklich wechseln? Fortschritt und Ergebnisse bleiben pro Land getrennt und werden nicht vermischt.", kmr: "Tu bi rastî dixwazî welat biguherînî? Pêşketin û encamên her welatî ji hev cuda dimînin û tevlihev nabin.", ar: "هل تريد فعلًا تغيير البلد؟ يبقى التقدّم والنتائج منفصلة لكل بلد ولا تختلط." })}</p>
+              <div className="row">
+                <button type="button" className="btn btn-primary" onClick={() => { setConfirmCountry(false); setSettings({ country: null }); }} data-testid="country-reset-confirm">{label({ ckb: "بەڵێ، وڵات بگۆڕە", de: "Ja, Land wechseln", kmr: "Erê, welat biguherîne", ar: "نعم، غيّر البلد" })}</button>
+                <button type="button" className="btn btn-secondary" onClick={() => setConfirmCountry(false)} data-testid="country-reset-cancel">{label({ ckb: "پاشگەزبوونەوە", de: "Abbrechen", kmr: "Betal bike", ar: "إلغاء" })}</button>
+              </div>
+            </div>}
       </section>
       <section className="card stack section">
         <h2 className="section-title"><Bi t={{ ckb: "تایبەتمەندی و داتا", de: "Datenschutz und Daten", kmr: "Nepenî û dane", ar: "الخصوصية والبيانات" }} /></h2>
