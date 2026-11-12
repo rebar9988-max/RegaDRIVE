@@ -1,5 +1,4 @@
 import { Link } from "../app/router";
-import { LANGS, langDir } from "../app/i18n";
 import { useApp, useNow } from "../app/state";
 import { T } from "../app/strings";
 import { Bi, useBiText } from "../components/Bi";
@@ -21,7 +20,7 @@ const TILES: { href: string; icon: IconName; t: Bilingual; sub: Bilingual; needs
 const OVERALL = { ckb: "پێشکەوتنی گشتی", de: "Dein Lernfortschritt", kmr: "Pêşketina giştî", ar: "تقدّمك في التعلّم" };
 
 export function Home() {
-  const { progress, settings, setSettings } = useApp();
+  const { progress, settings } = useApp();
   const label = useBiText();
   const qs = CONTENT.questions;
   const lessons = CONTENT.lessons;
@@ -48,14 +47,6 @@ export function Home() {
   return (
     <div className="dashboard" data-testid="home">
       <div className="dashboard-main">
-        <div className="language-switch" role="group" aria-label={label({ ckb: "زمان", de: "Sprache", kmr: "Ziman", ar: "اللغة" })}>
-          {LANGS.map((l) => (
-            <button key={l.id} type="button" lang={l.id} dir={langDir(l.id)} aria-pressed={settings.lang === l.id} onClick={() => setSettings({ lang: l.id })} data-testid={`switch-${l.id}`}>
-              {l.flag ? <img src={l.flag} width={23} height={16} alt="" /> : null}{l.native}
-            </button>
-          ))}
-        </div>
-
         <section className="welcome" aria-labelledby="home-title">
           <div>
             <span className="eyebrow" lang="de" dir="ltr">Führerschein · Klasse B</span>
