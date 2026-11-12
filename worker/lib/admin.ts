@@ -6,6 +6,7 @@ import { TOPICS } from "../../src/content/topics";
 import { authenticateOwner, type AdminEnv } from "./adminAuth";
 import { audit, consoleAuditSink, type AuditSink } from "./audit";
 import { RateLimiter } from "./rateLimit";
+import { commitImport, contentProgress, rollbackImport, type ContentDb } from "../content/store";
 
 const limiter = new RateLimiter(30, 60_000);
 const MAX_MEDIA_BYTES = 26 * 1024 * 1024;
@@ -13,7 +14,10 @@ const MAX_MEDIA_BYTES = 26 * 1024 * 1024;
 export interface AdminDeps { sink?: AuditSink; now?: number; knownLicenses?: ReadonlySet<string> }
 type Json = (body: unknown, status?: number) => Response;
 
-export async function handleAdmin(req: Request, env: AdminEnv, flags: Flags, json: Json, deps: AdminDeps = {}): Promise<Response> {
+/** CONTENT_DB: the owner-activated content database. Not bound in production (wrangler.jsonc). */
+export type AdminRuntimeEnv = AdminEnv & { CONTENT_DB?: ContentDb };
+
+export async function handleAdmin(req: Request, env: AdminRuntimeEnv, flags: Flags, json: Json, deps: AdminDeps = {}): Promise<Response> {
   const sink = deps.sink ?? consoleAuditSink;
   const action = `${req.method} ${new URL(req.url).pathname}`;
   const ip = req.headers.get("cf-connecting-ip") ?? "anon";
@@ -60,10 +64,42 @@ export async function handleAdmin(req: Request, env: AdminEnv, flags: Flags, jso
     return json({ dryRun: true, stored: false, ...r }, r.ok ? 200 : 422);
   }
 
-  if (path === "/api/admin/import/commit" || path === "/api/admin/media/upload" || path.startsWith("/api/admin/content/")) {
-    const reason = !flags.contentImportExecutionEnabled ? "CONTENT_IMPORT_EXECUTION disabled (requires owner-activated production database)" : "storage not configured";
-    await audit(sink, actor, action, "denied", { reason });
-    return json({ error: "IMPORT_EXECUTION_DISABLED", reason }, 503);
+  if (path === "/api/admin/import/commit" || path === "/api/admin/import/rollback" || path === "/api/admin/media/upload" || path.startsWith("/api/admin/content/")) {
+    // Stored imports need the owner-activated content database AND its own binding. Neither exists in production
+    // today, so every one of these routes answers 503 and writes nothing.
+    const db = env.CONTENT_DB;
+    const reason = !flags.contentImportExecutionEnabled ? "CONTENT_IMPORT_EXECUTION disabled (requires owner-activated production database)"
+      : !flags.databaseProductionEnabled ? "production content database not activated by the owner"
+      : !db ? "storage not configured" : null;
+    if (reason || !db) {
+      await audit(sink, actor, action, "denied", { reason });
+      return json({ error: "IMPORT_EXECUTION_DISABLED", reason }, 503);
+    }
+    const now = deps.now ?? Date.now();
+    if (path === "/api/admin/content/progress" && req.method === "GET") {
+      await audit(sink, actor, action, "allowed", {});
+      return json({ progress: await contentProgress(db) });
+    }
+    if (path === "/api/admin/import/commit" && req.method === "POST") {
+      let body: { format?: string; data?: string; fileName?: string; media?: MediaManifestEntry[] };
+      try { body = await req.json(); } catch { return json({ error: "BAD_REQUEST" }, 400); }
+      if ((body.format !== "json" && body.format !== "csv") || typeof body.data !== "string") return json({ error: "BAD_REQUEST" }, 400);
+      const r = await commitImport(db, { format: body.format, text: body.data, fileName: typeof body.fileName === "string" ? body.fileName : "upload", actor, now, media: Array.isArray(body.media) ? body.media : [] });
+      await audit(sink, actor, action, r.ok ? "allowed" : "failed", r.ok ? { batch: r.batchId, inserted: r.inserted, updated: r.updated, duplicates: r.duplicates } : { error: r.error, detail: r.detail ?? null });
+      // Stored as hidden drafts only; publication is a separate owner-approved step.
+      return json(r.ok ? { stored: true, published: false, ...r } : { stored: false, published: false, ...r }, r.ok ? 200 : 422);
+    }
+    if (path === "/api/admin/import/rollback" && req.method === "POST") {
+      let body: { batchId?: string; reason?: string };
+      try { body = await req.json(); } catch { return json({ error: "BAD_REQUEST" }, 400); }
+      if (typeof body.batchId !== "string" || typeof body.reason !== "string") return json({ error: "BAD_REQUEST" }, 400);
+      const r = await rollbackImport(db, body.batchId, actor, body.reason, now);
+      await audit(sink, actor, action, r.ok ? "allowed" : "failed", r.ok ? { batch: r.batchId, removed: r.removed, restored: r.restored } : { error: r.error, detail: r.detail ?? null });
+      return json(r, r.ok ? 200 : 422);
+    }
+    // Media upload needs object storage (R2), which is not configured.
+    await audit(sink, actor, action, "denied", { reason: "storage not configured" });
+    return json({ error: "IMPORT_EXECUTION_DISABLED", reason: "storage not configured" }, 503);
   }
 
   await audit(sink, actor, action, "denied", { reason: "unknown admin route" });
