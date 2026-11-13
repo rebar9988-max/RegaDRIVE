@@ -39,6 +39,15 @@ await check("health: regadrive, production content, DB off, payments off", async
   const h = await (await get("/api/health")).json();
   assert.equal(h.app, "regadrive"); assert.equal(h.contentMode, "production"); assert.equal(h.database, "off"); assert.equal(h.payments, "off");
 });
+await check("sign content is gated: /api/content/approved answers, fail closed, ids only", async () => {
+  const r = await get("/api/content/approved");
+  assert.equal(r.status, 200);
+  const a = await r.json();
+  assert.equal(typeof a.ok, "boolean"); assert.equal(typeof a.signs, "object"); assert.equal(typeof a.signQuiz, "object");
+  if (a.ok !== true) { assert.deepEqual(a.signs, {}); assert.deepEqual(a.signQuiz, {}); }
+  assert.ok(Object.keys(a.signs).length <= 40 && Object.keys(a.signQuiz).length <= 89);
+  console.log(`Published by the review gate: ${Object.keys(a.signs).length}/40 signs, ${Object.keys(a.signQuiz).length}/89 quiz questions (ok=${a.ok})`);
+});
 await check("live build matches the expected production release", async () => {
   const info = await (await get("/build-info.json", { cache: "no-store" })).json();
   if (process.env.EXPECTED_BUILD_ID || process.env.GITHUB_ACTIONS === "true") {

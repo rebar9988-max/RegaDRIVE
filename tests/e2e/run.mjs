@@ -1005,6 +1005,63 @@ try {
     await ctx.close();
   });
 
+  await test("/dr Content Review & Approval: 3 stages, German LTR + Sorani RTL, reviewer/evidence required, accessible on iPhone (mocked owner session)", async () => {
+    const ctx = await browser.newContext({ ...devices["iPhone 13"], bypassCSP: true });
+    const page = await ctx.newPage();
+    const errors = [];
+    page.on("pageerror", (e) => errors.push(e.message));
+    const stage = (state, extra = {}) => ({ state, ...extra });
+    const pending = { TRANSLATION_REVIEW: stage("pending"), EDUCATIONAL_REVIEW: stage("pending"), APPROVED: stage("pending") };
+    const done = (who) => ({ state: "pass", reviewer: who, role: "x", reviewedOn: "2026-11-13", evidenceRef: "signed-list.pdf" });
+    const item = (id, kind, status, publishable, stages) => ({ id, kind, status, publishable, reasons: publishable ? [] : ["missing passed APPROVED"], valid: true, hash: "h", contentVersion: "v", sourceRefs: ["StVO Anlage 2 lfd. Nr. 49 (Zeichen 274)"], checks: [{ ok: true, label: "German text present" }, { ok: true, label: "exactly one correct answer, mapped to an option" }], stages });
+    const items = [
+      item("s102", "sign", "AWAITING_REVIEW", false, pending),
+      item("s108", "sign", "TRANSLATION_REVIEW_DONE", false, { ...pending, TRANSLATION_REVIEW: done("Test Person") }),
+      item("rd-sq-s102-m", "signQuiz", "PUBLISHED", true, { TRANSLATION_REVIEW: done("A Person"), EDUCATIONAL_REVIEW: done("B Person"), APPROVED: done("C Person") }),
+    ];
+    const posts = [];
+    await ctx.route("**/api/dr/**", async (r) => {
+      const u = new URL(r.request().url());
+      const json = (status, body) => r.fulfill({ status, contentType: "application/json", body: JSON.stringify(body) });
+      if (u.pathname === "/api/dr/session") return json(200, { authenticated: true, email: "re•••@gmail.com", expiresAt: Date.now() + 3600000, stepUpUntil: Date.now() + 600000 });
+      if (u.pathname === "/api/dr/overview") return json(200, { now: Date.now(), owner: "re•••@gmail.com", system: { app: "regadrive", version: "t", contentMode: "production", colo: null }, database: { ok: true, latencyMs: 1, name: "regadrive-db", studentData: "off", activeSessions: 1, auditEntries: 0, logins24h: 0, denied24h: 0, codesSent24h: 0, mailFailures24h: 0, backups: 0 }, features: [], ai: [], content: {}, email: { owner: "x", from: "x", provider: "Resend", configured: true }, payments: null, security: { sessions: [], steppedUp: true, stepUpUntil: Date.now() + 600000, sessionExpiresAt: Date.now() + 3600000 }, backups: [] });
+      if (u.pathname === "/api/dr/reviews" && r.request().method() === "GET") return json(200, { items, counts: { total: 3, published: 1, awaiting: 1, inReview: 1, rejected: 0, signs: { total: 2, published: 0 }, signQuiz: { total: 1, published: 1 } }, history: [], rulesVersion: "test-rules", roles: {}, steppedUp: true });
+      if (u.pathname === "/api/dr/reviews") {
+        posts.push(JSON.parse(r.request().postData() ?? "{}"));
+        return posts.length === 1 ? json(422, { error: "REJECTED", errors: [{ id: "s102", error: "TRANSLATION_REVIEW_FIRST" }], rejectedCount: 1 }) : json(200, { ok: true, recorded: 1 });
+      }
+      return json(404, { error: "NOT_FOUND" });
+    });
+    await page.goto(`${BASE}/dr`);
+    await page.getByRole("button", { name: "Content Review" }).click();
+    await page.locator("[data-testid=dr-review]").waitFor();
+    assert.equal(await page.locator("[data-testid=review-item]").count(), 3);
+    assert.equal(await page.locator("[data-testid=rv-signs]").textContent(), "0 / 2");
+    for (const st of ["TRANSLATION_REVIEW", "EDUCATIONAL_REVIEW", "APPROVED"]) assert.equal(await page.locator(`[data-id=s102] [data-testid=stage-${st}]`).count(), 1, `${st} shown`);
+    const dirs = await page.locator("[data-id=s102] .rv-de, [data-id=s102] .rv-ckb").evaluateAll((els) => els.slice(0, 2).map((e) => [e.getAttribute("lang"), e.getAttribute("dir")]));
+    assert.deepEqual(dirs, [["de", "ltr"], ["ckb", "rtl"]], "German LTR first, Sorani RTL below");
+    assert.ok(await page.locator("[data-id=s102] svg").count() >= 1, "the sign drawing is shown");
+    assert.equal(await page.locator("[data-id=rd-sq-s102-m]").getAttribute("data-status"), "PUBLISHED");
+    assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth), false, "no horizontal overflow");
+    // The form cannot be submitted without a selection, a named reviewer, evidence and the confirmation.
+    assert.equal(await page.locator("[data-testid=review-submit]").isDisabled(), true);
+    await page.locator("[data-id=s102] input[type=checkbox]").check();
+    await page.getByLabel("Reviewer (full name)").fill("Test Person");
+    await page.getByLabel(/Evidence reference/).fill("evidence-123");
+    assert.equal(await page.locator("[data-testid=review-submit]").isDisabled(), true, "needs the confirmation");
+    await page.getByLabel(/I confirm that the named person/).check();
+    await axe(page, "/dr content review");
+    await page.locator("[data-testid=review-submit]").click();
+    await page.getByRole("alert").filter({ hasText: "Translation review must pass first" }).waitFor();
+    await page.locator("[data-testid=review-submit]").click();
+    await page.getByRole("status").filter({ hasText: "Recorded 1 decision" }).waitFor();
+    assert.equal(posts.length, 2);
+    assert.deepEqual({ stage: posts[0].stage, outcome: posts[0].outcome, ids: posts[0].ids, reviewerName: posts[0].reviewerName, confirm: posts[0].confirm }, { stage: "TRANSLATION_REVIEW", outcome: "pass", ids: ["s102"], reviewerName: "Test Person", confirm: true });
+    await page.screenshot({ path: `${OUT}/dr-content-review-iphone.png`, fullPage: false });
+    assert.deepEqual(errors, []);
+    await ctx.close();
+  });
+
   await test("200 percent text on a 320px screen: nothing cut off or off screen, in all four languages (WCAG 1.4.4 / 1.4.10; from PR #22)", async () => {
     const ctx = await browser.newContext({ viewport: { width: 320, height: 844 } });
     const page = await ctx.newPage();

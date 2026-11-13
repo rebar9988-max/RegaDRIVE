@@ -220,3 +220,17 @@ for (const t of ["users","students","purchase_orders","payment_events","sessions
 assert.equal(Object.values(cdb.prepare("PRAGMA integrity_check").get())[0], "ok");
 
 console.log(`migrations OK: ${tables.length} tables, constraints verified; student database: ${stables.length} tables, constraints verified; content database: ${ctables.length} tables, copied verbatim`);
+
+// ── 0006: /dr content reviews (admin tables only) ─────────────────────────
+{
+  assert.ok(db.prepare("SELECT 1 FROM sqlite_master WHERE type='table' AND name='dr_content_reviews'").get(), "missing table dr_content_reviews");
+  const ins = (stage, outcome, role) => `INSERT INTO dr_content_reviews (content_id,content_kind,content_hash,content_version,stage,outcome,reviewer_name,reviewer_role,reviewed_on,evidence_ref,recorded_by,recorded_at) VALUES ('s102','sign','h','v','${stage}','${outcome}','Person Name','${role}','2026-11-07','evidence-1','owner:x',${now})`;
+  db.exec(ins("TRANSLATION_REVIEW", "pass", "sorani_translator"));
+  throws(ins("PUBLISHED", "pass", "content_owner"), "review stage domain");
+  throws(ins("APPROVED", "maybe", "content_owner"), "review outcome domain");
+  throws(ins("APPROVED", "pass", "automated"), "human roles only");
+  throws(`INSERT INTO dr_content_reviews (content_id,content_kind,content_hash,content_version,stage,outcome,reviewer_name,reviewer_role,reviewed_on,evidence_ref,recorded_by,recorded_at) VALUES ('x','lesson','h','v','APPROVED','pass','P N','content_owner','2026-11-07','e','o',${now})`, "review kind domain");
+  // idempotent: applying again changes nothing and loses nothing
+  db.exec(readFileSync("migrations/0006_dr_content_reviews.sql", "utf8"));
+  assert.equal(db.prepare("SELECT COUNT(*) AS n FROM dr_content_reviews").get().n, 1, "re-applying 0006 keeps rows");
+}
