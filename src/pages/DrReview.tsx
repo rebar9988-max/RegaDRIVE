@@ -127,12 +127,16 @@ export function DrReview({ api, onNeedStepUp }: Props) {
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<{ kind: "ok" | "err"; text: string } | null>(null);
 
-  const load = useCallback(async () => {
-    const r = await api("/api/dr/reviews");
+  const apply = useCallback((r: ApiResult) => {
     if (r.status === 200) { setData(r.body as unknown as Data); setNote(""); }
     else setNote(r.status === 401 ? "Sign in again at /dr." : `Could not load the review list (${r.status}). The D1 migration 0006 may not be applied yet.`);
-  }, [api]);
-  useEffect(() => { void load(); }, [load]);
+  }, []);
+  const load = useCallback(() => api("/api/dr/reviews").then(apply), [api, apply]);
+  useEffect(() => {
+    let alive = true;
+    void api("/api/dr/reviews").then((r) => { if (alive) apply(r); });
+    return () => { alive = false; };
+  }, [api, apply]);
 
   const items = useMemo(() => (data?.items ?? []).filter((it) => {
     if (kind !== "all" && it.kind !== kind) return false;
@@ -223,7 +227,7 @@ export function DrReview({ api, onNeedStepUp }: Props) {
 
       <section className="card" aria-labelledby="rv-hist-h">
         <h3 id="rv-hist-h" className="dr-h" dir="ltr">Review history <small>latest 300</small></h3>
-        <div className="dr-scroll"><table className="dr-table" dir="ltr"><thead><tr><th>Recorded</th><th>Item</th><th>Stage</th><th>Result</th><th>Reviewer</th><th>Date</th><th>Evidence</th><th>Recorded by</th><th /></tr></thead><tbody>
+        <div className="dr-scroll" tabIndex={0} role="region" aria-label="Review history table"><table className="dr-table" dir="ltr"><thead><tr><th>Recorded</th><th>Item</th><th>Stage</th><th>Result</th><th>Reviewer</th><th>Date</th><th>Evidence</th><th>Recorded by</th><th /></tr></thead><tbody>
           {data.history.length === 0 && <tr><td colSpan={9}>No human review has been recorded yet.</td></tr>}
           {data.history.map((h) => <tr key={h.id} className={h.revoked_at ? "rv-revoked" : ""}><td>{stamp(h.recorded_at)}</td><td>{h.content_id}</td><td>{h.stage}</td><td>{h.outcome}{h.revoked_at ? ` (withdrawn: ${h.revoke_reason})` : ""}</td><td>{h.reviewer_name}</td><td>{h.reviewed_on}</td><td>{h.evidence_ref}</td><td>{h.recorded_by}</td><td>{!h.revoked_at && <button type="button" className="btn btn-secondary btn-sm" onClick={() => void revoke(h.id)}>Withdraw</button>}</td></tr>)}
         </tbody></table></div>
