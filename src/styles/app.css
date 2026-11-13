@@ -69,7 +69,8 @@ button { cursor: pointer; }
 /* Enlarged text (WCAG 1.4.4 / 1.4.10): a word longer than its box breaks instead of being cut off or leaving the screen.
    At normal size every word fits, so nothing changes there. */
 .bi > .pri, .bi > .de { min-width: 0; max-width: 100%; overflow-wrap: anywhere; }
-.tile > strong, .stat-label { min-width: 0; max-width: 100%; }
+.tile > strong, .stat-label, .chip { min-width: 0; max-width: 100%; }
+.chip { overflow-wrap: anywhere; }
 .bi > .de { direction: ltr; unicode-bidi: plaintext; color: var(--muted); font-size: .82em; font-weight: 500; line-height: 1.5; }
 [dir='rtl'] .bi > .de, [dir='rtl'] .bi > .pri { text-align: right; }
 [dir='ltr'] .bi > .pri { text-align: left; }
