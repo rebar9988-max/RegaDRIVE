@@ -1,4 +1,4 @@
-import type { VocabularyEntry } from "./types";
+import type { VocabularyEntry } from "./types.ts";
 
 export const VOCABULARY: VocabularyEntry[] = [
   { id: "v-vorfahrt", article: "die", de: "Vorfahrt", kmr: "Mafê pêşiyê", ar: "أولوية المرور", ckb: "پێشەنگی (مافی تێپەڕین)" },
