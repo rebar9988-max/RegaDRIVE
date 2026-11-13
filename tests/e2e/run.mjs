@@ -985,17 +985,31 @@ try {
         await page.waitForSelector("main#main > div:not([aria-busy])");
         await page.evaluate(() => { document.documentElement.style.fontSize = "200%"; });
         await page.evaluate(() => document.fonts.ready);
-        const r = await page.evaluate(() => ({
-          overflow: document.documentElement.scrollWidth > innerWidth,
-          clipped: [...document.querySelectorAll("main *, .tabbar *, .topbar *")].filter((el) => {
-            if (el.closest(".sr-only")) return false;
+        // Text is "cut off" when its own glyph box leaves the screen or any ancestor that clips (overflow other than
+        // visible); text that merely overflows a box with visible overflow is still fully readable.
+        const r = await page.evaluate(() => {
+          const cut = [];
+          const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
+          for (let n = walker.nextNode(); n; n = walker.nextNode()) {
+            const el = n.parentElement;
+            if (!n.textContent.trim() || !el || !el.closest("main, .tabbar, .topbar") || el.closest(".sr-only, [aria-hidden=true]")) continue;
             const cs = getComputedStyle(el);
-            if (cs.display === "none" || cs.visibility === "hidden") return false;
-            const rc = el.getBoundingClientRect();
-            if (!rc.width || ![...el.childNodes].some((n) => n.nodeType === 3 && n.textContent.trim())) return false;
-            return rc.left < -1 || rc.right > innerWidth + 1 || (el.scrollWidth > el.clientWidth + 1 && !["auto", "scroll"].includes(cs.overflowX));
-          }).map((el) => `${el.tagName.toLowerCase()}.${[...el.classList].join(".")} "${el.textContent.trim().slice(0, 24)}"`),
-        }));
+            if (cs.display === "none" || cs.visibility === "hidden") continue;
+            const range = document.createRange(); range.selectNodeContents(n);
+            const t = range.getBoundingClientRect();
+            if (!t.width) continue;
+            let bad = t.left < -1 || t.right > innerWidth + 1;
+            for (let a = el; a && !bad && a !== document.body; a = a.parentElement) {
+              const s = getComputedStyle(a);
+              if (s.overflowX === "visible" && s.overflowY === "visible") continue;
+              if (["auto", "scroll"].includes(s.overflowX)) break; // scrollable: reachable, not cut
+              const b = a.getBoundingClientRect();
+              bad = t.left < b.left - 1 || t.right > b.right + 1;
+            }
+            if (bad) cut.push(`${el.tagName.toLowerCase()}.${[...el.classList].join(".")} "${n.textContent.trim().slice(0, 24)}"`);
+          }
+          return { overflow: document.documentElement.scrollWidth > innerWidth, clipped: [...new Set(cut)] };
+        });
         assert.equal(r.overflow, false, `${path} ${lang}: no horizontal scrolling at 200% text`);
         assert.deepEqual(r.clipped, [], `${path} ${lang}: no text cut off or off screen at 200%`);
       }
