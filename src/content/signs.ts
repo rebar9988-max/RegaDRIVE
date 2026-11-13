@@ -1,4 +1,4 @@
-import type { TrafficSign } from "./types";
+import type { TrafficSign } from "./types.ts";
 
 /** Simplified RegaDRIVE illustrations of official StVO signs (sign numbers are public regulatory references). */
 export const SIGNS: TrafficSign[] = [

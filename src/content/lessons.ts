@@ -1,4 +1,4 @@
-import type { Lesson } from "./types";
+import type { Lesson } from "./types.ts";
 
 /** Original RegaDRIVE lesson texts (educational summaries, not official exam material). */
 export const LESSONS: Lesson[] = [

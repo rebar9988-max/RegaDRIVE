@@ -1,8 +1,8 @@
 import { defineConfig, type Plugin } from "vite";
 import react from "@vitejs/plugin-react";
 import { readFileSync, writeFileSync, existsSync, readdirSync } from "node:fs";
-import { contentFor } from "./src/content/access";
-import { KLASSE_B_RULES_2026 } from "./src/lib/shared/exam";
+import { contentFor } from "./src/content/access.ts";
+import { KLASSE_B_RULES_2026 } from "./src/lib/shared/exam.ts";
 import { execSync } from "node:child_process";
 
 function commit(): string | null {

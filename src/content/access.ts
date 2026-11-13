@@ -1,9 +1,9 @@
-import { QUESTIONS } from "./questions";
-import { LESSONS } from "./lessons";
-import { SIGNS } from "./signs";
-import { VOCABULARY } from "./vocabulary";
-import { CONTENT_REGISTRY } from "./registry";
-import { publicationGate } from "./pipeline";
+import { QUESTIONS } from "./questions.ts";
+import { LESSONS } from "./lessons.ts";
+import { SIGNS } from "./signs.ts";
+import { VOCABULARY } from "./vocabulary.ts";
+import { CONTENT_REGISTRY } from "./registry.ts";
+import { publicationGate } from "./pipeline.ts";
 
 /**
  * "production": only items that pass the publication gate are visible (fail closed).

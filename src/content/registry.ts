@@ -1,8 +1,8 @@
-import { CONTENT_VERSION, QUESTIONS } from "./questions";
-import { LESSONS } from "./lessons";
-import { SIGNS } from "./signs";
-import { VOCABULARY } from "./vocabulary";
-import type { ContentKind, ContentRecord, Provenance, ReviewRecord } from "./pipeline";
+import { CONTENT_VERSION, QUESTIONS } from "./questions.ts";
+import { LESSONS } from "./lessons.ts";
+import { SIGNS } from "./signs.ts";
+import { VOCABULARY } from "./vocabulary.ts";
+import type { ContentKind, ContentRecord, Provenance, ReviewRecord } from "./pipeline.ts";
 
 /**
  * Provenance and review evidence for every content item.

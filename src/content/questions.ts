@@ -1,4 +1,4 @@
-import type { Bilingual, Question, QuestionCategory, QuestionPoints } from "./types";
+import type { Bilingual, Question, QuestionCategory, QuestionPoints } from "./types.ts";
 
 /**
  * ORIGINAL RegaDRIVE practice questions. They are NOT official TÜV/DEKRA examination questions,

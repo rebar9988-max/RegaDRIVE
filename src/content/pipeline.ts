@@ -4,8 +4,8 @@
  * An item is publishable only with complete provenance, a valid licence classification, recorded human
  * approvals for translation and educational review, and validation against the current exam rules.
  */
-import { KLASSE_B_RULES_2026 } from "../lib/shared/exam";
-import type { Question } from "./types";
+import { KLASSE_B_RULES_2026 } from "../lib/shared/exam.ts";
+import type { Question } from "./types.ts";
 
 export const STAGES = ["DRAFT", "SOURCE_CHECK", "LICENSE_CHECK", "TRANSLATION_REVIEW", "EDUCATIONAL_REVIEW", "APPROVED", "PUBLISHED"] as const;
 export type ContentStage = (typeof STAGES)[number];
