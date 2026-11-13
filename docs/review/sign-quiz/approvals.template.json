@@ -1,0 +1,35 @@
+{
+  "scope": "sign-quiz",
+  "contentVersion": "2026.11-signquiz-1",
+  "rulesVersion": "see KLASSE_B_RULES_2026.version in src/lib/shared/exam.ts",
+  "note": "Each entry must be filled by a real, named reviewer. Do not copy names, do not pre-fill. Empty fields mean NOT approved.",
+  "reviews": [
+    {
+      "stage": "TRANSLATION_REVIEW",
+      "role": "sorani_translator",
+      "reviewer": "",
+      "date": "",
+      "evidenceRef": "",
+      "outcome": "",
+      "covers": "all 40 signs and 89 questions (ckb; kmr/ar optional)"
+    },
+    {
+      "stage": "EDUCATIONAL_REVIEW",
+      "role": "driving_instructor",
+      "reviewer": "",
+      "date": "",
+      "evidenceRef": "",
+      "outcome": "",
+      "covers": "all 40 signs, drawings and 89 questions against the current StVO"
+    },
+    {
+      "stage": "APPROVED",
+      "role": "content_owner",
+      "reviewer": "",
+      "date": "",
+      "evidenceRef": "",
+      "outcome": "",
+      "covers": "release decision after both reviews above passed"
+    }
+  ]
+}
