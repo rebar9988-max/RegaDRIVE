@@ -7,7 +7,7 @@ const get = (path: string, method = "GET") => handlePage(new Request(`https://ww
 
 describe("page routing (real 404s instead of soft 404s)", () => {
   it("knows the app's routes", () => {
-    for (const p of ["/", "/learn", "/learn/l-priority", "/practice", "/practice/", "/exam", "/progress", "/settings", "/more", "/account", "/about", "/dr", "/dr/anything"]) expect(isAppRoute(p), p).toBe(true);
+    for (const p of ["/", "/learn", "/learn/l-priority", "/signs", "/sign-quiz", "/practice", "/practice/", "/exam", "/progress", "/settings", "/more", "/account", "/about", "/dr", "/dr/anything"]) expect(isAppRoute(p), p).toBe(true);
     for (const p of ["/wp-login", "/old-page", "/learn/nope", "/learn/l-priority/x", "/practice/x", "/drx"]) expect(isAppRoute(p), p).toBe(false);
   });
   it("serves the app shell with 200 and the site's headers for app routes", async () => {

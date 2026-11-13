@@ -8,7 +8,7 @@
 import { LESSONS } from "../src/content/lessons";
 
 const LESSON_IDS = new Set(LESSONS.map((l) => l.id));
-const PAGES = new Set(["", "learn", "signs", "practice", "exam", "progress", "vocabulary", "services", "account", "access", "settings", "about", "more", "dr", "admin/import"]);
+const PAGES = new Set(["", "learn", "signs", "sign-quiz", "practice", "exam", "progress", "vocabulary", "services", "account", "access", "settings", "about", "more", "dr", "admin/import"]);
 
 export function isAppRoute(pathname: string): boolean {
   const p = pathname.replace(/^\/+|\/+$/g, "");
