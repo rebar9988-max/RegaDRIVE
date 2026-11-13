@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import ts from "typescript";
 import { QUESTIONS } from "../../src/content/questions";
 import { SIGNS } from "../../src/content/signs";
+import { SIGN_QUIZ } from "../../src/content/signQuiz";
 import { VOCABULARY } from "../../src/content/vocabulary";
 import { TOPICS } from "../../src/content/topics";
 import { LESSONS } from "../../src/content/lessons";
@@ -25,7 +26,7 @@ function texts(v: unknown, path = "", out: [string, Record<string, unknown>][] =
   return out;
 }
 
-const ALL = texts({ QUESTIONS, LESSONS, SIGNS, TOPICS, VOCABULARY, T });
+const ALL = texts({ QUESTIONS, SIGN_QUIZ, LESSONS, SIGNS, TOPICS, VOCABULARY, T });
 
 describe("Kurmanji and Arabic translations", () => {
   it("covers every built-in text", () => {

@@ -54,7 +54,7 @@ const MORE_SIGNS: SignDef[] = [
     name: { ckb: "چوارڕێیان یان دووڕێیان، پێشەنگی بۆ لای ڕاست", de: "Kreuzung oder Einmündung mit Vorfahrt von rechts", kmr: "Xaçerê an rêgihan, mafê pêşiyê ji aliyê rastê", ar: "تقاطع أو التقاء طرق مع أولوية من اليمين" },
     meaning: { ckb: "لە پێشەوە چوارڕێیانێک هەیە کە «ڕاست پێش چەپ» تێیدا کاردەکات. ئەوەی لە ڕاستەوە دێت پێشەنگی هەیە.", de: "Voraus liegt eine Kreuzung oder Einmündung, an der „rechts vor links“ gilt. Wer von rechts kommt, hat Vorfahrt.", kmr: "Li pêş xaçerêyek heye ku „rast beriya çep“ tê de derbasdar e. Yê ji rastê tê mafê pêşiyê heye.", ar: "أمامك تقاطع تسري فيه قاعدة «اليمين قبل اليسار». من يأتي من اليمين له الأولوية." } },
   { id: "s108", stvoNumber: "108", shape: "triangle", glyph: "slope-down", group: "danger",
-    name: { ckb: "نشێو (Gefälle)", de: "Gefälle", kmr: "Berjêr (Gefälle)", ar: "منحدر" },
+    name: { ckb: "نشێو (Gefälle)", de: "Gefälle", kmr: "Berjêr", ar: "منحدر" },
     meaning: { ckb: "ڕێگا بەرەو خوارەوە دەچێت. گێڕی نزم بەکاربهێنە و دووری بریک بپارێزە.", de: "Die Straße fällt ab. Niedrigen Gang nutzen und Bremsen schonen.", kmr: "Rê ber bi jêr diçe. Vîtesa nizm bi kar bîne û frenan biparêze.", ar: "الطريق منحدر إلى الأسفل. استخدم غيارًا منخفضًا واحمِ المكابح." } },
   { id: "s110", stvoNumber: "110", shape: "triangle", glyph: "slope-up", group: "danger",
     name: { ckb: "ھەڵکشان (Steigung)", de: "Steigung", kmr: "Serkeftin (Steigung)", ar: "منحدر صاعد" },
