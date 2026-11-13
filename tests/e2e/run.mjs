@@ -614,8 +614,11 @@ try {
       // Horizontal edges and vertical positions: nothing may move sideways or up and down.
       const boxes = () => page.evaluate(() => [".topbar .brand", ".lang-trigger", ".hero-logo", ".tabbar", ".sidenav", ".overview-card", ".learning-cta", ".home-menu"].map((sel) => {
         const el = document.querySelector(sel); const r = el?.getBoundingClientRect();
-        return r && r.width > 0 ? [sel, Math.round(r.left), Math.round(r.right), Math.round(r.top + scrollY), Math.round(r.height)] : [sel, null];
+        return r && r.width > 0 ? [sel, r.left, r.right, r.top + scrollY, r.height] : [sel, null];
       }));
+      // Compare the real values: any visible move (1px or more) fails. Rounding each value first would turn a
+      // sub-pixel difference such as 366.50 vs 366.47 (1/64px layout steps) into a reported 1px move.
+      const same = (a, b) => a.length === b.length && a.every((x, i) => x[0] === b[i][0] && x.length === b[i].length && x.slice(1).every((v, j) => v === b[i][j + 1] || (v !== null && b[i][j + 1] !== null && Math.abs(v - b[i][j + 1]) < 0.5)));
       const before = await boxes();
       for (const lang of ["kmr", "ar", "de", "ckb"]) {
         await page.click("[data-testid=header-lang-trigger]");
@@ -623,7 +626,8 @@ try {
         assert.equal(await page.locator("[data-testid=header-lang-panel]").count(), 0, "the selector closes after choosing");
         assert.equal(await page.getAttribute("html", "lang"), lang);
         assert.equal(await page.getAttribute("html", "dir"), "rtl", "the layout never mirrors");
-        assert.deepEqual(await boxes(), before, `layout moved after switching to ${lang}`);
+        const now = await boxes();
+        assert.ok(same(now, before), `layout moved after switching to ${lang}: ${JSON.stringify(now)} vs ${JSON.stringify(before)}`);
         assert.equal(await page.getAttribute("#home-title .pri", "lang"), lang);
         assert.ok((await page.textContent("#home-title .pri")).trim().length > 3);
         const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);

@@ -1,8 +1,8 @@
-/* Noto Sans Arabic (OFL): the main and Latin files hold weights 400–900 (the app uses 400–850); the original full
-   file serves only the rarely used extended and presentation-form ranges, so it is downloaded only when needed. */
-@font-face { font-family: 'Rega Arabic'; src: url('/fonts/noto-sans-arabic-arabic-ext.woff2') format('woff2'); font-weight: 100 900; font-display: swap; unicode-range: U+0870-089F,U+08A0-08FF,U+FB50-FDFF,U+FE70-FEFC; }
-@font-face { font-family: 'Rega Arabic'; src: url('/fonts/noto-sans-arabic-arabic.woff2') format('woff2'); font-weight: 400 900; font-display: swap; unicode-range: U+0600-06FF,U+0750-077F,U+200C-200E; }
-@font-face { font-family: 'Rega Arabic'; src: url('/fonts/noto-sans-arabic-latin.woff2') format('woff2'); font-weight: 400 900; font-display: swap; unicode-range: U+0000-00FF,U+2000-206F,U+20AC; }
+/* Vazirmatn (OFL, public/fonts/OFL-Vazirmatn.txt) for Sorani and Arabic, weights 400–900 (the app uses 400–850): the
+   Arabic and Latin files load with the first screen; the extended and presentation-form ranges load only when needed. */
+@font-face { font-family: 'Rega Arabic'; src: url('/fonts/vazirmatn-arabic-ext.woff2') format('woff2'); font-weight: 400 900; font-display: swap; unicode-range: U+0870-089F,U+08A0-08FF,U+FB50-FDFF,U+FE70-FEFC; }
+@font-face { font-family: 'Rega Arabic'; src: url('/fonts/vazirmatn-arabic.woff2') format('woff2'); font-weight: 400 900; font-display: swap; unicode-range: U+0600-06FF,U+0750-077F,U+200C-200E; }
+@font-face { font-family: 'Rega Arabic'; src: url('/fonts/vazirmatn-latin.woff2') format('woff2'); font-weight: 400 900; font-display: swap; unicode-range: U+0000-00FF,U+2000-206F,U+20AC; }
 /* RegaDRIVE — MagicPath calm blue and midnight design system. */
 :root {
   --primary: #3b648c; --primary-bright: #3b648c; --primary-deep: #2b4d6e;
@@ -16,7 +16,7 @@
   --shadow-btn: 0 8px 20px rgb(59 100 140 / 24%);
   --focus: 0 0 0 3px var(--white), 0 0 0 5px var(--primary-bright);
   --header-h: 76px; --tabbar-h: 72px; --content-max: 1180px;
-  --font-ckb: 'Rega Arabic', 'Noto Sans Arabic', Tahoma, sans-serif;
+  --font-ckb: 'Rega Arabic', Vazirmatn, Tahoma, sans-serif;
   --font-de: system-ui, -apple-system, 'Segoe UI', sans-serif;
   --s1: 4px; --s2: 8px; --s3: 12px; --s4: 16px; --s5: 20px; --s6: 24px; --s8: 32px;
   /* Compatibility for existing inline presentation, all resolved to the new theme. */
@@ -26,7 +26,8 @@
 }
 *, *::before, *::after { box-sizing: border-box; }
 html { -webkit-text-size-adjust: 100%; scroll-padding-top: 90px; }
-body { margin: 0; background: var(--canvas); color: var(--ink); font: 15px/1.65 var(--font-ckb); -webkit-font-smoothing: antialiased; }
+/* Body text: 17px / 1.7, measured from the owner's Sorani reference (2026-11-13). */
+body { margin: 0; background: var(--canvas); color: var(--ink); font: 17px/1.7 var(--font-ckb); -webkit-font-smoothing: antialiased; }
 html[lang='de'] body, html[lang='kmr'] body, [lang='de'], [lang='kmr'] { font-family: var(--font-de); }
 [lang='ckb'], [lang='ar'] { font-family: var(--font-ckb); }
 /* Latin-script languages (Kurmanji, German): the layout stays right-to-left and nothing moves;
@@ -289,7 +290,7 @@ textarea.input { min-height: 120px; }
 .lesson-progress { display: block; margin: 0; }
 .lesson-description { display: block; margin-top: 4px; }
 .dashboard-disclaimer { margin-top: 20px; }
-.notification-menu summary { list-style: none; cursor: pointer; }
+.notification-menu summary { list-style: none; cursor: pointer; vertical-align: top; } /* not on the text baseline: same 44px line box in every font */
 .notification-menu summary::-webkit-details-marker { display: none; }
 @media (max-width: 719px) { .tile-subtitle { display: none; } .tile { min-height: 105px; } .welcome .hero-logo { width: 58px; height: 58px; } }
 
