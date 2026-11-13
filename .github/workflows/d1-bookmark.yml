@@ -1,6 +1,6 @@
 name: D1 recovery point (read-only)
 # Reads the current D1 Time Travel bookmark of regadrive-db (the restore point for "restore to this moment") and
-# verifies the schema. Read-only: no migration, no write. Uses the RegaDRIVE Cloudflare secrets of the production environment.
+# verifies the schema. Read-only: no migration, no write. Uses the separate read-only secret CLOUDFLARE_D1_READ_TOKEN (the deploy token is not used).
 on:
   workflow_dispatch:
 permissions:
@@ -14,7 +14,7 @@ jobs:
     timeout-minutes: 10
     environment: production
     env:
-      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_D1_READ_TOKEN }}
       CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
     steps:
       - uses: actions/checkout@v4
