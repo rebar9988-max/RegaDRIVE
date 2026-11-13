@@ -3,6 +3,8 @@ import { Link } from "../app/router";
 import { CONTENT } from "../app/content";
 import { T } from "../app/strings";
 import { Bi, useBiText } from "../components/Bi";
+import { useApp } from "../app/state";
+import { langDir, pick } from "../app/i18n";
 import { SignIcon } from "../components/SignIcon";
 import { signById, signSource } from "../content/signs";
 import { SIGN_KIND_NAMES, SIGN_QUIZ_SIGN_LABEL } from "../content/signQuiz";
@@ -31,6 +33,21 @@ const S = {
   source: { ckb: "سەرچاوە", de: "Quelle", kmr: "Çavkanî", ar: "المصدر" },
   pickOne: { ckb: "یەک وەڵام هەڵبژێرە.", de: "Wähle eine Antwort.", kmr: "Yek bersivê hilbijêre.", ar: "اختر إجابة واحدة." },
 } satisfies Record<string, Bilingual>;
+
+/**
+ * Quiz-only text order (owner request): German first, the learner's language directly below it.
+ * Each line keeps its own lang/dir, so the page layout never mirrors. German as main language shows one line.
+ */
+function DeFirst({ t }: { t: Bilingual }) {
+  const { settings } = useApp();
+  const p = pick(t, settings.lang);
+  return (
+    <div className="bi">
+      <span className="pri" lang="de" dir="ltr">{t.de}</span>
+      {p.lang !== "de" && <span className="pri" lang={p.lang} dir={langDir(p.lang)}>{p.text}</span>}
+    </div>
+  );
+}
 
 /** Fisher–Yates with a small seeded generator, so a round is reproducible from its seed. */
 function shuffled<T>(items: T[], seed: number): T[] {
@@ -97,7 +114,7 @@ export function SignQuiz() {
               </div>
               <div className="progressbar question-progress" role="progressbar" aria-label={label(S.question)} aria-valuemin={0} aria-valuemax={ids.length} aria-valuenow={pos + 1}><span style={{ width: `${((pos + 1) / ids.length) * 100}%` }} /></div>
               <fieldset className="options">
-                <legend id={legendId} className="q-prompt"><Bi t={q.prompt} /></legend>
+                <legend id={legendId} className="q-prompt"><DeFirst t={q.prompt} /></legend>
                 {sign && <SignIcon sign={sign} className="q-sign" label={label(SIGN_QUIZ_SIGN_LABEL)} />}
                 <p className="muted small q-hint"><Bi t={S.pickOne} inline /></p>
                 {q.options.map((o) => {
@@ -108,7 +125,7 @@ export function SignQuiz() {
                     <label key={o.id} className={cls} data-testid={`sq-option-${o.id}`}>
                       <input type="radio" className="q-check" name={`sq-${q.id}`} checked={isSel} disabled={checked} onChange={() => setPicked(o.id)} />
                       <span className="option-body">
-                        <Bi t={o.text} />
+                        <DeFirst t={o.text} />
                         {checked && isRight && <span className="option-tag ok" data-testid="sq-correct"><Bi t={T.correctAnswers} inline /></span>}
                         {checked && isSel && !isRight && <span className="option-tag bad" data-testid="sq-wrong"><Bi t={T.wrongChoice} inline /></span>}
                       </span>
@@ -120,7 +137,7 @@ export function SignQuiz() {
               {checked && picked !== null && (
                 <div className={`feedback ${q.correct.includes(picked) ? "ok" : "bad"}`} role="status" data-testid="sq-feedback">
                   <div className="feedback-title"><Bi t={q.correct.includes(picked) ? T.correct : T.incorrect} inline /></div>
-                  <Bi t={q.explanation} />
+                  <DeFirst t={q.explanation} />
                   {sign && <p className="small muted" dir="ltr"><Bi t={S.source} inline />: {signSource(sign)}</p>}
                 </div>
               )}
@@ -150,7 +167,7 @@ export function SignQuiz() {
                     <h3><Bi t={S.mistakes} /></h3>
                     <div className="signs-grid">
                       {wrong.map((id) => { const w = byId(id); const s = w?.signId ? signById(w.signId) : undefined; return s ? (
-                        <article key={id} className="card sign-tile"><SignIcon sign={s} label={label(s.name)} /><Bi t={s.name} /><span className="badge badge-outline" dir="ltr">Zeichen {s.stvoNumber}</span></article>
+                        <article key={id} className="card sign-tile"><SignIcon sign={s} label={label(s.name)} /><DeFirst t={s.name} /><span className="badge badge-outline" dir="ltr">Zeichen {s.stvoNumber}</span></article>
                       ) : null; })}
                     </div>
                   </div>
