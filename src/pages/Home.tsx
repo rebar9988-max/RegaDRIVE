@@ -5,6 +5,7 @@ import { Bi, useBiText } from "../components/Bi";
 import { Icon, type IconName } from "../components/Icon";
 import { ProgressRing } from "../components/ProgressRing";
 import { CONTENT } from "../app/content";
+import { useApproved } from "../app/approved";
 import { topicById } from "../content/topics";
 import { dayKey, questionStatus, streakDays, weakTopics } from "../lib/progress";
 import type { Bilingual } from "../content/types";
@@ -22,6 +23,7 @@ const OVERALL = { ckb: "پێشکەوتنی گشتی", de: "Dein Lernfortschritt"
 export function Home() {
   const { progress, settings } = useApp();
   const label = useBiText();
+  const approved = useApproved();
   const qs = CONTENT.questions;
   const lessons = CONTENT.lessons;
   const now = useNow();
@@ -38,7 +40,7 @@ export function Home() {
   // What can really be opened today. Unavailable areas get a quiet "coming soon" label, never a fake entry.
   const available: Record<TileKey, boolean> = {
     lessons: lessons.length > 0,
-    signs: CONTENT.signs.length > 0,
+    signs: approved.signs.length > 0,
     questions: qs.length > 0,
     exam: qs.filter((q) => q.categoryType === "Grundstoff").length >= KLASSE_B_RULES_2026.grundstoffCount && qs.filter((q) => q.categoryType === "Zusatzstoff").length >= KLASSE_B_RULES_2026.zusatzstoffCount,
   };

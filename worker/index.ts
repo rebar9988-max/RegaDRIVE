@@ -18,6 +18,7 @@ import { QUESTIONS } from "../src/content/questions";
 import { handlePage } from "./pages";
 import { contentFor } from "../src/content/access";
 import { serveMedia } from "./content/media";
+import { approvedContent } from "./dr/reviews";
 
 export interface Env extends FlagEnv, AiEnv, AdminEnv, DrEnv, StudentEnv {
   /** "preview" only for local/CI; production shows and explains approved content only. */
@@ -69,6 +70,11 @@ export async function handleApi(req: Request, env: Env, now = Date.now()): Promi
   if (req.method !== "GET" && req.method !== "HEAD") {
     const origin = req.headers.get("origin");
     if (p !== "/api/payments/webhook" && origin !== null && origin !== url.origin) return json({ error: "FORBIDDEN_ORIGIN" }, 403);
+  }
+
+  if (p === "/api/content/approved" && req.method === "GET") {
+    // Public, read-only: which signs / sign-quiz questions the publication gate lets through right now (ids + fingerprints only).
+    return json(await approvedContent(env.DB));
   }
 
   if (p.startsWith("/api/dr/")) {

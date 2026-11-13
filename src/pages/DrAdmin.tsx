@@ -5,6 +5,7 @@
 import { lazy, Suspense, useCallback, useEffect, useState, type FormEvent, type ReactNode } from "react";
 
 // Loaded only after the owner signed in and opened the section.
+const DrReview = lazy(() => import("./DrReview").then((m) => ({ default: m.DrReview })));
 const DrContent = lazy(() => import("./DrContent").then((m) => ({ default: m.DrContent })));
 import "./dr.css";
 
@@ -61,7 +62,7 @@ const time = (ms: number) => new Date(ms).toLocaleString("en-GB", { timeZone: "E
 
 const SECTIONS = [
   ["dashboard", "🏠", "Dashboard"], ["features", "⚙️", "Feature Controls"], ["security", "🔐", "Security Center"], ["ai", "🤖", "AI Control"],
-  ["students", "👨‍🎓", "Students"], ["questions", "📚", "Question Bank"], ["content", "📦", "Content Workbench"], ["signs", "🚦", "Traffic Signs"], ["exams", "📝", "Mock Exams"],
+  ["students", "👨‍🎓", "Students"], ["questions", "📚", "Question Bank"], ["content", "📦", "Content Workbench"], ["signs", "🚦", "Traffic Signs"], ["review", "✅", "Content Review"], ["exams", "📝", "Mock Exams"],
   ["lessons", "🎓", "Lessons"], ["languages", "🌍", "Languages"], ["payments", "💳", "Payments"], ["licenses", "🔑", "Licenses"],
   ["analytics", "📊", "Analytics"], ["email", "📧", "Email Center"], ["design", "🎨", "Design Control"], ["database", "🗄️", "Database"],
   ["health", "🚀", "System Health"], ["audit", "📋", "Audit Logs"],
@@ -391,6 +392,7 @@ export function DrAdmin() {
         <div className="dr-actions"><button type="button" className="btn btn-secondary btn-sm" onClick={() => void load()}>نوێکردنەوە</button></div>
       </Card>);
       case "content": return <Card title="کارگەی ناوەڕۆک" en="Content Workbench"><Suspense fallback={<div aria-busy="true" />}><DrContent /></Suspense></Card>;
+      case "review": return <Card title="پێداچوونەوە و پەسەندکردنی ناوەڕۆک" en="Content Review & Approval"><Suspense fallback={<div aria-busy="true" />}><DrReview api={api} onNeedStepUp={(retry) => setStepUp(() => async () => { setStepUp(null); await retry(); })} /></Suspense></Card>;
       case "audit": return <Card title="تۆماری گۆڕانکارییەکان" en="Audit Logs"><AuditTable /></Card>;
     }
   };

@@ -1,6 +1,6 @@
 import { useId, useState } from "react";
 import { Link } from "../app/router";
-import { CONTENT } from "../app/content";
+import { useApproved } from "../app/approved";
 import { T } from "../app/strings";
 import { Bi, useBiText } from "../components/Bi";
 import { useApp } from "../app/state";
@@ -58,13 +58,19 @@ function shuffled<T>(items: T[], seed: number): T[] {
   return out;
 }
 
-const poolFor = (kind: Kind): Question[] => CONTENT.signQuiz.filter((q) => kind === 0 || signById(q.signId ?? "")?.anlage === kind);
-const newRound = (kind: Kind): string[] => shuffled(poolFor(kind), Date.now() ^ Math.floor(Math.random() * 1e9)).slice(0, ROUND).map((q) => q.id);
+const poolFor = (pool: Question[], kind: Kind): Question[] => pool.filter((q) => kind === 0 || signById(q.signId ?? "")?.anlage === kind);
+const newRound = (pool: Question[], kind: Kind): string[] => shuffled(poolFor(pool, kind), Date.now() ^ Math.floor(Math.random() * 1e9)).slice(0, ROUND).map((q) => q.id);
 
 export function SignQuiz() {
+  const { signQuiz, loading } = useApproved();
+  if (loading) return <div className="sign-quiz" aria-busy="true" />;
+  return <SignQuizRound pool={signQuiz} />;
+}
+
+function SignQuizRound({ pool }: { pool: Question[] }) {
   const label = useBiText();
   const [kind, setKind] = useState<Kind>(0);
-  const [ids, setIds] = useState<string[]>(() => newRound(0));
+  const [ids, setIds] = useState<string[]>(() => newRound(pool, 0));
   const [pos, setPos] = useState(0);
   const [picked, setPicked] = useState<string | null>(null);
   const [checked, setChecked] = useState(false);
@@ -74,8 +80,8 @@ export function SignQuiz() {
   const [done, setDone] = useState(false);
   const legendId = useId();
 
-  const start = (k: Kind) => { setKind(k); setIds(newRound(k)); setPos(0); setPicked(null); setChecked(false); setWrong([]); setScore(0); setLost(0); setDone(false); };
-  const byId = (id: string) => CONTENT.signQuiz.find((q) => q.id === id);
+  const start = (k: Kind) => { setKind(k); setIds(newRound(pool, k)); setPos(0); setPicked(null); setChecked(false); setWrong([]); setScore(0); setLost(0); setDone(false); };
+  const byId = (id: string) => pool.find((q) => q.id === id);
   const q = byId(ids[pos] ?? "");
   const sign = q?.signId ? signById(q.signId) : undefined;
   const kinds: [Kind, Bilingual][] = [[0, S.all], [1, SIGN_KIND_NAMES[1]], [2, SIGN_KIND_NAMES[2]], [3, SIGN_KIND_NAMES[3]]];
@@ -98,9 +104,9 @@ export function SignQuiz() {
         <p className="notice small"><Bi t={S.note} /></p>
       </header>
 
-      {CONTENT.signQuiz.length === 0 && <p className="notice"><Bi t={T.contentInReview} /></p>}
+      {pool.length === 0 && <p className="notice"><Bi t={T.contentInReview} /></p>}
 
-      {CONTENT.signQuiz.length > 0 && (
+      {pool.length > 0 && (
         <>
           <div className="chip-row" role="group" aria-label={label(S.filter)}>
             {kinds.map(([k, t]) => <button key={k} type="button" className="chip" aria-pressed={kind === k} onClick={() => start(k)}>{label(t)}</button>)}
