@@ -138,7 +138,7 @@ try {
     for (const opts of [{ viewport: { width: 1280, height: 900 } }, devices["iPhone 13"]]) {
     const ctx = await browser.newContext({ ...opts, bypassCSP: true });
     const page = await ctx.newPage();
-    for (const path of ["/", "/practice", "/exam", "/signs", "/learn/l-priority", "/vocabulary", "/settings", "/access", "/account", "/services"]) {
+    for (const path of ["/", "/practice", "/exam", "/signs", "/sign-quiz", "/learn/l-priority", "/vocabulary", "/settings", "/access", "/account", "/services"]) {
       await page.goto(BASE + path);
       await page.waitForSelector("main#main > div:not([aria-busy])");
       await axe(page, path);
@@ -178,6 +178,34 @@ try {
     await page.reload();
     await page.goto(`${BASE}/practice?status=incorrect`);
     await page.locator("[data-testid=question-card][data-qid=rd-g-004]").waitFor();
+    await ctx.close();
+  });
+
+  await test("sign quiz: Kurdish RTL line with German LTR below, answer feedback, a 10-question round ends with a score [iPhone]", async () => {
+    const ctx = await browser.newContext(devices["iPhone 13"]);
+    const page = await ctx.newPage();
+    await page.goto(`${BASE}/sign-quiz`);
+    const card = page.locator("[data-testid=sq-card]");
+    await card.waitFor();
+    const order = await card.locator("legend .bi > span").evaluateAll((els) => els.map((e) => [e.getAttribute("lang"), e.getAttribute("dir")]));
+    assert.deepEqual(order, [["ckb", "rtl"], ["de", "ltr"]]);
+    assert.equal(await card.locator("svg.q-sign").count(), 1, "the sign is shown");
+    for (let i = 0; i < 10; i++) {
+      await page.locator("[data-testid=sq-card]").waitFor();
+      assert.equal(await page.locator("[data-testid=sq-option-a], [data-testid=sq-option-b], [data-testid=sq-option-c]").count(), 3);
+      assert.ok(await page.locator("[data-testid=sq-check]").isDisabled(), "cannot check without a choice");
+      await page.locator("[data-testid=sq-option-b]").click();
+      await page.locator("[data-testid=sq-check]").click();
+      await page.locator("[data-testid=sq-feedback]").waitFor();
+      assert.equal(await page.locator("[data-testid=sq-correct]").count(), 1, "exactly one right answer is marked");
+      await page.locator("[data-testid=sq-next]").click();
+    }
+    await page.locator("[data-testid=sq-result]").waitFor();
+    assert.match(await page.locator("[data-testid=sq-result] .num").first().innerText(), /^\d+ \/ 10$/);
+    assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth), "no horizontal overflow");
+    assert.equal(await page.locator("[data-testid=error-boundary]").count(), 0);
+    await page.locator("[data-testid=sq-again]").click();
+    await page.locator("[data-testid=sq-card]").waitFor();
     await ctx.close();
   });
 

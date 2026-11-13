@@ -62,7 +62,9 @@ export interface Topic { id: string; title: Bilingual; category: QuestionCategor
 export interface LessonSection { heading: Bilingual; body: Bilingual }
 export interface Lesson { id: string; topicId: string; title: Bilingual; summary: Bilingual; sections: LessonSection[]; minutes: number }
 
-export type SignShape = "triangle" | "triangle-down" | "octagon" | "diamond" | "circle-red" | "circle-blue" | "circle-plain" | "rect-blue" | "rect-yellow";
+export type SignShape = "triangle" | "triangle-down" | "octagon" | "diamond" | "circle-red" | "circle-blue" | "circle-plain" | "rect-blue" | "rect-yellow" | "square-red";
+/** Official StVO annex: 1 = Gefahrzeichen, 2 = Vorschriftzeichen, 3 = Richtzeichen. */
+export type SignAnlage = 1 | 2 | 3;
 export interface TrafficSign {
   id: string;
   /** Official StVO sign number (public regulatory reference, not exam content). */
@@ -72,6 +74,9 @@ export interface TrafficSign {
   name: Bilingual;
   meaning: Bilingual;
   group: "danger" | "priority" | "prohibition" | "mandatory" | "information";
+  /** Official source in the StVO: annex (Anlage) and running number (lfd. Nr.) as printed at gesetze-im-internet.de. */
+  anlage: SignAnlage;
+  lfdNr: number;
 }
 
 export interface VocabularyEntry { id: string; de: string; article?: "der" | "die" | "das"; ckb: string; kmr?: string; ar?: string; note?: Bilingual }

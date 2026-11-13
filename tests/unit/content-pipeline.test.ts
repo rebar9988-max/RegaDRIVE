@@ -3,12 +3,13 @@ import { CONTENT_REGISTRY } from "../../src/content/registry";
 import { publicationGate, STAGES, type ContentRecord, type ReviewRecord } from "../../src/content/pipeline";
 import { contentFor } from "../../src/content/access";
 import { QUESTIONS } from "../../src/content/questions";
+import { SIGN_QUIZ } from "../../src/content/signQuiz";
 import { LESSONS } from "../../src/content/lessons";
 import { SIGNS } from "../../src/content/signs";
 import { VOCABULARY } from "../../src/content/vocabulary";
 import { KLASSE_B_RULES_2026 } from "../../src/lib/shared/exam";
 
-const ALL_IDS = [...QUESTIONS, ...LESSONS, ...SIGNS, ...VOCABULARY].map((x) => x.id);
+const ALL_IDS = [...QUESTIONS, ...SIGN_QUIZ, ...LESSONS, ...SIGNS, ...VOCABULARY].map((x) => x.id);
 
 describe("automated SOURCE_CHECK and LICENSE_CHECK (evidence for the registry records)", () => {
   it("every content item has exactly one record with a stable, unique id", () => {
@@ -23,7 +24,7 @@ describe("automated SOURCE_CHECK and LICENSE_CHECK (evidence for the registry re
     expect(r.provenance.sourceRefs.length).toBeGreaterThan(0);
     expect(r.contentVersion).toBeTruthy();
     if (r.kind === "question") {
-      const q = QUESTIONS.find((x) => x.id === r.id)!;
+      const q = [...QUESTIONS, ...SIGN_QUIZ].find((x) => x.id === r.id)!;
       expect(r.licenseClass).toBe(q.sourceType === "original" ? "original_regadrive" : "licensed_official");
       if (q.sourceType === "original") expect(q.questionCode).toBeNull();
     }
@@ -37,8 +38,9 @@ describe("truthful review state", () => {
       expect(r.reviews.every((x) => x.role === "automated")).toBe(true);
     }
     const prod = contentFor("production");
-    expect([prod.questions.length, prod.lessons.length, prod.signs.length, prod.vocabulary.length]).toEqual([0, 0, 0, 0]);
+    expect([prod.questions.length, prod.signQuiz.length, prod.lessons.length, prod.signs.length, prod.vocabulary.length]).toEqual([0, 0, 0, 0, 0]);
     expect(contentFor("preview").questions.length).toBe(QUESTIONS.length);
+    expect(contentFor("preview").signQuiz.length).toBe(SIGN_QUIZ.length);
   });
 });
 

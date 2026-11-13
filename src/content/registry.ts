@@ -1,4 +1,5 @@
 import { CONTENT_VERSION, QUESTIONS } from "./questions.ts";
+import { SIGN_QUIZ, SIGN_QUIZ_SOURCES, SIGN_QUIZ_VERSION } from "./signQuiz.ts";
 import { LESSONS } from "./lessons.ts";
 import { SIGNS } from "./signs.ts";
 import { VOCABULARY } from "./vocabulary.ts";
@@ -63,13 +64,13 @@ const automated = (stage: "SOURCE_CHECK" | "LICENSE_CHECK"): ReviewRecord => ({
   evidenceRef: "tests/unit/content-pipeline.test.ts", outcome: "pass",
 });
 
-function record(id: string, kind: ContentKind, sourceRefs: string[], licenseClass: ContentRecord["licenseClass"] = "original_regadrive"): ContentRecord {
+function record(id: string, kind: ContentKind, sourceRefs: string[], licenseClass: ContentRecord["licenseClass"] = "original_regadrive", contentVersion = CONTENT_VERSION): ContentRecord {
   return {
     id, kind,
     stage: "TRANSLATION_REVIEW",
     licenseClass,
     licenseId: null,
-    contentVersion: CONTENT_VERSION,
+    contentVersion,
     provenance: provenance(sourceRefs),
     reviews: [automated("SOURCE_CHECK"), automated("LICENSE_CHECK")],
     // Never validated by a human against the current rules yet.
@@ -79,6 +80,7 @@ function record(id: string, kind: ContentKind, sourceRefs: string[], licenseClas
 
 export const CONTENT_REGISTRY: ReadonlyMap<string, ContentRecord> = new Map([
   ...QUESTIONS.map((q) => [q.id, record(q.id, "question", QUESTION_SOURCES[q.id] ?? [])] as const),
+  ...SIGN_QUIZ.map((q) => [q.id, record(q.id, "question", SIGN_QUIZ_SOURCES[q.id] ?? [], "original_regadrive", SIGN_QUIZ_VERSION)] as const),
   ...LESSONS.map((l) => [l.id, record(l.id, "lesson", [`topic:${l.topicId}`, "StVO"])] as const),
   ...SIGNS.map((s) => [s.id, record(s.id, "sign", [`StVO Zeichen ${s.stvoNumber}`], "public_regulation_reference")] as const),
   ...VOCABULARY.map((v) => [v.id, record(v.id, "vocabulary", ["StVO terminology"])] as const),

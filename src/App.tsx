@@ -12,6 +12,7 @@ const pages = {
   home: () => import("./pages/Home"),
   learn: () => import("./pages/Learn"),
   signs: () => import("./pages/Signs"),
+  signquiz: () => import("./pages/SignQuiz"),
   practice: () => import("./pages/Practice"),
   exam: () => import("./pages/Exam"),
   misc: () => import("./pages/Misc"),
@@ -22,6 +23,7 @@ const Home = page(pages.home, "Home");
 const Learn = page(pages.learn, "Learn");
 const LessonDetail = lazy(() => pages.learn().then((m) => ({ default: m.LessonDetail })));
 const Signs = page(pages.signs, "Signs");
+const SignQuiz = page(pages.signquiz, "SignQuiz");
 const Practice = page(pages.practice, "Practice");
 const Exam = page(pages.exam, "Exam");
 const About = page(pages.misc, "About"), Access = page(pages.misc, "Access"), Account = page(pages.misc, "Account"), More = page(pages.misc, "More"),
@@ -46,7 +48,7 @@ function route(path: string) {
   }
   if (p === "/admin/import" && AdminImport) return <Suspense fallback={<div aria-busy="true" />}><AdminImport /></Suspense>;
   const map: Record<string, ComponentType> = {
-    "/signs": Signs, "/practice": Practice, "/exam": Exam, "/progress": ProgressPage, "/vocabulary": Vocabulary,
+    "/signs": Signs, "/sign-quiz": SignQuiz, "/practice": Practice, "/exam": Exam, "/progress": ProgressPage, "/vocabulary": Vocabulary,
     "/services": Services, "/account": Account, "/access": Access, "/settings": Settings, "/about": About, "/more": More,
   };
   const C = map[p];
