@@ -164,7 +164,13 @@ export function Account() {
       const flags = await api("/api/flags");
       if (!alive) return;
       if (flags.status !== 200 || flags.data.studentAuthEnabled !== true) { setView("unavailable"); return; }
-      const me = await api("/api/me");
+      // A network or server hiccup is not a sign-out: retry before ever showing the sign-in form.
+      let me = await api("/api/me");
+      for (let i = 0; i < 3 && (me.status === 0 || me.status >= 500) && me.status !== 503; i++) {
+        await new Promise((res) => setTimeout(res, 800 * (i + 1)));
+        if (!alive) return;
+        me = await api("/api/me");
+      }
       if (!alive) return;
       if (me.status === 200 && me.data.authenticated === true) { setStudent(me.data.student as Student); setView("account"); }
       else setView(me.status === 503 ? "unavailable" : "signin");

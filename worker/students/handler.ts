@@ -34,7 +34,10 @@ export interface StudentDeps { now?: number; send?: MailSender; enabled: boolean
 
 export const STUDENT_CODE_TTL_MS = 10 * 60_000;
 export const STUDENT_MAX_CODE_ATTEMPTS = 5;
-export const STUDENT_SESSION_MS = 30 * 24 * 3600_000;
+/** Idle lifetime of a sign-in. 400 days is the longest a browser keeps a cookie; every visit slides it forward. */
+export const STUDENT_SESSION_MS = 400 * 24 * 3600_000;
+/** A live session is renewed (same token, new expiry, refreshed cookie) at most once per this interval. */
+export const STUDENT_SESSION_RENEW_MS = 24 * 3600_000;
 export const UNVERIFIED_RETENTION_MS = 7 * 24 * 3600_000;
 const MAX_BODY_BYTES = 8 * 1024;
 const MAX_PROGRESS_BYTES = 256 * 1024;
@@ -144,13 +147,20 @@ export async function handleStudents(req: Request, env: StudentEnv, deps: Studen
   // ── session ────────────────────────────────────────────────────────────
   const token = readSessionToken(req);
   const tokenHash = token ? await hashToken(token) : null;
+  let renewCookies: string[] = [];
   const current = await (async () => {
     if (!tokenHash) return null;
     const row = await db.prepare(
       "SELECT s.id AS session_id, s.last_seen_at, s.expires_at, st.* FROM student_sessions s JOIN students st ON st.id = s.student_id WHERE s.token_hash = ? AND s.revoked_at IS NULL",
     ).bind(tokenHash).first<StudentRow & { session_id: string; last_seen_at: number; expires_at: number }>();
     if (!row || row.expires_at <= now || row.email_verified_at === null) return null;
-    if (now - row.last_seen_at > 60 * MIN) await db.prepare("UPDATE student_sessions SET last_seen_at = ? WHERE id = ?").bind(now, row.session_id).run();
+    // Sliding renewal: a student who keeps coming back stays signed in until they log out. The token never changes
+    // (no new secret is minted); only its expiry and the cookie's Max-Age move forward, at most once a day.
+    const renewed = row.expires_at - now < STUDENT_SESSION_MS - STUDENT_SESSION_RENEW_MS;
+    if (renewed) {
+      await db.prepare("UPDATE student_sessions SET last_seen_at = ?, expires_at = ? WHERE id = ? AND revoked_at IS NULL").bind(now, now + STUDENT_SESSION_MS, row.session_id).run();
+      renewCookies = [sessionCookie(token!, Math.floor(STUDENT_SESSION_MS / 1000))];
+    } else if (now - row.last_seen_at > 60 * MIN) await db.prepare("UPDATE student_sessions SET last_seen_at = ? WHERE id = ?").bind(now, row.session_id).run();
     return row;
   })();
   const publicStudent = (s: StudentRow) => ({ email: s.email_normalized, displayName: s.display_name, lang: s.lang, emailVerified: s.email_verified_at !== null, createdAt: s.created_at });
@@ -166,7 +176,7 @@ export async function handleStudents(req: Request, env: StudentEnv, deps: Studen
 
   if (req.method === "GET" && path === "/api/me") {
     if (!current) return reply({ authenticated: false });
-    return reply({ authenticated: true, student: publicStudent(current) });
+    return reply({ authenticated: true, student: publicStudent(current) }, 200, renewCookies);
   }
 
   // ── CSRF + body ────────────────────────────────────────────────────────
@@ -415,12 +425,12 @@ export async function handleStudents(req: Request, env: StudentEnv, deps: Studen
       const name = body.displayName === undefined ? current.display_name : cleanName(str("displayName", 120));
       const lang = typeof body.lang === "string" && LANGS.has(body.lang) ? body.lang : current.lang;
       await db.prepare("UPDATE students SET display_name = ?, lang = ?, updated_at = ? WHERE id = ?").bind(name, lang, now, current.id).run();
-      return reply({ ok: true, student: publicStudent({ ...current, display_name: name, lang }) });
+      return reply({ ok: true, student: publicStudent({ ...current, display_name: name, lang }) }, 200, renewCookies);
     }
 
     if (path === "/api/me/progress" && req.method === "GET") {
       const row = await db.prepare("SELECT payload_json, version, updated_at FROM student_progress WHERE student_id = ?").bind(current.id).first<{ payload_json: string; version: number; updated_at: number }>();
-      return reply(row ? { progress: JSON.parse(row.payload_json), version: row.version, updatedAt: row.updated_at } : { progress: null, version: 0, updatedAt: null });
+      return reply(row ? { progress: JSON.parse(row.payload_json), version: row.version, updatedAt: row.updated_at } : { progress: null, version: 0, updatedAt: null }, 200, renewCookies);
     }
     if (path === "/api/me/progress" && req.method === "POST") {
       const p = body.progress as { version?: unknown } | undefined;
