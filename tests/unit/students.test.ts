@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { handleStudents, STUDENT_CODE_TTL_MS, STUDENT_SESSION_MS, UNVERIFIED_RETENTION_MS, type StudentEnv } from "../../worker/students/handler";
+import { handleStudents, STUDENT_CODE_TTL_MS, STUDENT_SESSION_MS, STUDENT_SESSION_RENEW_MS, UNVERIFIED_RETENTION_MS, type StudentEnv } from "../../worker/students/handler";
 import type { MailMessage } from "../../worker/dr/handler";
 import type { D1Like, D1Stmt } from "../../worker/dr/db";
 import { invalidateOverrides } from "../../worker/dr/db";
@@ -230,6 +230,44 @@ describe("student e-mail authentication", () => {
     expect((await t.call("/api/me", { cookie: `__Host-rd_session=${"A".repeat(43)}`, jar: false })).body.authenticated).toBe(false);
     t.tick(STUDENT_SESSION_MS + 1);
     expect((await t.call("/api/me")).body.authenticated).toBe(false);
+  });
+
+  it("keeps a returning student signed in: sliding renewal, same token, at most once a day, secure cookie", async () => {
+    const t = setup();
+    await t.registerAndVerify();
+    const token = t.getCookie();
+    const countSessions = () => (t.raw.prepare("SELECT COUNT(*) AS n FROM student_sessions").get() as { n: number }).n;
+    const n0 = countSessions();
+    // Same day: no renewal, no Set-Cookie, no extra writes.
+    const same = await t.call("/api/me");
+    expect(same.setCookie).toBe("");
+    // A day later: renewed with the SAME token and a fresh, fully secure cookie.
+    t.tick(STUDENT_SESSION_RENEW_MS + 1);
+    const r = await t.call("/api/me");
+    expect(r.body.authenticated).toBe(true);
+    expect(r.setCookie).toMatch(/^__Host-rd_session=[A-Za-z0-9_-]{40,}; Path=\/; HttpOnly; Secure; SameSite=Lax; Max-Age=\d+$/);
+    expect(`__Host-rd_session=${/__Host-rd_session=([^;]*)/.exec(r.setCookie)![1]}`).toBe(token);
+    expect(countSessions()).toBe(n0); // no new tokens minted
+    // Visiting regularly keeps the student in far beyond the idle lifetime of a single window.
+    for (let i = 0; i < 6; i++) { t.tick(STUDENT_SESSION_MS * 0.9); expect((await t.call("/api/me")).body.authenticated).toBe(true); }
+    // Restart-equivalent: a brand-new "browser" holding only the cookie is recognised.
+    expect((await t.call("/api/me", { cookie: t.getCookie(), jar: false })).body.authenticated).toBe(true);
+    // Idle for longer than the lifetime: signed out safely.
+    t.tick(STUDENT_SESSION_MS + 1);
+    expect((await t.call("/api/me")).body.authenticated).toBe(false);
+  });
+
+  it("never renews a revoked session; logout invalidates it server-side and clears the cookie", async () => {
+    const t = setup();
+    await t.registerAndVerify();
+    const token = t.getCookie();
+    const out = await t.call("/api/auth/logout", { body: {} });
+    expect(out.setCookie).toMatch(/Max-Age=0/);
+    t.tick(STUDENT_SESSION_RENEW_MS + 1);
+    const r = await t.call("/api/me", { cookie: token, jar: false });
+    expect(r.body.authenticated).toBe(false);
+    expect(r.setCookie).toBe("");
+    expect(t.raw.prepare("SELECT revoked_at FROM student_sessions").all()).toEqual([{ revoked_at: T0 }]);
   });
 
   it("logout everywhere revokes every session of the student", async () => {
