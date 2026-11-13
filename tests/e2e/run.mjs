@@ -970,6 +970,40 @@ try {
     await ctx.close();
   });
 
+  await test("200 percent text on a 320px screen: nothing cut off or off screen, in all four languages (WCAG 1.4.4 / 1.4.10; from PR #22)", async () => {
+    const ctx = await browser.newContext({ viewport: { width: 320, height: 844 } });
+    const page = await ctx.newPage();
+    await page.goto(BASE);
+    await page.waitForSelector("[data-testid=home], .country-card");
+    if (await page.locator(".country-card").count()) await page.locator(".country-card:has([lang=de])").click();
+    await page.locator("[data-testid=home]").waitFor();
+    for (const path of ["/", "/learn", "/practice", "/exam", "/progress", "/more", "/settings"]) {
+      for (const lang of ["ckb", "kmr", "ar", "de"]) {
+        await page.goto(`${BASE}/settings`);
+        await page.locator(`[data-testid=lang-${lang}]`).click();
+        await page.goto(`${BASE}${path}`);
+        await page.waitForSelector("main#main > div:not([aria-busy])");
+        await page.evaluate(() => { document.documentElement.style.fontSize = "200%"; });
+        await page.evaluate(() => document.fonts.ready);
+        const r = await page.evaluate(() => ({
+          overflow: document.documentElement.scrollWidth > innerWidth,
+          clipped: [...document.querySelectorAll("main *, .tabbar *, .topbar *")].filter((el) => {
+            if (el.closest(".sr-only")) return false;
+            const cs = getComputedStyle(el);
+            if (cs.display === "none" || cs.visibility === "hidden") return false;
+            const rc = el.getBoundingClientRect();
+            if (!rc.width || ![...el.childNodes].some((n) => n.nodeType === 3 && n.textContent.trim())) return false;
+            return rc.left < -1 || rc.right > innerWidth + 1 || (el.scrollWidth > el.clientWidth + 1 && !["auto", "scroll"].includes(cs.overflowX));
+          }).map((el) => `${el.tagName.toLowerCase()}.${[...el.classList].join(".")} "${el.textContent.trim().slice(0, 24)}"`),
+        }));
+        assert.equal(r.overflow, false, `${path} ${lang}: no horizontal scrolling at 200% text`);
+        assert.deepEqual(r.clipped, [], `${path} ${lang}: no text cut off or off screen at 200%`);
+      }
+    }
+    await page.screenshot({ path: `${OUT}/text-200-settings-de.png`, fullPage: true });
+    await ctx.close();
+  });
+
   await test("offline: app shell and practice work after first visit (service worker)", async () => {
     const ctx = await browser.newContext({ viewport: { width: 390, height: 844 } });
     const page = await ctx.newPage();

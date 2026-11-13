@@ -362,7 +362,7 @@ a { color: var(--primary); }
 .lang-trigger { width: auto; min-width: 44px; padding-inline: 6px; gap: 2px; display: inline-flex; align-items: center; justify-content: center; cursor: pointer; font: inherit; }
 .lang-trigger svg { width: 20px; height: 20px; }
 /* Fixed width so the header never shifts when the code changes between CKB, KMR, DE and AR. */
-.lang-code { display: inline-block; inline-size: 28px; text-align: center; font: 800 .72rem/1 var(--font-de); letter-spacing: .04em; color: var(--ink); }
+.lang-code { display: inline-block; inline-size: 2.43em; /* 28px at normal size; grows with enlarged text, same width in every language */ text-align: center; font: 800 .72rem/1 var(--font-de); letter-spacing: .04em; color: var(--ink); }
 .lang-trigger[aria-expanded='true'] { background: var(--rd-mint); border-color: #b5d6c4; }
 .lang-backdrop { display: none; }
 .lang-panel { position: fixed; z-index: 60; inline-size: 288px; max-inline-size: calc(100vw - 16px); padding: 12px; background: #fff; border: 1px solid var(--border); border-radius: 18px; box-shadow: 0 16px 40px rgb(6 95 70 / 16%); }
