@@ -687,11 +687,14 @@ try {
     assert.equal(await page.evaluate(() => document.cookie.includes("rd_session")), false, "token invisible to JavaScript");
     await axe(page, "/account signed in");
     await page.screenshot({ path: `${OUT}/account-signed-in-iphone.png`, fullPage: true });
-    // Compact layout: account, learning progress and settings are separate; every label appears once.
+    // Compact layout: profile, learning progress and data are separate; every label appears once.
     assert.equal(await page.locator("[data-testid=account-signed-in] .acct-section").count(), 3, "three separate sections");
     assert.equal(await page.locator("[data-testid=account-signed-in] .bi .de").count(), 0, "no duplicated German second line");
     assert.equal(await page.getAttribute("[data-testid=account-verified]", "data-verified"), "true", "verified e-mail shown");
-    assert.match(await page.textContent("[data-testid=account-licence]"), /B/, "selected licence class shown");
+    // Language, country and licence class live in the global header and the entry flow — never duplicated here.
+    for (const id of ["settings-language", "settings-german", "settings-licence", "settings-all", "account-licence"]) {
+      assert.equal(await page.locator(`[data-testid=${id}]`).count(), 0, `${id} removed from the account page`);
+    }
     // Real figures only: the counts equal the learner's stored progress.
     const answeredText = (await page.textContent("[data-testid=account-answered] .acct-stat-value")).trim();
     assert.equal(Number(answeredText.split("/")[0]), before, "answered count comes from local progress");
@@ -700,7 +703,7 @@ try {
     assert.equal(small, 0, "account and legal footer touch targets ≥ 44px");
     // Nothing is hidden behind the floating bottom navigation.
     await page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight));
-    const clear = await page.evaluate(() => { const last = document.querySelector("[data-testid=settings-all]").getBoundingClientRect(); const bar = document.querySelector(".tabbar").getBoundingClientRect(); return last.bottom <= bar.top; });
+    const clear = await page.evaluate(() => { const last = document.querySelector("[data-testid=delete-start]").getBoundingClientRect(); const bar = document.querySelector(".tabbar").getBoundingClientRect(); return last.bottom <= bar.top; });
     assert.ok(clear, "last account row stays above the bottom navigation");
     await page.click("[data-testid=backup]");
     await page.locator("[data-testid=auth-info]").waitFor();

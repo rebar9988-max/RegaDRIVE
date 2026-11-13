@@ -293,6 +293,8 @@ a { color: var(--primary); }
 .acct-row .flip-rtl { color: var(--muted); }
 
 .acct-logout { width: 100%; }
+.acct-card-flush > .acct-status:not(:empty) { padding: 10px 16px 0; }
+.acct-card-flush > .acct-delete { margin: 8px 16px 12px; }
 .acct-logout svg { width: 20px; height: 20px; }
 
 .acct-stats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }

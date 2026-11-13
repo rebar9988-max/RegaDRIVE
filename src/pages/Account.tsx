@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState, type ElementType, type FormEvent, type HTMLAttributes, type ReactNode } from "react";
 import { useApp } from "../app/state";
 import { T } from "../app/strings";
-import { LANGS, langDir, pick } from "../app/i18n";
+import { langDir, pick } from "../app/i18n";
 import { Link } from "../app/router";
 import { CONTENT } from "../app/content";
 import { useBiText } from "../components/Bi";
@@ -82,16 +82,6 @@ const S = {
   learning: { ckb: "پێشکەوتنی فێربوون", de: "Lernfortschritt", kmr: "Pêşketina fêrbûnê", ar: "تقدّم التعلّم" },
   verified: { ckb: "ئیمەیڵ پشتڕاستکراوەتەوە", de: "E-Mail bestätigt", kmr: "E-name hatiye piştrastkirin", ar: "البريد الإلكتروني مؤكَّد" },
   unverified: { ckb: "ئیمەیڵ پشتڕاست نەکراوەتەوە", de: "E-Mail nicht bestätigt", kmr: "E-name nehatiye piştrastkirin", ar: "البريد الإلكتروني غير مؤكَّد" },
-  licence: { ckb: "وڵات و پۆلی مۆڵەت", de: "Land & Führerscheinklasse", kmr: "Welat û pola ehliyetê", ar: "البلد وفئة الرخصة" },
-  countryDE: { ckb: "ئەڵمانیا · پۆلی B", de: "Deutschland · Klasse B", kmr: "Almanya · Pola B", ar: "ألمانيا · الفئة B" },
-  countryIT: { ckb: "ئیتاڵیا · Patente B", de: "Italien · Patente B", kmr: "Îtalya · Patente B", ar: "إيطاليا · Patente B" },
-  countryNone: { ckb: "هێشتا هەڵنەبژێردراوە", de: "Noch nicht gewählt", kmr: "Hê nehatiye hilbijartin", ar: "لم يتم الاختيار بعد" },
-  change: { ckb: "گۆڕین", de: "Ändern", kmr: "Biguherîne", ar: "تغيير" },
-  language: { ckb: "زمان", de: "Sprache", kmr: "Ziman", ar: "اللغة" },
-  germanLine: { ckb: "دەقی ئەڵمانی لە ژێرەوە", de: "Deutsch darunter", kmr: "Almanî li jêr", ar: "الألمانية أسفل النص" },
-  on: { ckb: "پیشان دەدرێت", de: "An", kmr: "Vekirî", ar: "مفعّل" },
-  off: { ckb: "شاراوەیە", de: "Aus", kmr: "Girtî", ar: "متوقف" },
-  allSettings: { ckb: "هەموو ڕێکخستنەکان", de: "Alle Einstellungen", kmr: "Hemû mîheng", ar: "كل الإعدادات" },
   answered: { ckb: "وەڵامدراوە", de: "Beantwortet", kmr: "Bersivandî", ar: "تمت الإجابة" },
   masteredShort: { ckb: "فێربووە", de: "Gemeistert", kmr: "Fêrbûyî", ar: "متقَن" },
   exams: { ckb: "تاقیکردنەوەی ڕاهێنان", de: "Simulationen", kmr: "Ezmûnên ceribandinê", ar: "امتحانات تجريبية" },
@@ -452,8 +442,6 @@ export function Account() {
       const exams = progress.examHistory.length;
       const displayName = student?.displayName?.trim() || "";
       const initial = (displayName || student?.email || "?").trim().charAt(0).toLocaleUpperCase();
-      const licence = settings.country === "DE" ? S.countryDE : settings.country === "IT" ? S.countryIT : S.countryNone;
-      const lang = LANGS.find((l) => l.id === settings.lang);
       const stat = (value: ReactNode, label: Bilingual, testid: string) => (
         <div className="acct-stat" data-testid={testid}>
           <span className="acct-stat-value" dir="ltr">{value}</span>
@@ -462,7 +450,7 @@ export function Account() {
       );
       body = (
         <div className="acct" data-testid="account-signed-in">
-          {/* ── Account ─────────────────────────────────────────── */}
+          {/* ── Profile ─────────────────────────────────────────── */}
           <section className="acct-section" aria-labelledby="auth-heading">
             <Tx t={S.myAccount} as="h2" id="auth-heading" tabIndex={-1} className="acct-section-title" />
             <div className="card acct-card">
@@ -475,29 +463,9 @@ export function Account() {
                     <li className={`acct-tag ${student?.emailVerified ? "is-ok" : "is-warn"}`} data-testid="account-verified" data-verified={student?.emailVerified ? "true" : "false"}>
                       <Icon name={student?.emailVerified ? "verified" : "alert"} /><Tx t={student?.emailVerified ? S.verified : S.unverified} />
                     </li>
-                    <li className="acct-tag" data-testid="account-licence">
-                      <Icon name="car" /><span className="sr-only">{text(S.licence)}: </span><Tx t={licence} />
-                    </li>
                   </ul>
                 </div>
               </div>
-              {status("account")}
-              <ul className="acct-rows">
-                {rowBtn("export", "download", S.exportShort, () => void doExport(), "export")}
-                {rowBtn("logout-all", "devices", S.logoutAll, () => void doLogout(true), "logout-all")}
-                {!confirmDelete && rowBtn("delete", "trash", S.deleteTitle, () => { setConfirmDelete(true); setPassword(""); setMsg(null); }, "delete-start", true)}
-              </ul>
-              {confirmDelete && (
-                <form className="stack acct-delete" onSubmit={doDelete} data-testid="delete-form">
-                  <Tx t={S.deleteTitle} as="h3" className="acct-delete-title" />
-                  <Tx t={S.deleteText} as="p" className="small" />
-                  {passwordField(S.password, "current-password")}
-                  <div className="auth-actions">
-                    <button className="btn btn-primary auth-danger-solid" type="submit" disabled={busy !== null} aria-busy={isBusy("delete")} data-testid="delete-confirm">{text(isBusy("delete") ? S.working : S.deleteConfirm)}</button>
-                    <button className="btn btn-secondary" type="button" onClick={() => { setConfirmDelete(false); setPassword(""); setMsg(null); }} disabled={busy !== null} data-testid="delete-cancel">{text(S.cancel)}</button>
-                  </div>
-                </form>
-              )}
               <button type="button" className="btn btn-secondary acct-logout" onClick={() => void doLogout(false)} disabled={busy !== null} aria-busy={isBusy("logout")} data-testid="logout">
                 <Icon name="signout" /><Tx t={isBusy("logout") ? S.working : S.logout} />
               </button>
@@ -540,38 +508,27 @@ export function Account() {
             </div>
           </section>
 
-          {/* ── Settings ────────────────────────────────────────── */}
-          <section className="acct-section" aria-labelledby="acct-settings-title">
-            <Tx t={T.nav.settings} as="h2" id="acct-settings-title" className="acct-section-title" />
+          {/* ── Data & account ──────────────────────────────────── */}
+          <section className="acct-section" aria-labelledby="acct-data-title">
+            <Tx t={S.privacy} as="h2" id="acct-data-title" className="acct-section-title" />
             <div className="card acct-card acct-card-flush">
+              {status("account")}
               <ul className="acct-rows">
-                <li>
-                  <Link href="/settings" className="acct-row" data-testid="settings-language">
-                    {row("globe", S.language, lang ? <span lang={lang.id} dir={langDir(lang.id)}>{lang.native}</span> : null)}
-                    <Icon name="arrow" className="flip-rtl" />
-                  </Link>
-                </li>
-                {settings.lang !== "de" && (
-                  <li>
-                    <Link href="/settings" className="acct-row" data-testid="settings-german">
-                      {row("words", S.germanLine, <Tx t={settings.withGerman ? S.on : S.off} />)}
-                      <Icon name="arrow" className="flip-rtl" />
-                    </Link>
-                  </li>
-                )}
-                <li>
-                  <Link href="/settings#country" className="acct-row" data-testid="settings-licence">
-                    {row("car", S.licence, <Tx t={licence} />)}
-                    <Icon name="arrow" className="flip-rtl" />
-                  </Link>
-                </li>
-                <li>
-                  <Link href="/settings" className="acct-row" data-testid="settings-all">
-                    {row("gear", S.allSettings)}
-                    <Icon name="arrow" className="flip-rtl" />
-                  </Link>
-                </li>
+                {rowBtn("export", "download", S.exportShort, () => void doExport(), "export")}
+                {rowBtn("logout-all", "devices", S.logoutAll, () => void doLogout(true), "logout-all")}
+                {!confirmDelete && rowBtn("delete", "trash", S.deleteTitle, () => { setConfirmDelete(true); setPassword(""); setMsg(null); }, "delete-start", true)}
               </ul>
+              {confirmDelete && (
+                <form className="stack acct-delete" onSubmit={doDelete} data-testid="delete-form">
+                  <Tx t={S.deleteTitle} as="h3" className="acct-delete-title" />
+                  <Tx t={S.deleteText} as="p" className="small" />
+                  {passwordField(S.password, "current-password")}
+                  <div className="auth-actions">
+                    <button className="btn btn-primary auth-danger-solid" type="submit" disabled={busy !== null} aria-busy={isBusy("delete")} data-testid="delete-confirm">{text(isBusy("delete") ? S.working : S.deleteConfirm)}</button>
+                    <button className="btn btn-secondary" type="button" onClick={() => { setConfirmDelete(false); setPassword(""); setMsg(null); }} disabled={busy !== null} data-testid="delete-cancel">{text(S.cancel)}</button>
+                  </div>
+                </form>
+              )}
             </div>
           </section>
         </div>
