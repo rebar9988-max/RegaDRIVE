@@ -1,7 +1,9 @@
-import type { TrafficSign } from "./types.ts";
+import type { SignAnlage, TrafficSign } from "./types.ts";
+
+type SignDef = Omit<TrafficSign, "anlage" | "lfdNr">;
 
 /** Simplified RegaDRIVE illustrations of official StVO signs (sign numbers are public regulatory references). */
-export const SIGNS: TrafficSign[] = [
+const BASE_SIGNS: SignDef[] = [
   { id: "s101", stvoNumber: "101", shape: "triangle", glyph: "!", group: "danger",
     name: { ckb: "شوێنی مەترسیدار", de: "Gefahrstelle", kmr: "Cihê xeternak", ar: "موقع خطر" },
     meaning: { ckb: "ئاگادار بە: مەترسییەکی گشتی لە پێشەوەیە. خێرایی کەم بکەرەوە.", de: "Achtung: allgemeine Gefahrstelle voraus. Geschwindigkeit verringern.", kmr: "Hişyar be: li pêş xetereyeke giştî heye. Leza xwe kêm bike.", ar: "انتبه: يوجد خطر عام في الأمام. خفّف السرعة." } },
@@ -35,7 +37,7 @@ export const SIGNS: TrafficSign[] = [
   { id: "s282", stvoNumber: "282", shape: "circle-plain", glyph: "stripes", group: "prohibition",
     name: { ckb: "کۆتایی هەموو قەدەغەکان", de: "Ende sämtlicher Streckenverbote", kmr: "Dawiya hemû qedexeyan", ar: "نهاية جميع المحظورات" },
     meaning: { ckb: "سنووری خێرایی و قەدەغەی تێپەڕاندنی پێشوو کۆتاییان دێت.", de: "Vorher angeordnete Geschwindigkeitsbeschränkungen und Überholverbote enden.", kmr: "Sînorên lezê û qedexeyên derbaskirinê yên berê bi dawî dibin.", ar: "تنتهي حدود السرعة وحظر التجاوز المفروضة سابقًا." } },
-  { id: "s209", stvoNumber: "209-20", shape: "circle-blue", glyph: "arrow-right", group: "mandatory",
+  { id: "s209", stvoNumber: "209", shape: "circle-blue", glyph: "arrow-right", group: "mandatory",
     name: { ckb: "ئاڕاستەی دیاریکراو: ڕاست", de: "Vorgeschriebene Fahrtrichtung – rechts", kmr: "Rêya diyarkirî – rast", ar: "اتجاه السير الإلزامي – يمين" },
     meaning: { ckb: "دەبێت بە ئاڕاستەی تیرەکە (بۆ ڕاست) بڕۆیت.", de: "Sie müssen in Pfeilrichtung (nach rechts) fahren.", kmr: "Divê tu li gorî rêya tîrê (ber bi rastê) biajoyî.", ar: "يجب أن تسير في اتجاه السهم (إلى اليمين)." } },
   { id: "s350", stvoNumber: "350", shape: "rect-blue", glyph: "zebra", group: "information",
@@ -45,5 +47,108 @@ export const SIGNS: TrafficSign[] = [
     name: { ckb: "سەرەتای ناو شار", de: "Ortstafel (Anfang)", kmr: "Destpêka bajêr", ar: "بداية المنطقة السكنية" },
     meaning: { ckb: "لێرەوە یاساکانی ناو شار دەست پێدەکەن، بۆ نموونە ٥٠ کیلۆمەتر لە کاتژمێرێکدا.", de: "Ab hier gelten die innerörtlichen Regeln, zum Beispiel 50 km/h.", kmr: "Ji vir û pê ve qaîdeyên nav bajêr derbasdar in, wek mînak 50 km/h.", ar: "من هنا تسري قواعد القيادة داخل المدن، مثل 50 كم/س." } },
 ];
+
+const MORE_SIGNS: SignDef[] = [
+  // ── Anlage 1: Gefahrzeichen ─────────────────────────────────────────
+  { id: "s102", stvoNumber: "102", shape: "triangle", glyph: "cross-eq", group: "danger",
+    name: { ckb: "چوارڕێیان یان دووڕێیان، پێشەنگی بۆ لای ڕاست", de: "Kreuzung oder Einmündung mit Vorfahrt von rechts", kmr: "Xaçerê an rêgihan, mafê pêşiyê ji aliyê rastê", ar: "تقاطع أو التقاء طرق مع أولوية من اليمين" },
+    meaning: { ckb: "لە پێشەوە چوارڕێیانێک هەیە کە «ڕاست پێش چەپ» تێیدا کاردەکات. ئەوەی لە ڕاستەوە دێت پێشەنگی هەیە.", de: "Voraus liegt eine Kreuzung oder Einmündung, an der „rechts vor links“ gilt. Wer von rechts kommt, hat Vorfahrt.", kmr: "Li pêş xaçerêyek heye ku „rast beriya çep“ tê de derbasdar e. Yê ji rastê tê mafê pêşiyê heye.", ar: "أمامك تقاطع تسري فيه قاعدة «اليمين قبل اليسار». من يأتي من اليمين له الأولوية." } },
+  { id: "s108", stvoNumber: "108", shape: "triangle", glyph: "slope-down", group: "danger",
+    name: { ckb: "نشێو (Gefälle)", de: "Gefälle", kmr: "Berjêr (Gefälle)", ar: "منحدر" },
+    meaning: { ckb: "ڕێگا بەرەو خوارەوە دەچێت. گێڕی نزم بەکاربهێنە و دووری بریک بپارێزە.", de: "Die Straße fällt ab. Niedrigen Gang nutzen und Bremsen schonen.", kmr: "Rê ber bi jêr diçe. Vîtesa nizm bi kar bîne û frenan biparêze.", ar: "الطريق منحدر إلى الأسفل. استخدم غيارًا منخفضًا واحمِ المكابح." } },
+  { id: "s110", stvoNumber: "110", shape: "triangle", glyph: "slope-up", group: "danger",
+    name: { ckb: "ھەڵکشان (Steigung)", de: "Steigung", kmr: "Serkeftin (Steigung)", ar: "منحدر صاعد" },
+    meaning: { ckb: "ڕێگا بەرەو سەرەوە دەچێت. بە ڕێژەی خێرایی و گێڕی گونجاو بڕۆ.", de: "Die Straße steigt an. Geschwindigkeit und Gang anpassen.", kmr: "Rê ber bi jor diçe. Leza û vîtesê li gorî rewşê eyar bike.", ar: "الطريق صاعد إلى الأعلى. كيّف السرعة والغيار." } },
+  { id: "s114", stvoNumber: "114", shape: "triangle", glyph: "skid", group: "danger",
+    name: { ckb: "مەترسی خلیسکان", de: "Schleuder- oder Rutschgefahr bei Nässe oder Schmutz", kmr: "Xetereya şemitînê bi şilî an gemarî", ar: "خطر الانزلاق عند البلل أو الأوساخ" },
+    meaning: { ckb: "ڕووی ڕێگا لە تەڕی یان پیسیدا دەخلیسکێت. خێرایی کەم بکەرەوە و بە ئارامی بریک بگرە.", de: "Die Fahrbahn kann bei Nässe oder Schmutz rutschig sein. Geschwindigkeit verringern und sanft bremsen.", kmr: "Rûyê rê dikare bi şilî an gemarî şemitok be. Leza kêm bike û nerm frenê bigire.", ar: "قد يكون سطح الطريق زلقًا عند البلل أو الأوساخ. خفّف السرعة وافرمل برفق." } },
+  { id: "s120", stvoNumber: "120", shape: "triangle", glyph: "narrow", group: "danger",
+    name: { ckb: "ڕێگای تەنگ", de: "Verengte Fahrbahn", kmr: "Rêya teng", ar: "تضيّق الطريق" },
+    meaning: { ckb: "ڕێگا لە هەردوو لاوە تەنگ دەبێتەوە. بە ئاگاداری بڕۆ و ئامادەی مافدان بە.", de: "Die Fahrbahn wird auf beiden Seiten schmaler. Vorsichtig fahren und auf Gegenverkehr achten.", kmr: "Rê ji her du aliyan teng dibe. Bi baldarî biajo û li trafîka berevajî hişyar be.", ar: "يضيق الطريق من الجانبين. قُد بحذر وانتبه للمركبات القادمة." } },
+  { id: "s123", stvoNumber: "123", shape: "triangle", glyph: "worker", group: "danger",
+    name: { ckb: "شوێنی کار", de: "Arbeitsstelle", kmr: "Cihê xebatê", ar: "أعمال طرق" },
+    meaning: { ckb: "لە پێشەوە کار لەسەر ڕێگا هەیە. خێرایی کەم بکەرەوە و ئاگاداری کرێکاران بە.", de: "Voraus wird an der Straße gearbeitet. Geschwindigkeit verringern und auf Arbeitende achten.", kmr: "Li pêş li ser rêyê xebat heye. Leza kêm bike û li karkeran hişyar be.", ar: "توجد أعمال على الطريق أمامك. خفّف السرعة وانتبه للعمال." } },
+  { id: "s124", stvoNumber: "124", shape: "triangle", glyph: "jam", group: "danger",
+    name: { ckb: "قەرەباڵغی (Stau)", de: "Stau", kmr: "Qerebalix (Stau)", ar: "ازدحام مروري" },
+    meaning: { ckb: "لە پێشەوە ئۆتۆمبێلەکان وەستاون یان زۆر هێواش دەڕۆن. بە ئاگاداری نزیک ببەوە و بۆشایی بپارێزە.", de: "Voraus staut sich der Verkehr. Vorsichtig nähern und Abstand halten.", kmr: "Li pêş trafîk sekiniye an pir hêdî diçe. Bi baldarî nêzîk bibe û mesafeyê biparêze.", ar: "المرور متوقف أو بطيء جدًا أمامك. اقترب بحذر وحافظ على المسافة." } },
+  { id: "s131", stvoNumber: "131", shape: "triangle", glyph: "trafficlight", group: "danger",
+    name: { ckb: "گڵۆپی هاتووچۆ", de: "Lichtzeichenanlage", kmr: "Çira trafîkê", ar: "إشارة ضوئية" },
+    meaning: { ckb: "لە پێشەوە گڵۆپی هاتووچۆ هەیە. ئامادەی وەستان بە.", de: "Voraus befindet sich eine Ampel. Auf Anhalten vorbereitet sein.", kmr: "Li pêş çira trafîkê heye. Ji bo rawestanê amade be.", ar: "توجد إشارة ضوئية أمامك. كن مستعدًا للتوقف." } },
+  { id: "s133", stvoNumber: "133", shape: "triangle", glyph: "pedestrian", group: "danger",
+    name: { ckb: "پیادە", de: "Fußgänger", kmr: "Peyar", ar: "مشاة" },
+    meaning: { ckb: "پیادە ڕەنگە ڕێگا بپەڕنەوە. خێرایی کەم بکەرەوە و ئامادەی بریک بە.", de: "Hier können Fußgänger die Fahrbahn queren. Geschwindigkeit verringern und bremsbereit sein.", kmr: "Li vir dibe ku peyar ji rê derbas bibin. Leza kêm bike û ji bo frenê amade be.", ar: "قد يعبر المشاة الطريق هنا. خفّف السرعة وكن مستعدًا للفرملة." } },
+  { id: "s138", stvoNumber: "138", shape: "triangle", glyph: "cyclist", group: "danger",
+    name: { ckb: "پاسکیلسوار", de: "Radverkehr", kmr: "Duçerxevan", ar: "راكبو الدراجات" },
+    meaning: { ckb: "لە پێشەوە پاسکیلسوار ڕێگا دەبڕن یان لەسەر ڕێگاکەن. بە ئاگاداری بڕۆ.", de: "Voraus kreuzen oder befahren Radfahrende die Fahrbahn. Aufmerksam fahren.", kmr: "Li pêş duçerxevan ji rê derbas dibin an li ser rê ne. Bi baldarî biajo.", ar: "يعبر راكبو الدراجات الطريق أو يسيرون عليه أمامك. قُد بانتباه." } },
+  // ── Anlage 2: Vorschriftzeichen ─────────────────────────────────────
+  { id: "s208", stvoNumber: "208", shape: "circle-red", glyph: "oncoming", group: "priority",
+    name: { ckb: "پێشەنگی بۆ هاتووچۆی بەرانبەر", de: "Vorrang des Gegenverkehrs", kmr: "Mafê pêşiyê yê trafîka berevajî", ar: "أولوية للمرور القادم" },
+    meaning: { ckb: "لە ڕێگای تەنگدا دەبێت ڕێگە بدەیت بە ئۆتۆمبێلی بەرانبەر.", de: "Bei einer Engstelle muss dem Gegenverkehr Vorrang gewährt werden.", kmr: "Li cihê teng divê tu rê bidî trafîka berevajî.", ar: "عند المقطع الضيق يجب إعطاء الأولوية للمركبات القادمة من الاتجاه المعاكس." } },
+  { id: "s215", stvoNumber: "215", shape: "circle-blue", glyph: "roundabout", group: "mandatory",
+    name: { ckb: "خولگە (Kreisverkehr)", de: "Kreisverkehr", kmr: "Çerxa trafîkê (Kreisverkehr)", ar: "دوّار مروري" },
+    meaning: { ckb: "بە ئاڕاستەی تیرەکان بە ڕاستدا بسووڕێ. ناو خولگەکە نابێت بوەستیت.", de: "In Pfeilrichtung rechts herum fahren. Im Kreisverkehr darf nicht gehalten werden.", kmr: "Li gorî tîran ber bi rastê bizivire. Di çerxê de rawestan qedexe ye.", ar: "السير في اتجاه الأسهم نحو اليمين. التوقف داخل الدوّار ممنوع." } },
+  { id: "s220", stvoNumber: "220", shape: "rect-blue", glyph: "arrow-up", group: "mandatory",
+    name: { ckb: "ڕێگای یەک ئاڕاستە", de: "Einbahnstraße", kmr: "Rêya yek alî", ar: "شارع باتجاه واحد" },
+    meaning: { ckb: "تەنها بە ئاڕاستەی تیرەکە دەتوانیت بڕۆیت.", de: "Die Straße darf nur in Pfeilrichtung befahren werden.", kmr: "Tu tenê dikarî li gorî rêya tîrê biajoyî.", ar: "يجوز السير في الشارع باتجاه السهم فقط." } },
+  { id: "s222", stvoNumber: "222", shape: "circle-blue", glyph: "pass-right", group: "mandatory",
+    name: { ckb: "لە ڕاستەوە تێپەڕە", de: "Rechts vorbei", kmr: "Ji rastê derbas bibe", ar: "المرور من اليمين" },
+    meaning: { ckb: "دەبێت لە لای ڕاستی کۆسپەکە تێپەڕیت.", de: "Das Hindernis muss rechts umfahren werden.", kmr: "Divê tu astengiyê ji aliyê rastê derbas bikî.", ar: "يجب تجاوز العائق من الجهة اليمنى." } },
+  { id: "s237", stvoNumber: "237", shape: "circle-blue", glyph: "bike-white", group: "mandatory",
+    name: { ckb: "ڕێگای پاسکیل", de: "Radweg", kmr: "Rêya duçerxeyan", ar: "مسار الدراجات" },
+    meaning: { ckb: "ئەم ڕێگایە تایبەتە بە پاسکیل. پاسکیلسوار دەبێت بەکاری بهێنێت.", de: "Dieser Weg ist für Radfahrende bestimmt und von ihnen zu benutzen.", kmr: "Ev rê ji bo duçerxeyan e û divê ew bi kar bînin.", ar: "هذا المسار مخصص للدراجات وعلى راكبيها استخدامه." } },
+  { id: "s239", stvoNumber: "239", shape: "circle-blue", glyph: "walk-white", group: "mandatory",
+    name: { ckb: "ڕێگای پیادە", de: "Gehweg", kmr: "Rêya peyaran", ar: "ممر المشاة" },
+    meaning: { ckb: "ئەم ڕێگایە تایبەتە بە پیادە. ئۆتۆمبێل لێرە ڕێگەپێنەدراوە.", de: "Dieser Weg ist nur für Fußgänger bestimmt. Fahrzeuge dürfen ihn nicht benutzen.", kmr: "Ev rê tenê ji bo peyaran e. Wesayît nikarin lê biçin.", ar: "هذا الطريق للمشاة فقط ولا يجوز للمركبات استخدامه." } },
+  { id: "s240", stvoNumber: "240", shape: "circle-blue", glyph: "bike-walk", group: "mandatory",
+    name: { ckb: "ڕێگای هاوبەشی پیادە و پاسکیل", de: "Gemeinsamer Geh- und Radweg", kmr: "Rêya hevpar a peyar û duçerxeyan", ar: "مسار مشترك للمشاة والدراجات" },
+    meaning: { ckb: "پیادە و پاسکیلسوار هەردووکیان ئەم ڕێگایەیان بەکاردەهێنن. بە ڕێزەوە بڕۆن.", de: "Fußgänger und Radfahrende teilen sich den Weg. Rücksicht nehmen.", kmr: "Peyar û duçerxevan vê rêyê bi hev re bi kar tînin. Rêzê li hev bigirin.", ar: "يتشارك المشاة وراكبو الدراجات هذا الطريق. راعِ الآخرين." } },
+  { id: "s251", stvoNumber: "251", shape: "circle-red", glyph: "car", group: "prohibition",
+    name: { ckb: "قەدەغە بۆ ئۆتۆمبێلی سواری", de: "Verbot für Kraftwagen", kmr: "Ji bo otomobîlan qedexe ye", ar: "ممنوع على السيارات" },
+    meaning: { ckb: "ئۆتۆمبێلی دووڕەخ و زیاتر، وەک ئۆتۆمبێلی سواری، ناتوانن لێرە بڕۆن.", de: "Mehrspurige Kraftfahrzeuge, zum Beispiel Pkw, dürfen hier nicht fahren.", kmr: "Wesayîtên motorî yên pirrxet, wek otomobîl, nikarin li vir biçin.", ar: "لا يجوز للمركبات ذات المسارات المتعددة، مثل السيارات، المرور هنا." } },
+  { id: "s254", stvoNumber: "254", shape: "circle-red", glyph: "bicycle", group: "prohibition",
+    name: { ckb: "قەدەغە بۆ پاسکیل", de: "Verbot für Radverkehr", kmr: "Ji bo duçerxeyan qedexe ye", ar: "ممنوع على الدراجات" },
+    meaning: { ckb: "پاسکیلسوار ناتوانن لەم ڕێگایەدا بڕۆن (دەتوانن پاسکیلەکە پاڵ بنێن).", de: "Radfahrende dürfen hier nicht fahren (Schieben ist erlaubt).", kmr: "Duçerxevan nikarin li vir biajon (dikarin duçerxeyê bi destan bibin).", ar: "لا يجوز لراكبي الدراجات السير هنا (يُسمح بدفع الدراجة)." } },
+  { id: "s2741", stvoNumber: "274.1", shape: "square-red", glyph: "zone30", group: "prohibition",
+    name: { ckb: "سەرەتای ناوچەی ٣٠ کیلۆمەتر", de: "Beginn einer Tempo 30-Zone", kmr: "Destpêka herêma 30 km/h", ar: "بداية منطقة السرعة 30" },
+    meaning: { ckb: "لە ناوچەکەدا نابێت لە ٣٠ کیلۆمەتر لە کاتژمێرێکدا خێراتر بڕۆیت، تا نیشانەی کۆتایی.", de: "In der Zone darf nicht schneller als 30 km/h gefahren werden, bis das Ende der Zone gekennzeichnet ist.", kmr: "Di herêmê de nabe ku tu ji 30 km/h bileztir biajoyî heta nîşaneya dawiyê.", ar: "لا تتجاوز 30 كم/س داخل المنطقة حتى علامة نهايتها." } },
+  { id: "s275", stvoNumber: "275", shape: "circle-blue", glyph: "30", group: "mandatory",
+    name: { ckb: "کەمترین خێرایی", de: "Mindestgeschwindigkeit", kmr: "Leza herî kêm", ar: "السرعة الدنيا" },
+    meaning: { ckb: "دەبێت لانیکەم بەو خێراییە بڕۆیت (لێرەدا ٣٠ کیلۆمەتر لە کاتژمێرێکدا)، ئەگەر بتوانیت.", de: "Es muss mindestens so schnell gefahren werden (hier 30 km/h), sofern dies möglich ist.", kmr: "Divê tu herî kêm bi vê lezê biajoyî (li vir 30 km/h), heke bikaribî.", ar: "يجب السير بهذه السرعة على الأقل (هنا 30 كم/س) إن أمكن." } },
+  { id: "s276", stvoNumber: "276", shape: "circle-red", glyph: "overtake", group: "prohibition",
+    name: { ckb: "قەدەغەی تێپەڕاندن", de: "Überholverbot für Kraftfahrzeuge aller Art", kmr: "Qedexeya derbaskirinê ji bo hemû wesayîtên motorî", ar: "منع التجاوز لجميع المركبات الآلية" },
+    meaning: { ckb: "ئۆتۆمبێلی دووڕەخ و زیاتر نابێت ئۆتۆمبێلی دووڕەخ و زیاتر تێپەڕێنن.", de: "Mehrspurige Kraftfahrzeuge dürfen andere mehrspurige Fahrzeuge nicht überholen.", kmr: "Wesayîtên pirrxet nikarin wesayîtên pirrxet derbas bikin.", ar: "لا يجوز لمركبة متعددة المسارات تجاوز مركبة أخرى متعددة المسارات." } },
+  // ── Anlage 3: Richtzeichen ──────────────────────────────────────────
+  { id: "s307", stvoNumber: "307", shape: "diamond", glyph: "diag-bars", group: "priority",
+    name: { ckb: "کۆتایی ڕێگای سەرەکی", de: "Ende der Vorfahrtstraße", kmr: "Dawiya rêya sereke", ar: "نهاية الطريق ذي الأولوية" },
+    meaning: { ckb: "پێشەنگیی ڕێگای سەرەکی کۆتایی دێت. دووبارە «ڕاست پێش چەپ» کاردەکات، مەگەر نیشانە شتی تر بڵێت.", de: "Die Vorfahrt der Vorfahrtstraße endet. Es gilt wieder „rechts vor links“, sofern nichts anderes angeordnet ist.", kmr: "Mafê pêşiyê yê rêya sereke diqede. Dîsa „rast beriya çep“ derbasdar dibe, heke tiştekî din neyê diyarkirin.", ar: "تنتهي أولوية الطريق الرئيسي. تسري قاعدة «اليمين قبل اليسار» ما لم يُحدَّد غير ذلك." } },
+  { id: "s308", stvoNumber: "308", shape: "rect-blue", glyph: "oncoming-blue", group: "priority",
+    name: { ckb: "پێشەنگی لە بەرانبەر هاتووچۆی بەرانبەر", de: "Vorrang vor dem Gegenverkehr", kmr: "Mafê pêşiyê li ber trafîka berevajî", ar: "أولوية على المرور القادم" },
+    meaning: { ckb: "لە ڕێگای تەنگدا تۆ پێشەنگیت هەیە و ئۆتۆمبێلی بەرانبەر دەبێت ڕێگەت پێ بدات.", de: "An der Engstelle haben Sie Vorrang vor dem Gegenverkehr.", kmr: "Li cihê teng mafê pêşiyê yê te ye li ber trafîka berevajî.", ar: "عند المقطع الضيق لك الأولوية على المركبات القادمة." } },
+  { id: "s311", stvoNumber: "311", shape: "rect-yellow", glyph: "town-end", group: "information",
+    name: { ckb: "کۆتایی ناو شار", de: "Ortstafel (Ende)", kmr: "Dawiya bajêr", ar: "نهاية المنطقة السكنية" },
+    meaning: { ckb: "لێرە شار کۆتایی دێت. لە دەرەوەی شار یاساکانی ڕێگای دەرەوە کاردەکەن (بۆ نموونە ١٠٠ کیلۆمەتر).", de: "Hier endet die geschlossene Ortschaft. Es gelten die Regeln außerorts (zum Beispiel 100 km/h).", kmr: "Li vir bajar diqede. Qaîdeyên derveyî bajêr derbasdar in (wek mînak 100 km/h).", ar: "هنا تنتهي المنطقة السكنية وتسري قواعد خارج المدن (مثل 100 كم/س)." } },
+  { id: "s3251", stvoNumber: "325.1", shape: "rect-blue", glyph: "play-street", group: "information",
+    name: { ckb: "سەرەتای ناوچەی هاتووچۆی هێمن", de: "Beginn eines verkehrsberuhigten Bereichs", kmr: "Destpêka herêma trafîka aram", ar: "بداية منطقة مرور هادئ" },
+    meaning: { ckb: "تەنها بە خێرایی ڕۆیشتنی پیادە بڕۆ. پیادە و مناڵان مافی پێشەنگییان هەیە و دەتوانن لەسەر ڕێگا بن.", de: "Nur Schrittgeschwindigkeit. Fußgänger und spielende Kinder haben Vorrang und dürfen die Straße nutzen.", kmr: "Tenê bi leza meşê biajo. Peyar û zarokên li ser rê mafê pêşiyê hene.", ar: "السير بسرعة المشي فقط. للمشاة والأطفال الأولوية ويجوز لهم استخدام الشارع." } },
+];
+
+/** Official place in the StVO (Anlage + lfd. Nr., checked against the consolidated text on gesetze-im-internet.de, 2026-11-13). */
+const OFFICIAL: Record<string, [SignAnlage, number]> = {
+  "101": [1, 1], "102": [1, 2], "108": [1, 5], "110": [1, 6], "114": [1, 8], "120": [1, 10], "123": [1, 12], "124": [1, 13],
+  "131": [1, 15], "133": [1, 16], "138": [1, 18],
+  "205": [2, 2], "206": [2, 3], "208": [2, 4], "209": [2, 5], "215": [2, 8], "220": [2, 9], "222": [2, 10],
+  "237": [2, 16], "239": [2, 18], "240": [2, 19], "250": [2, 28], "251": [2, 29], "254": [2, 31], "267": [2, 41],
+  "274": [2, 49], "274.1": [2, 50], "275": [2, 52], "276": [2, 53], "282": [2, 60], "283": [2, 62], "286": [2, 63],
+  "301": [3, 1], "306": [3, 2], "307": [3, 3], "308": [3, 4], "310": [3, 5], "311": [3, 6], "325.1": [3, 12], "350": [3, 24],
+};
+
+export const SIGNS: TrafficSign[] = [...BASE_SIGNS, ...MORE_SIGNS].map((s) => {
+  const ref = OFFICIAL[s.stvoNumber];
+  if (!ref) throw new Error(`sign ${s.id}: StVO number ${s.stvoNumber} has no official reference`);
+  return { ...s, anlage: ref[0], lfdNr: ref[1] };
+});
+
+/** Human-readable official source, e.g. "StVO Anlage 2 lfd. Nr. 49 (Zeichen 274)". */
+export const signSource = (s: TrafficSign) => `StVO Anlage ${s.anlage} lfd. Nr. ${s.lfdNr} (Zeichen ${s.stvoNumber})`;
 
 export const signById = (id: string) => SIGNS.find((s) => s.id === id);

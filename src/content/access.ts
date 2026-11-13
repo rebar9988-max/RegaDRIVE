@@ -1,4 +1,5 @@
 import { QUESTIONS } from "./questions.ts";
+import { SIGN_QUIZ } from "./signQuiz.ts";
 import { LESSONS } from "./lessons.ts";
 import { SIGNS } from "./signs.ts";
 import { VOCABULARY } from "./vocabulary.ts";
@@ -13,7 +14,7 @@ import { publicationGate } from "./pipeline.ts";
 export type ContentMode = "production" | "preview";
 
 const gateOk = (id: string) => {
-  const q = QUESTIONS.find((x) => x.id === id);
+  const q = QUESTIONS.find((x) => x.id === id) ?? SIGN_QUIZ.find((x) => x.id === id);
   return publicationGate(CONTENT_REGISTRY.get(id), q).publishable;
 };
 
@@ -24,6 +25,8 @@ export function contentFor(mode: ContentMode) {
     // Licensed official content is never bundled into the static app; it may only come from the
     // owner-activated, authorised server path (OFFICIAL_QUESTION_BANK_ENABLED, currently off).
     questions: visible(QUESTIONS.filter((q) => q.publicationStatus === "published" && q.sourceType !== "licensed_official")),
+    // Verkehrszeichen-Quiz: educational, kept apart from the exam bank (never part of practice or the mock exam).
+    signQuiz: visible(SIGN_QUIZ.filter((q) => q.publicationStatus === "published" && q.sourceType !== "licensed_official")),
     lessons: visible(LESSONS),
     signs: visible(SIGNS),
     vocabulary: visible(VOCABULARY),
