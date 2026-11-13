@@ -1046,15 +1046,15 @@ try {
     // The form cannot be submitted without a selection, a named reviewer, evidence and the confirmation.
     assert.equal(await page.locator("[data-testid=review-submit]").isDisabled(), true);
     await page.locator("[data-id=s102] input[type=checkbox]").check();
-    await page.getByLabel("Reviewer (full name)").fill("Test Person");
-    await page.getByLabel(/Evidence reference/).fill("evidence-123");
+    await page.getByLabel("پشکنەر (ناوی تەواو)").fill("Test Person");
+    await page.getByLabel(/بەڵگە \(لیستی واژۆکراو/).fill("evidence-123");
     assert.equal(await page.locator("[data-testid=review-submit]").isDisabled(), true, "needs the confirmation");
-    await page.getByLabel(/I confirm that the named person/).check();
+    await page.getByLabel(/دووپاتی دەکەمەوە کە کەسە ناوبراوەکە/).check();
     await axe(page, "/dr content review");
     await page.locator("[data-testid=review-submit]").click();
-    await page.getByRole("alert").filter({ hasText: "Translation review must pass first" }).waitFor();
+    await page.getByRole("alert").filter({ hasText: "سەرەتا پێداچوونەوەی وەرگێڕان دەبێت تێپەڕێت" }).waitFor();
     await page.locator("[data-testid=review-submit]").click();
-    await page.getByRole("status").filter({ hasText: "Recorded 1 decision" }).waitFor();
+    await page.getByRole("status").filter({ hasText: "1 بڕیار تۆمارکرا" }).waitFor();
     assert.equal(posts.length, 2);
     assert.deepEqual({ stage: posts[0].stage, outcome: posts[0].outcome, ids: posts[0].ids, reviewerName: posts[0].reviewerName, confirm: posts[0].confirm }, { stage: "TRANSLATION_REVIEW", outcome: "pass", ids: ["s102"], reviewerName: "Test Person", confirm: true });
     await page.screenshot({ path: `${OUT}/dr-content-review-iphone.png`, fullPage: false });
