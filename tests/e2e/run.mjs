@@ -970,6 +970,54 @@ try {
     await ctx.close();
   });
 
+  await test("200 percent text on a 320px screen: nothing cut off or off screen, in all four languages (WCAG 1.4.4 / 1.4.10; from PR #22)", async () => {
+    const ctx = await browser.newContext({ viewport: { width: 320, height: 844 } });
+    const page = await ctx.newPage();
+    await page.goto(BASE);
+    await page.waitForSelector("[data-testid=home], .country-card");
+    if (await page.locator(".country-card").count()) await page.locator(".country-card:has([lang=de])").click();
+    await page.locator("[data-testid=home]").waitFor();
+    for (const path of ["/", "/learn", "/practice", "/exam", "/progress", "/more", "/settings"]) {
+      for (const lang of ["ckb", "kmr", "ar", "de"]) {
+        await page.goto(`${BASE}/settings`);
+        await page.locator(`[data-testid=lang-${lang}]`).click();
+        await page.goto(`${BASE}${path}`);
+        await page.waitForSelector("main#main > div:not([aria-busy])");
+        await page.evaluate(() => { document.documentElement.style.fontSize = "200%"; });
+        await page.evaluate(() => document.fonts.ready);
+        // Text is "cut off" when its own glyph box leaves the screen or any ancestor that clips (overflow other than
+        // visible); text that merely overflows a box with visible overflow is still fully readable.
+        const r = await page.evaluate(() => {
+          const cut = [];
+          const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
+          for (let n = walker.nextNode(); n; n = walker.nextNode()) {
+            const el = n.parentElement;
+            if (!n.textContent.trim() || !el || !el.closest("main, .tabbar, .topbar") || el.closest(".sr-only, [aria-hidden=true]")) continue;
+            const cs = getComputedStyle(el);
+            if (cs.display === "none" || cs.visibility === "hidden") continue;
+            const range = document.createRange(); range.selectNodeContents(n);
+            const t = range.getBoundingClientRect();
+            if (!t.width) continue;
+            let bad = t.left < -1 || t.right > innerWidth + 1;
+            for (let a = el; a && !bad && a !== document.body; a = a.parentElement) {
+              const s = getComputedStyle(a);
+              if (s.overflowX === "visible" && s.overflowY === "visible") continue;
+              if (["auto", "scroll"].includes(s.overflowX)) break; // scrollable: reachable, not cut
+              const b = a.getBoundingClientRect();
+              bad = t.left < b.left - 1 || t.right > b.right + 1;
+            }
+            if (bad) cut.push(`${el.tagName.toLowerCase()}.${[...el.classList].join(".")} "${n.textContent.trim().slice(0, 24)}"`);
+          }
+          return { overflow: document.documentElement.scrollWidth > innerWidth, clipped: [...new Set(cut)] };
+        });
+        assert.equal(r.overflow, false, `${path} ${lang}: no horizontal scrolling at 200% text`);
+        assert.deepEqual(r.clipped, [], `${path} ${lang}: no text cut off or off screen at 200%`);
+      }
+    }
+    await page.screenshot({ path: `${OUT}/text-200-settings-de.png`, fullPage: true });
+    await ctx.close();
+  });
+
   await test("offline: app shell and practice work after first visit (service worker)", async () => {
     const ctx = await browser.newContext({ viewport: { width: 390, height: 844 } });
     const page = await ctx.newPage();
