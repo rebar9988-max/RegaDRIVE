@@ -103,7 +103,7 @@ const MORE_SIGNS: SignDef[] = [
     name: { ckb: "ڕێگای هاوبەشی پیادە و پاسکیل", de: "Gemeinsamer Geh- und Radweg", kmr: "Rêya hevpar a peyar û duçerxeyan", ar: "مسار مشترك للمشاة والدراجات" },
     meaning: { ckb: "پیادە و پاسکیلسوار هەردووکیان ئەم ڕێگایەیان بەکاردەهێنن. بە ڕێزەوە بڕۆن.", de: "Fußgänger und Radfahrende teilen sich den Weg. Rücksicht nehmen.", kmr: "Peyar û duçerxevan vê rêyê bi hev re bi kar tînin. Rêzê li hev bigirin.", ar: "يتشارك المشاة وراكبو الدراجات هذا الطريق. راعِ الآخرين." } },
   { id: "s251", stvoNumber: "251", shape: "circle-red", glyph: "car", group: "prohibition",
-    name: { ckb: "قەدەغە بۆ ئۆتۆمبێلی سواری", de: "Verbot für Kraftwagen", kmr: "Ji bo otomobîlan qedexe ye", ar: "ممنوع على السيارات" },
+    name: { ckb: "قەدەغە بۆ ئۆتۆمبێل و ئۆتۆمبێلی دووڕەخی تری بزوێنەردار", de: "Verbot für Kraftwagen und sonstige mehrspurige Kraftfahrzeuge", kmr: "Ji bo otomobîl û wesayîtên motorî yên pirrxet ên din qedexe ye", ar: "ممنوع على السيارات والمركبات الآلية الأخرى متعددة المسارات" },
     meaning: { ckb: "ئۆتۆمبێلی دووڕەخ و زیاتر، وەک ئۆتۆمبێلی سواری، ناتوانن لێرە بڕۆن.", de: "Mehrspurige Kraftfahrzeuge, zum Beispiel Pkw, dürfen hier nicht fahren.", kmr: "Wesayîtên motorî yên pirrxet, wek otomobîl, nikarin li vir biçin.", ar: "لا يجوز للمركبات ذات المسارات المتعددة، مثل السيارات، المرور هنا." } },
   { id: "s254", stvoNumber: "254", shape: "circle-red", glyph: "bicycle", group: "prohibition",
     name: { ckb: "قەدەغە بۆ پاسکیل", de: "Verbot für Radverkehr", kmr: "Ji bo duçerxeyan qedexe ye", ar: "ممنوع على الدراجات" },

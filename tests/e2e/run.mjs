@@ -181,14 +181,14 @@ try {
     await ctx.close();
   });
 
-  await test("sign quiz: Kurdish RTL line with German LTR below, answer feedback, a 10-question round ends with a score [iPhone]", async () => {
+  await test("sign quiz: German LTR line with Sorani RTL below, answer feedback, a 10-question round ends with a score [iPhone]", async () => {
     const ctx = await browser.newContext(devices["iPhone 13"]);
     const page = await ctx.newPage();
     await page.goto(`${BASE}/sign-quiz`);
     const card = page.locator("[data-testid=sq-card]");
     await card.waitFor();
     const order = await card.locator("legend .bi > span").evaluateAll((els) => els.map((e) => [e.getAttribute("lang"), e.getAttribute("dir")]));
-    assert.deepEqual(order, [["ckb", "rtl"], ["de", "ltr"]]);
+    assert.deepEqual(order, [["de", "ltr"], ["ckb", "rtl"]], "quiz shows German first, Sorani below");
     assert.equal(await card.locator("svg.q-sign").count(), 1, "the sign is shown");
     for (let i = 0; i < 10; i++) {
       await page.locator("[data-testid=sq-card]").waitFor();

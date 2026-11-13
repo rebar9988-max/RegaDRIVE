@@ -127,7 +127,7 @@ const HAND: Hand[] = [
     prompt: b("چۆن دەتوانیت ئەم ڕێگایە بەکاربهێنیت؟", "Wie dürfen Sie diese Straße befahren?", "Tu çawa dikarî vê rêyê bi kar bînî?", "كيف يجوز لك استخدام هذا الشارع؟"),
     options: [["تەنها بە ئاڕاستەی تیرەکە", "Nur in Pfeilrichtung", "Tenê li gorî rêya tîrê", "باتجاه السهم فقط"], ["بە هەردوو ئاڕاستە", "In beide Richtungen", "Bi her du alî ve", "في الاتجاهين"], ["پێچەوانەی تیرەکە، ئەگەر ڕێگا بەتاڵ بێت", "Gegen den Pfeil, wenn die Straße frei ist", "Berevajî tîrê, heke rê vala be", "عكس السهم إذا كان الطريق خاليًا"]],
     explanation: b("ڕێگای یەک ئاڕاستە (٢٢٠) تەنها بە ئاڕاستەی تیرەکە بەکار دێت.", "Eine Einbahnstraße (Zeichen 220) darf nur in Pfeilrichtung befahren werden.", "Rêya yek alî (220) tenê li gorî rêya tîrê tê bikaranîn.", "الشارع ذو الاتجاه الواحد (220) يُستخدم باتجاه السهم فقط."),
-    refs: ["StVO Anlage 3 lfd. Nr. 9"] },
+    refs: ["StVO Anlage 2 lfd. Nr. 9"] },
   { id: "rd-sq-h-008", signId: "s2741", points: 4,
     prompt: b("لەم ناوچەیەدا بەرزترین خێرایی چەندە؟", "Wie schnell dürfen Sie in dieser Zone höchstens fahren?", "Di vê herêmê de herî zêde bi çi lezê dikarî biajoyî?", "ما السرعة القصوى في هذه المنطقة؟"),
     options: [["٣٠ کیلۆمەتر لە کاتژمێرێکدا", "30 km/h", "30 km/h", "30 كم/س"], ["٥٠ کیلۆمەتر لە کاتژمێرێکدا", "50 km/h", "50 km/h", "50 كم/س"], ["٢٠ کیلۆمەتر لە کاتژمێرێکدا", "20 km/h", "20 km/h", "20 كم/س"]],
