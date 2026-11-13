@@ -139,6 +139,7 @@ textarea.input { min-height: 120px; }
 .learning-cta .de { color: #e1edf7; }
 .cta-copy { flex: 1; min-width: 0; }
 .cta-copy > .bi { font-weight: 800; font-size: 1.05rem; }
+.cta-copy > strong { font-size: .9375rem; } /* the card title keeps its 15px size when body text is 17px */
 .cta-copy .small { font-size: .73rem; margin-top: 3px; }
 .cta-icon { width: 36px; flex: none; }
 .cta-icon svg { width: 36px; height: 36px; }
