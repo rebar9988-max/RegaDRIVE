@@ -230,7 +230,17 @@ console.log(`migrations OK: ${tables.length} tables, constraints verified; stude
   throws(ins("APPROVED", "maybe", "content_owner"), "review outcome domain");
   throws(ins("APPROVED", "pass", "automated"), "human roles only");
   throws(`INSERT INTO dr_content_reviews (content_id,content_kind,content_hash,content_version,stage,outcome,reviewer_name,reviewer_role,reviewed_on,evidence_ref,recorded_by,recorded_at) VALUES ('x','lesson','h','v','APPROVED','pass','P N','content_owner','2026-11-07','e','o',${now})`, "review kind domain");
+  // 0007: the Italian section reviews live in their own table, with their own kind domain.
+  assert.ok(db.prepare("SELECT 1 FROM sqlite_master WHERE type='table' AND name='dr_it_content_reviews'").get(), "missing table dr_it_content_reviews");
+  const insIt = (kind, stage = "TRANSLATION_REVIEW", role = "sorani_translator") => `INSERT INTO dr_it_content_reviews (content_id,content_kind,content_hash,content_version,stage,outcome,reviewer_name,reviewer_role,reviewed_on,evidence_ref,recorded_by,recorded_at) VALUES ('it-b-001','${kind}','h','v','${stage}','pass','Person Name','${role}','2026-11-21','evidence-1','owner:x',${now})`;
+  db.exec(insIt("itQuestion"));
+  db.exec(insIt("itSign"));
+  throws(insIt("sign"), "the Italian table takes Italian kinds only");
+  throws(insIt("itQuestion", "PUBLISHED", "content_owner"), "review stage domain");
+  throws(`INSERT INTO dr_content_reviews (content_id,content_kind,content_hash,content_version,stage,outcome,reviewer_name,reviewer_role,reviewed_on,evidence_ref,recorded_by,recorded_at) VALUES ('it-b-001','itQuestion','h','v','APPROVED','pass','P N','content_owner','2026-11-21','e','o',${now})`, "the German table takes German kinds only");
   // idempotent: applying again changes nothing and loses nothing
   db.exec(readFileSync("migrations/0006_dr_content_reviews.sql", "utf8"));
+  db.exec(readFileSync("migrations/0007_dr_content_reviews_italy.sql", "utf8"));
   assert.equal(db.prepare("SELECT COUNT(*) AS n FROM dr_content_reviews").get().n, 1, "re-applying 0006 keeps rows");
+  assert.equal(db.prepare("SELECT COUNT(*) AS n FROM dr_it_content_reviews").get().n, 2, "re-applying 0007 keeps rows");
 }

@@ -33,6 +33,7 @@ const About = page(pages.misc, "About"), Access = page(pages.misc, "Access"), Ac
 const ItalyHome = page(pages.italy, "ItalyHome");
 const ItalyPractice = page(pages.italy, "ItalyPractice");
 const ItalySigns = page(pages.italy, "ItalySigns");
+const ItalyExam = page(pages.italy, "ItalyExam");
 const warmUp = () => { for (const load of Object.values(pages)) void load().catch(() => undefined); };
 
 // Owner import workbench: compiled in only when VITE_ADMIN_UI=true (production builds drop it entirely).
@@ -72,6 +73,7 @@ function italyRoute(path: string) {
   if (p === "/") return <ItalyHome />;
   if (p === "/practice") return <ItalyPractice />;
   if (p === "/signs") return <ItalySigns />;
+  if (p === "/exam") return <ItalyExam />;
   if (ITALY_SHARED_PATHS.has(p)) return route(p);
   return <ItalyPending />;
 }

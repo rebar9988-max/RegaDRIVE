@@ -21,6 +21,7 @@ const TABS: { href: string; icon: IconName; t: Bilingual }[] = [
 const IT_TABS: { href: string; icon: IconName; t: Bilingual }[] = [
   { href: "/", icon: "home", t: T.nav.home },
   { href: "/practice", icon: "check", t: T.nav.practice },
+  { href: "/exam", icon: "exam", t: T.nav.exam },
   { href: "/signs", icon: "sign", t: T.nav.signs },
   { href: "/more", icon: "more", t: T.nav.more },
 ];

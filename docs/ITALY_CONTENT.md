@@ -50,26 +50,82 @@ in production until a qualified Italian driving instructor and a native Sorani/B
 approved it. The reviews needed are the same two that the German content still awaits:
 `TRANSLATION_REVIEW` and `EDUCATIONAL_REVIEW`.
 
-## Not done yet (next step)
+## How an Italian item becomes visible to a learner
 
-This change adds the content only; it is not wired into the learner UI. What that needs:
+Nothing in this repository can publish itself. An item appears to a learner only when the server's
+fail-closed gate passes, and that needs three recorded decisions by **named humans**, in this order,
+entered by the signed-in owner at `/dr` → Content Review & Approval (filter: *پرسیار — ئیتاڵیا* and
+*هێماکان — ئیتاڵیا*):
 
-1. **Country-aware content access** — `src/content/access.ts` and `src/app/content.ts` expose one
-   bank (`CONTENT.questions`). It has to become a function of `settings.country`, and the consumers
-   (`src/pages/Home.tsx`, `src/pages/Practice.tsx`, `src/lib/mockExam.ts`, `src/lib/search.ts`,
-   `src/lib/progress.ts`) have to read the bank for the selected country.
-2. **Second line per country** — `src/components/Bi.tsx` shows the German original under the
-   learner's language. For Italy that line is the Italian wording (`t.it`). The `withGerman` setting
-   becomes "show the source language"; the CSS class stays `de`, so no style changes.
-3. **Badini in the language list** — the `kmrArab` field exists, but `Lang` in `src/app/i18n.ts` is
-   still `ckb | kmr | ar | de`. Showing Badini to learners needs one more entry there (RTL), plus
-   `isLang` and the settings migration.
-4. **True/false rendering** — `src/components/QuestionCard.tsx` renders option lists. The Italian
-   questions are a boolean; either generate two options (VERO / FALSO) at the boundary or add a
-   true/false branch to the card.
-5. **Sign images** — the Italian signs are served as files from `/signs/it`, not through the
-   content-addressed `/media/<sha256>` path used by `MediaRef`. Decide whether to keep the simple file
-   path or move them into the media pipeline.
-6. **Registry and publication gate** — `src/content/registry.ts` records provenance and reviews per
-   item. Italian items need their own entries (sources: Codice della Strada articles) before the
-   production gate can ever pass them.
+| # | Stage | Who must have done it | What is recorded |
+| --- | --- | --- | --- |
+| 1 | `TRANSLATION_REVIEW` | a native Sorani/Badini translator (not the instructor) | reviewer name, date, evidence reference |
+| 2 | `EDUCATIONAL_REVIEW` | a qualified Italian driving instructor, a different person | reviewer name, date, evidence reference; the server stamps the Italian exam-rule version |
+| 3 | `APPROVED` | the content owner | reviewer name, date, evidence reference, confirmation tick |
+
+Rules the server enforces, so none of this can be shortcut:
+
+- The order above. An approval without both earlier passes is rejected (`BOTH_REVIEWS_FIRST`).
+- Stage 2 must not be the same person as stage 1 (`REVIEWERS_MUST_DIFFER`).
+- A reviewer name that looks like a machine (Claude, GPT, bot, pipeline, "n/a", …) is refused
+  (`REVIEWER_NAME_INVALID`). An AI cannot be a reviewer here, by design.
+- An evidence reference of at least 8 characters is required, and the date may not be in the future.
+- Each decision is bound to the **fingerprint** of the exact wording reviewed. Any later edit to that
+  question or sign invalidates it and the item leaves production by itself.
+- Italian decisions are stored in `dr_it_content_reviews` (migration `0007`), apart from the German
+  `dr_content_reviews`, and are validated against the Italian exam rules, never the German ones.
+
+### Owner steps, once
+
+1. Apply the migrations to the production database so the Italian review table exists:
+   `npx wrangler d1 migrations apply <regadrive D1> --remote`. Until this is applied, `/dr` → reviews
+   returns an error and, fail-closed, nothing is published.
+2. Line up the two reviewers (translator, Italian driving instructor) and keep their evidence
+   (a signed PDF, a shared document, an e-mail — anything referenceable).
+3. In `/dr`, select the items and record stage 1, then stage 2, then stage 3.
+
+### The items awaiting review
+
+Signs (8): `it-autostrada`, `it-pericolo`, `it-divieto`, `it-obbligo`, `it-precedenza`, `it-stop`, `it-semaforo`, `it-parcheggio`
+
+Questions (12):
+
+| id | chapter | answer key |
+| --- | --- | --- |
+| `it-b-001` | 1 | VERO |
+| `it-b-002` | 1 | FALSO |
+| `it-b-003` | 2 | VERO |
+| `it-b-004` | 3 | VERO |
+| `it-b-005` | 4 | FALSO |
+| `it-b-006` | 5 | VERO |
+| `it-b-007` | 7 | VERO |
+| `it-b-008` | 9 | VERO |
+| `it-b-009` | 11 | VERO |
+| `it-b-010` | 13 | FALSO |
+| `it-b-011` | 15 | VERO |
+| `it-b-012` | 16 | VERO |
+
+## State of the section
+
+| Part | State |
+| --- | --- |
+| 16 chapters | in the app, five languages each |
+| 12 true/false questions | in the app, **pending review** — not visible to learners in production |
+| 8 sign illustrations | in the app, **pending review** — not visible to learners in production |
+| Practice per chapter | works; shows the answer key, the explanation and the sign; records progress under Italy's own key |
+| Mock exam | real rules wired in (30 statements, 20 minutes, max 3 errors; `src/lib/shared/examIt.ts`). It refuses to start until 30 **approved** questions exist, because a shorter paper would not be this exam |
+| Languages | Sorani and Badini right to left, Italian source line left to right, Kurmanji/German/Arabic drafts |
+| Cost | free: a purchase can only be required with payments and a production database and the flag, and payments are off (`src/lib/shared/flags.ts`) |
+| 7,020 | the planned size of the syllabus (`IT_PLANNED_TOTAL`), never a count of questions that exist |
+
+## Still open
+
+1. **The two human reviews** (above). Until they are recorded, production shows 0 Italian questions and
+   0 Italian signs — by design, not by fault.
+2. **More questions.** 12 exist. The mock exam needs 30 approved ones; the syllabus plans 7,020.
+3. **Italian lessons and vocabulary.** The Italian section has none; those screens are not linked under
+   Italy rather than showing German ones.
+4. **Latin-script Kurmanji, German and Arabic** wording for the Italian items is drafted, not reviewed;
+   it is part of the same `TRANSLATION_REVIEW`.
+5. **Exam results are not stored.** An Italian mock exam is scored in the browser; nothing is written to
+   `mock_exam_results`, which is the German schema.

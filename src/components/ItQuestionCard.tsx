@@ -11,6 +11,9 @@ import { ItSignImage } from "./ItSignImage";
 
 interface Props {
   question: ItQuestion;
+  /** "practice": the answer key and the explanation appear as soon as the learner answers.
+   *  "exam": nothing is revealed and nothing is scored until the paper is handed in, as in the real test. */
+  mode?: "practice" | "exam";
   sessionId: string;
   index: number;
   total: number;
@@ -27,20 +30,23 @@ interface Props {
  * points, and nothing here touches it. Both cards use the same existing classes, so the two sections
  * look like one app without any new styling.
  */
-export function ItQuestionCard({ question: q, sessionId, index, total, onNext, answered, onAnswered }: Props) {
+export function ItQuestionCard({ question: q, mode = "practice", sessionId, index, total, onNext, answered, onAnswered }: Props) {
   const { progress, update } = useApp();
   const label = useBiText();
   const [given, setGiven] = useState<boolean | null>(answered ?? null);
   const legendId = useId();
   const sign = q.signId ? itSignById(q.signId) : undefined;
-  const reveal = given !== null;
+  const exam = mode === "exam";
+  // The answer key is shown only after the learner handed the answer in — and in an exam, not at all.
+  const reveal = !exam && given !== null;
   const correct = given === q.answer;
   const bookmarked = progress.bookmarks.includes(q.id);
 
   const answer = (value: boolean) => {
     if (reveal) return;
     setGiven(value);
-    update((p) => recordAnswer(p, sessionId, q.id, value === q.answer, Date.now()));
+    // Practice counts towards progress; an exam is scored as a whole when it is handed in.
+    if (!exam) update((p) => recordAnswer(p, sessionId, q.id, value === q.answer, Date.now()));
     onAnswered?.(value);
   };
 
@@ -64,7 +70,7 @@ export function ItQuestionCard({ question: q, sessionId, index, total, onNext, a
   return (
     <article className="card question-card" aria-labelledby={legendId} data-testid="it-question-card" data-qid={q.id}>
       <div className="question-heading">
-        <strong><Bi t={T.it.title} /></strong>
+        <strong><Bi t={exam ? T.it.exam : T.it.title} /></strong>
         <span className="question-counter" dir="ltr">{index + 1} / {total}</span>
         <Link href="/" className="icon-button" aria-label={label(T.it.backToChapters)}><Icon name="close" /></Link>
       </div>
@@ -96,7 +102,7 @@ export function ItQuestionCard({ question: q, sessionId, index, total, onNext, a
         </div>
       )}
 
-      {reveal && onNext && (
+      {(exam || reveal) && onNext && (
         <div className="q-actions">
           <button type="button" className="btn btn-primary" onClick={onNext} data-testid="it-next"><Bi t={T.it.next} /></button>
         </div>
