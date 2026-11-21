@@ -36,7 +36,10 @@ export const langDir = (l: Lang): "rtl" | "ltr" => (l === "ckb" || l === "ar" ||
 
 /** Text in the requested language plus the language it is actually written in (German when a translation is missing). */
 export function pick(t: Bilingual, lang: Lang): { text: string; lang: Lang } {
-  if (lang === "it") return italianInterface[t.de] ? { text: italianInterface[t.de], lang } : { text: t.ckb, lang: "ckb" };
+  if (lang === "it") {
+    const text = italianInterface[t.de];
+    return text ? { text, lang } : { text: t.ckb, lang: "ckb" };
+  }
   if (lang === "ckb") return { text: t.ckb, lang };
   if (lang === "de") return { text: t.de, lang };
   // German content and interface strings have no Badini wording of their own: Sorani is the fallback.
