@@ -2,6 +2,7 @@ import { useState, type KeyboardEvent } from "react";
 import { Link } from "../app/router";
 import { moreLinksFor } from "../app/Shell";
 import { useApp, useNow } from "../app/state";
+import { IT_FREE_FOREVER_LABEL, isFreeForever } from "../lib/shared/accessPolicy";
 import { LANGS, langDir, vocabMeaning } from "../app/i18n";
 import { T } from "../app/strings";
 import { Bi, useBiText } from "../components/Bi";
@@ -165,6 +166,19 @@ export function Services() {
 export { Account } from "./Account";
 
 export function Access() {
+  const { settings } = useApp();
+  if (isFreeForever(settings.country)) {
+    // Italy: free forever. No purchase, checkout, trial or licence purchase is offered or needed.
+    return (
+      <div>
+        <header className="page-head"><h1><Bi t={T.nav.access} /></h1></header>
+        <section className="card stack" data-testid="purchase-free-forever">
+          <h2 lang="it" dir="ltr">{IT_FREE_FOREVER_LABEL}</h2>
+          <p lang="it" dir="ltr">Tutte le lezioni, le domande, i quiz d'esame e i progressi sono gratuiti per tutti gli studenti registrati, per sempre. Nessun pagamento, abbonamento o periodo di prova.</p>
+        </section>
+      </div>
+    );
+  }
   return (
     <div>
       <header className="page-head"><h1><Bi t={T.nav.access} /></h1></header>

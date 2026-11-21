@@ -4,6 +4,8 @@
  */
 import { readFlags, type FlagEnv } from "../src/lib/shared/flags";
 import { verifyWebhookSignature } from "../src/lib/shared/payments";
+import { ACCESS_POLICY, checkoutAllowedFor, parseCountry, purchaseRequiredFor } from "../src/lib/shared/accessPolicy";
+import type { Country } from "../src/lib/shared/license";
 import { AiGateway, SYSTEM_PROMPT, type AiEnv } from "./ai/gateway";
 import { questionById } from "../src/content/questions";
 import { isQuestionVisible } from "../src/content/access";
@@ -63,6 +65,9 @@ export async function handleApi(req: Request, env: Env, now = Date.now()): Promi
       contentImportExecutionEnabled: flags.contentImportExecutionEnabled, publicOfficialMockExamsEnabled: flags.publicOfficialMockExamsEnabled,
       contentAutoSyncEnabled: flags.contentAutoSyncEnabled, subscriptionsEnabled: flags.subscriptionsEnabled,
       studentAuthEnabled: flags.studentAuthEnabled && !!env.STUDENT_DB,
+      // Additive: per-country access model. IT never requires a purchase; DE keeps purchaseRequired above.
+      accessPolicy: ACCESS_POLICY,
+      purchaseRequiredByCountry: { IT: purchaseRequiredFor("IT", flags.purchaseRequired), DE: purchaseRequiredFor("DE", flags.purchaseRequired) },
     });
   }
 
@@ -102,6 +107,8 @@ export async function handleApi(req: Request, env: Env, now = Date.now()): Promi
   }
 
   if (p === "/api/purchase/checkout") {
+    // Italy is FREE_FOREVER: no purchase can start for it, regardless of the payment flags. Germany is unchanged.
+    if (!checkoutAllowedFor(await requestedCountry(req, url))) return json({ error: "FREE_FOREVER_COUNTRY" }, 403);
     if (!flags.checkoutEnabled) return json({ error: "PAYMENTS_DISABLED" }, 403);
     return json({ error: "NOT_IMPLEMENTED" }, 501);
   }
@@ -153,6 +160,17 @@ export async function handleApi(req: Request, env: Env, now = Date.now()): Promi
   }
 
   return json({ error: "NOT_FOUND" }, 404);
+}
+
+/** Country a request is about: ?country= or a JSON body { country }. Unknown or missing means no country. */
+async function requestedCountry(req: Request, url: URL): Promise<Country | null> {
+  const fromQuery = parseCountry(url.searchParams.get("country"));
+  if (fromQuery) return fromQuery;
+  if (req.method !== "POST") return null;
+  try {
+    const body: unknown = await req.clone().json();
+    return typeof body === "object" && body && "country" in body ? parseCountry((body as { country: unknown }).country) : null;
+  } catch { return null; }
 }
 
 // Stable per (env, provider order) so the gateway's free-tier counters are not reset on every request.

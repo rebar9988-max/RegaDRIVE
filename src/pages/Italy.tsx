@@ -9,6 +9,7 @@ import { IT_CONTENT } from "../app/content";
 import { itQuestionsOf } from "../content/italy/access";
 import { IT_PLANNED_TOTAL } from "../content/italy/chapters";
 import { questionStatus } from "../lib/progress";
+import { IT_FREE_FOREVER_LABEL } from "../lib/shared/accessPolicy";
 
 const newSession = () => `it-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
 
@@ -20,6 +21,7 @@ export function ItalyHome() {
   return (
     <section className="stack" data-testid="italy-home">
       <h1><Bi t={T.it.title} /></h1>
+      <p className="card" data-testid="italy-free-forever" lang="it" dir="ltr"><strong>{IT_FREE_FOREVER_LABEL}</strong></p>
       <p className="card muted small"><Bi t={T.it.reviewNotice} /></p>
       {IT_CONTENT.questions.length === 0 && <p className="card" data-testid="italy-in-review"><Bi t={T.contentInReview} /></p>}
       <div className="grid grid-2 compact-stats">
