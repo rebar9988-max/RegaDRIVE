@@ -150,12 +150,15 @@ export function ItalyExam() {
   const [paper, setPaper] = useState<ItQuestion[] | null>(null);
   const [startedAt, setStartedAt] = useState(0);
   const [answers, setAnswers] = useState<Record<string, boolean>>({});
-  const [handedIn, setHandedIn] = useState(false);
+  const [handedInByLearner, setHandedIn] = useState(false);
   const [pos, setPos] = useState(0);
   const [session, setSession] = useState(newSession);
-  const now = useNowTicking(paper !== null && !handedIn);
+  // The clock only runs while the paper is open and the 20 minutes have not elapsed.
+  const running = paper !== null && !handedInByLearner && Date.now() - startedAt < rules.minutes * 60_000;
+  const now = useNowTicking(running);
   const left = paper === null ? rules.minutes * 60 : itTimeLeft(startedAt, now, rules);
-  useEffect(() => { if (paper !== null && !handedIn && left === 0) setHandedIn(true); }, [paper, handedIn, left]);
+  // Time over ends the exam on its own: derived from the clock, never written into state.
+  const handedIn = handedInByLearner || (paper !== null && left === 0);
 
   const start = () => {
     const picked = pickItExam(approved.questions, rules);

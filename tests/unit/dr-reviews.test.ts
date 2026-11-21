@@ -5,6 +5,7 @@ import type { D1Like, D1Stmt } from "../../worker/dr/db";
 import { handleApi, type Env } from "../../worker/index";
 import migration from "../../migrations/0003_dr_admin.sql?raw";
 import reviewsMigration from "../../migrations/0006_dr_content_reviews.sql?raw";
+import itReviewsMigration from "../../migrations/0007_dr_content_reviews_italy.sql?raw";
 import { approvedContent, REVIEW_ITEMS } from "../../worker/dr/reviews";
 import { SIGNS } from "../../src/content/signs";
 import { SIGN_QUIZ } from "../../src/content/signQuiz";
@@ -19,6 +20,7 @@ function d1(): D1Like {
   const db = new DatabaseSync(":memory:");
   db.exec(migration);
   db.exec(reviewsMigration);
+  db.exec(itReviewsMigration);
   const stmt = (sql: string, params: unknown[]): D1Stmt => ({
     bind: (...v: unknown[]) => stmt(sql, v),
     first: async <T,>() => (db.prepare(sql).get(...params) as T | undefined) ?? null,
@@ -74,7 +76,7 @@ describe("/dr Content Review & Approval", () => {
     expect(REVIEW_ITEMS.every((i) => i.valid)).toBe(true);
     const t = setup();
     const out = await approvedContent(t.env.DB);
-    expect(out).toEqual({ ok: true, signs: {}, signQuiz: {} });
+    expect(out).toEqual({ ok: true, signs: {}, signQuiz: {}, itSigns: {}, itQuestions: {} });
     await t.login();
     const r = await t.call("/api/dr/reviews");
     expect(r.status).toBe(200);
@@ -193,9 +195,9 @@ describe("/dr Content Review & Approval", () => {
   });
 
   it("fails closed: no database or an unmigrated database publishes nothing", async () => {
-    expect(await approvedContent(undefined)).toEqual({ ok: false, signs: {}, signQuiz: {} });
+    expect(await approvedContent(undefined)).toEqual({ ok: false, signs: {}, signQuiz: {}, itSigns: {}, itQuestions: {} });
     const bare = new DatabaseSync(":memory:");
     const stmt = (sql: string, params: unknown[]): D1Stmt => ({ bind: (...v: unknown[]) => stmt(sql, v), first: async <T,>() => (bare.prepare(sql).get(...params) as T | undefined) ?? null, all: async <T,>() => ({ results: bare.prepare(sql).all(...params) as T[] }), run: async () => bare.prepare(sql).run(...params) });
-    expect(await approvedContent({ prepare: (s: string) => stmt(s, []) })).toEqual({ ok: false, signs: {}, signQuiz: {} });
+    expect(await approvedContent({ prepare: (s: string) => stmt(s, []) })).toEqual({ ok: false, signs: {}, signQuiz: {}, itSigns: {}, itQuestions: {} });
   });
 });
