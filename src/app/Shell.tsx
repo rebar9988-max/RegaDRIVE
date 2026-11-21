@@ -37,7 +37,7 @@ export const MORE_LINKS: { href: string; icon: IconName; t: Bilingual }[] = [
 ];
 
 /** Links under "More" that exist for a country. German lessons, vocabulary and progress are not part of the Italian section yet. */
-const IT_MORE_HREFS = new Set(["/account", "/settings", "/signs", "/services", "/access", "/about"]);
+const IT_MORE_HREFS = new Set(["/account", "/settings", "/services", "/access", "/about"]);
 export const moreLinksFor = (country: CountryId | null) => (country === "IT" ? MORE_LINKS.filter((l) => IT_MORE_HREFS.has(l.href)) : MORE_LINKS);
 export const tabsFor = (country: CountryId | null) => (country === "IT" ? IT_TABS : TABS);
 
