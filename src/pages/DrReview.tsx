@@ -24,7 +24,7 @@ interface Item {
 }
 interface HistoryRow { id: number; source?: "de" | "it"; content_id: string; stage: Stage; outcome: string; reviewer_name: string; reviewer_role: string; reviewed_on: string; evidence_ref: string; note: string; recorded_by: string; recorded_at: number; revoked_at: number | null; revoke_reason: string | null }
 interface KindCount { total: number; published: number }
-interface Data { items: Item[]; counts: { total: number; published: number; awaiting: number; inReview: number; rejected: number; signs: KindCount; signQuiz: KindCount; itSigns: KindCount; itQuestions: KindCount }; history: HistoryRow[]; rulesVersion: string; rulesVersionIt?: string }
+interface Data { tablesReady?: { de: boolean; it: boolean }; items: Item[]; counts: { total: number; published: number; awaiting: number; inReview: number; rejected: number; signs: KindCount; signQuiz: KindCount; itSigns: KindCount; itQuestions: KindCount }; history: HistoryRow[]; rulesVersion: string; rulesVersionIt?: string }
 type ApiResult = { status: number; body: Record<string, unknown> };
 interface Props { api: (path: string, body?: unknown) => Promise<ApiResult>; onNeedStepUp: (retry: () => Promise<void>) => void }
 
@@ -225,6 +225,7 @@ export function DrReview({ api, onNeedStepUp }: Props) {
       </div>
       <p className="small muted">ڕیزبەندی: ١) وەرگێڕی سۆرانی ← ٢) مامۆستای شۆفێری (کەسێکی جیاواز) ← ٣) پەسەندکردنی خاوەن. هەر بڕیارێک پێویستی بە پشکنەرێکی مرۆیی بە ناو، بەروار و بەڵگە هەیە. کاتێک دەروازەی بڵاوکردنەوە تێپەڕێت ناوەڕۆک خۆکار بڵاو دەبێتەوە؛ ناوەڕۆکی پەسەندنەکراو شاراوە دەمێنێتەوە. وەشانی یاساکانی تاقیکردنەوە: <code dir="ltr">{data.rulesVersion}</code>.</p>
 
+      {data.tablesReady && !data.tablesReady.it && <p className="dr-msg err" data-testid="rv-it-table-missing">خشتەی پێداچوونەوەی ئیتاڵیا لە داتابەیسدا نییە. تکایە کۆچەکان جێبەجێ بکە (migrations/0007) پێش تۆمارکردنی بڕیار بۆ ئیتاڵیا؛ تا ئەو کاتە هیچ ماددەیەکی ئیتاڵی بڵاو نابێتەوە.</p>}
       <div className="rv-filters" role="group" aria-label="فلتەرەکان">
         {(["all", "sign", "signQuiz", "itSign", "itQuestion"] as const).map((k) => <button key={k} type="button" className="dr-chip" aria-pressed={kind === k} onClick={() => setKind(k)} data-testid={`rv-kind-${k}`}>{KIND_LABEL[k]}</button>)}
         {(["all", "awaiting", "review", "published", "rejected"] as const).map((k) => <button key={k} type="button" className="dr-chip" aria-pressed={status === k} onClick={() => setStatus(k)}>{ST_LABEL[k]}</button>)}

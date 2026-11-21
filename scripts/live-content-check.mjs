@@ -46,8 +46,12 @@ await check("/api/content/approved", async () => {
   approved = await r.json();
   assert.equal(typeof approved.ok, "boolean");
   const s = Object.keys(approved.signs ?? {}).length, q = Object.keys(approved.signQuiz ?? {}).length;
-  if (approved.ok !== true) assert.equal(s + q, 0, "fail closed");
-  return `ok=${approved.ok} · signs ${s}/40 · quiz ${q}/89`;
+  const its = Object.keys(approved.itSigns ?? {}).length, itq = Object.keys(approved.itQuestions ?? {}).length;
+  if (approved.ok !== true) assert.equal(s + q + its + itq, 0, "fail closed");
+  const ready = approved.ready ?? {};
+  if (ready.de === false) assert.equal(s + q, 0, "German bank not ready: publishes nothing");
+  if (ready.it === false) assert.equal(its + itq, 0, "Italian bank not ready: publishes nothing");
+  return `ok=${approved.ok} · DE signs ${s}/40 · quiz ${q}/89 · IT signs ${its}/8 · questions ${itq}/12 · tables de=${ready.de} it=${ready.it}`;
 });
 await check("unauthenticated /dr review API refused", async () => {
   const r = await get("/api/dr/reviews"); assert.equal(r.status, 401);

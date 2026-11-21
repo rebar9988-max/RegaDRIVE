@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { evaluate, evaluateAll, activeRows, ALL_REVIEW_ITEMS, REVIEW_ITEM_BY_ID, REVIEW_TABLE, checkSubmission, parseSubmission, rulesVersionFor, sourceFor, type ReviewRow } from "../../worker/dr/reviews";
+import { approvedContent, evaluate, evaluateAll, activeRows, ALL_REVIEW_ITEMS, REVIEW_ITEM_BY_ID, REVIEW_TABLE, checkSubmission, parseSubmission, rulesVersionFor, sourceFor, type ReviewRow } from "../../worker/dr/reviews";
 import { IT_REVIEW_ITEMS, IT_REVIEW_ITEM_BY_ID } from "../../src/content/italy/reviewItems";
 import { IT_QUESTIONS } from "../../src/content/italy/questions";
 import { IT_SIGNS } from "../../src/content/italy/signs";
@@ -129,6 +129,26 @@ describe("what the Italian learner is served", () => {
   it("ignores an approval whose fingerprint no longer matches", () => {
     const q = IT_QUESTIONS[0]!;
     expect(filterItApproved({ ok: true, itQuestions: { [q.id]: "stale" } }).questions).toEqual([]);
+  });
+});
+
+describe("one bank missing never breaks the other", () => {
+  // The Italian review table only exists once the owner applies migration 0007. Until then the Italian
+  // bank publishes nothing and the German bank must keep working exactly as before.
+  const onlyGerman = (): Parameters<typeof approvedContent>[0] => ({
+    prepare: (sql: string) => ({
+      bind: () => ({ first: async () => null, all: async () => ({ results: [] }), run: async () => undefined }),
+      first: async () => null,
+      all: async () => { if (sql.includes("dr_it_content_reviews")) throw new Error("no such table: dr_it_content_reviews"); return { results: [] }; },
+      run: async () => undefined,
+    }),
+  } as Parameters<typeof approvedContent>[0]);
+  it("reports the German bank ready and the Italian one not", async () => {
+    const out = await approvedContent(onlyGerman());
+    expect(out.ready).toEqual({ de: true, it: false });
+    expect(out.ok).toBe(true);
+    expect(out.itQuestions).toEqual({});
+    expect(out.itSigns).toEqual({});
   });
 });
 
