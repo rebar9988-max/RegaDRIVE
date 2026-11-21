@@ -554,7 +554,7 @@ try {
     const detail = () => page.evaluate(() => [".topbar", ".topbar > :first-child", ".topbar .brand", ".topbar > :last-child", ".notification-menu"].map((s) => { const r = document.querySelector(s)?.getBoundingClientRect(); return `${s}=${r ? `${Math.round(r.left)}..${Math.round(r.right)}` : "none"}`; }).join(" ") + ` scrollW=${document.documentElement.scrollWidth} clientW=${document.documentElement.clientWidth}`);
     const before = await layout();
     const beforeDetail = await detail();
-    for (const lang of ["kmr", "ar", "de", "ckb"]) {
+    for (const lang of ["kmr", "kmr-arab", "ar", "de", "ckb"]) {
       await page.click(`[data-testid=lang-${lang}]`);
       assert.equal(await page.getAttribute("html", "lang"), lang);
       assert.deepEqual(await layout(), before, `header moved in ${lang}\n  ckb: ${beforeDetail}\n  ${lang}: ${await detail()}`);
@@ -562,7 +562,7 @@ try {
     await ctx.close();
   });
 
-  await test("header language selector: one compact control, four languages, checkmark, saved choice, bottom sheet on phones", async () => {
+  await test("header language selector: one compact control, five languages, checkmark, saved choice, bottom sheet on phones", async () => {
     for (const [name, opts] of [["desktop", { viewport: { width: 1280, height: 900 } }], ["tablet", { viewport: { width: 820, height: 1100 } }], ["phone 360", { viewport: { width: 360, height: 740 } }], ["phone 320", { viewport: { width: 320, height: 700 } }]]) {
       // bypassCSP only so the axe test script can be injected; the app itself keeps its strict CSP.
       const ctx = await browser.newContext({ ...opts, bypassCSP: true });
@@ -586,7 +586,7 @@ try {
       const panel = page.locator("[data-testid=header-lang-panel]");
       await panel.waitFor();
       assert.equal(await trigger.getAttribute("aria-expanded"), "true");
-      assert.deepEqual(await panel.locator(".lang-option-code").allTextContents(), ["CKB", "KMR", "DE", "AR"], `${name}: exactly the four supported languages`);
+      assert.deepEqual(await panel.locator(".lang-option-code").allTextContents(), ["CKB", "KMR", "BAD", "DE", "AR"], `${name}: exactly the five supported languages`);
       assert.equal(await panel.locator(".lang-check svg").count(), 1, `${name}: exactly one checkmark`);
       assert.deepEqual(await panel.locator(".lang-flag").evaluateAll((els) => els.map((e) => e.getAttribute("src"))), ["/flags/kurdistan.png", "/flags/kurdistan.png", "/flags/de.png", "/flags/arabic.png"], `${name}: every language shows its flag`);
       // The images are inserted when the panel opens: wait (bounded) for them to finish, then require every one to have loaded.
@@ -920,7 +920,7 @@ try {
         vvScale: window.visualViewport?.scale, brandFont: bn ? getComputedStyle(bn).fontSize : null, brandDisplay: bn ? getComputedStyle(bn).display : null, wide };
     });
     const before = await snap();
-    for (const lang of ["kmr", "ar", "de", "ckb"]) {
+    for (const lang of ["kmr", "kmr-arab", "ar", "de", "ckb"]) {
       await page.click(`[data-testid=lang-${lang}]`);
       const after = await snap();
       assert.deepEqual(after.layout, before.layout, `header moved in ${lang}\nbefore=${JSON.stringify(before)}\nafter=${JSON.stringify(after)}`);
@@ -1062,7 +1062,7 @@ try {
     await ctx.close();
   });
 
-  await test("200 percent text on a 320px screen: nothing cut off or off screen, in all four languages (WCAG 1.4.4 / 1.4.10; from PR #22)", async () => {
+  await test("200 percent text on a 320px screen: nothing cut off or off screen, in all five languages (WCAG 1.4.4 / 1.4.10; from PR #22)", async () => {
     const ctx = await browser.newContext({ viewport: { width: 320, height: 844 } });
     const page = await ctx.newPage();
     await page.goto(BASE);
@@ -1070,7 +1070,7 @@ try {
     if (await page.locator(".country-card").count()) await page.locator(".country-card:has([lang=de])").click();
     await page.locator("[data-testid=home]").waitFor();
     for (const path of ["/", "/learn", "/practice", "/exam", "/progress", "/more", "/settings"]) {
-      for (const lang of ["ckb", "kmr", "ar", "de"]) {
+      for (const lang of ["ckb", "kmr", "kmr-arab", "ar", "de"]) {
         await page.goto(`${BASE}/settings`);
         await page.locator(`[data-testid=lang-${lang}]`).click();
         await page.goto(`${BASE}${path}`);
@@ -1136,7 +1136,8 @@ try {
   await test("italy: chapters, VERO/FALSO practice, Badini language, German section untouched", async () => {
     for (const viewport of [{ width: 390, height: 844 }, { width: 1280, height: 900 }]) {
       // A fresh context, so Italy is chosen on the entry screen exactly as a learner would.
-      const ctx = await newContext({ viewport });
+      // bypassCSP only so the axe test script can be injected; the app itself keeps its strict CSP.
+      const ctx = await newContext({ viewport, bypassCSP: true });
       const page = await ctx.newPage();
       await page.goto(BASE);
       await page.locator(".country-card:has([lang=it])").click();

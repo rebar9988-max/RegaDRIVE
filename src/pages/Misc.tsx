@@ -210,8 +210,13 @@ export function Settings() {
               className="chip" tabIndex={settings.lang === l.id ? 0 : -1} onClick={() => setSettings({ lang: l.id })} data-testid={`lang-${l.id}`}>{l.native}</button>
           ))}
         </div>
-        <h3 className="section-title"><Bi t={{ ckb: "دەقی ئەڵمانی لە ژێرەوە", de: "Deutsch darunter zeigen", kmr: "Nivîsa almanî ya orîjînal li jêr", ar: "إظهار النص الألماني الأصلي أسفله" }} /></h3>
-        <div className="chip-row" role="radiogroup" onKeyDown={moveRadio} aria-label={label({ ckb: "دەقی ئەڵمانی", de: "Deutscher Text", kmr: "Nivîsa almanî", ar: "النص الألماني" })}>
+        {/* The second line is the source wording of the chosen country: German for Germany, Italian for Italy. */}
+        <h3 className="section-title"><Bi t={settings.country === "IT"
+          ? { ckb: "دەقی ئیتالی لە ژێرەوە", de: "Italienischen Originaltext darunter zeigen", kmr: "Nivîsa îtalî ya orîjînal li jêr", ar: "إظهار النص الإيطالي الأصلي أسفله" }
+          : { ckb: "دەقی ئەڵمانی لە ژێرەوە", de: "Deutsch darunter zeigen", kmr: "Nivîsa almanî ya orîjînal li jêr", ar: "إظهار النص الألماني الأصلي أسفله" }} /></h3>
+        <div className="chip-row" role="radiogroup" onKeyDown={moveRadio} aria-label={label(settings.country === "IT"
+          ? { ckb: "دەقی ئیتالی", de: "Italienischer Text", kmr: "Nivîsa îtalî", ar: "النص الإيطالي" }
+          : { ckb: "دەقی ئەڵمانی", de: "Deutscher Text", kmr: "Nivîsa almanî", ar: "النص الألماني" })}>
           {([true, false] as const).map((on) => (
             <button key={String(on)} type="button" role="radio" className="chip" disabled={settings.lang === "de"}
               tabIndex={settings.lang !== "de" && settings.withGerman === on ? 0 : -1} aria-checked={settings.lang !== "de" && settings.withGerman === on} onClick={() => setSettings({ withGerman: on })} data-testid={`with-german-${on ? "on" : "off"}`}>
