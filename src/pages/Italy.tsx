@@ -153,9 +153,7 @@ export function ItalyExam() {
   const [handedInByLearner, setHandedIn] = useState(false);
   const [pos, setPos] = useState(0);
   const [session, setSession] = useState(newSession);
-  // The clock only runs while the paper is open and the 20 minutes have not elapsed.
-  const running = paper !== null && !handedInByLearner && Date.now() - startedAt < rules.minutes * 60_000;
-  const now = useNowTicking(running);
+  const now = useNowTicking(paper !== null && !handedInByLearner);
   const left = paper === null ? rules.minutes * 60 : itTimeLeft(startedAt, now, rules);
   // Time over ends the exam on its own: derived from the clock, never written into state.
   const handedIn = handedInByLearner || (paper !== null && left === 0);
@@ -220,14 +218,18 @@ export function ItalyExam() {
   );
 }
 
-/** A clock that only ticks while the exam runs, so nothing re-renders when it is over. */
+/**
+ * A clock that ticks once a second while the exam paper is open. It stops on its own at the end of the
+ * 20 minutes, so the result screen does not keep re-rendering.
+ */
 function useNowTicking(active: boolean): number {
-  const now = useNow();
+  const minute = useNow();
   const [tick, setTick] = useState(() => Date.now());
   useEffect(() => {
     if (!active) return;
     const t = setInterval(() => setTick(Date.now()), 1000);
     return () => clearInterval(t);
   }, [active]);
-  return active ? tick : now;
+  // The per-second value can be one tick behind a freshly started exam, so the minute clock is the floor.
+  return active ? Math.max(tick, minute) : minute;
 }
