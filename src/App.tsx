@@ -16,6 +16,7 @@ const pages = {
   practice: () => import("./pages/Practice"),
   exam: () => import("./pages/Exam"),
   misc: () => import("./pages/Misc"),
+  italy: () => import("./pages/Italy"),
 };
 const page = <M, K extends keyof M>(load: () => Promise<M>, name: K) => lazy(() => load().then((m) => ({ default: m[name] as ComponentType })));
 const Shell = lazy(() => pages.shell().then((m) => ({ default: m.Shell })));
@@ -29,6 +30,9 @@ const Exam = page(pages.exam, "Exam");
 const About = page(pages.misc, "About"), Access = page(pages.misc, "Access"), Account = page(pages.misc, "Account"), More = page(pages.misc, "More"),
   NotFound = page(pages.misc, "NotFound"), ProgressPage = page(pages.misc, "ProgressPage"), Services = page(pages.misc, "Services"),
   Settings = page(pages.misc, "Settings"), Vocabulary = page(pages.misc, "Vocabulary");
+const ItalyHome = page(pages.italy, "ItalyHome");
+const ItalyPractice = page(pages.italy, "ItalyPractice");
+const ItalySigns = page(pages.italy, "ItalySigns");
 const warmUp = () => { for (const load of Object.values(pages)) void load().catch(() => undefined); };
 
 // Owner import workbench: compiled in only when VITE_ADMIN_UI=true (production builds drop it entirely).
@@ -55,8 +59,22 @@ function route(path: string) {
   return C ? <C /> : <NotFound />;
 }
 
-/** Pages that hold no German learning content, so they stay reachable while Italy has none (account, settings, more, about). */
-const ITALY_SHARED_PATHS = new Set(["/account", "/settings", "/more", "/about"]);
+/** Pages that hold no country content at all, so both countries use the same ones. */
+const ITALY_SHARED_PATHS = new Set(["/account", "/settings", "/more", "/about", "/access", "/services"]);
+
+/**
+ * Italy's own routes. The Italian content has its own model (true/false questions, Italian source
+ * wording, its own signs), so it has its own screens instead of being pushed through the German ones.
+ * Anything else is not part of the Italian section yet and shows the in-review screen.
+ */
+function italyRoute(path: string) {
+  const p = path.replace(/\/+$/, "") || "/";
+  if (p === "/") return <ItalyHome />;
+  if (p === "/practice") return <ItalyPractice />;
+  if (p === "/signs") return <ItalySigns />;
+  if (ITALY_SHARED_PATHS.has(p)) return route(p);
+  return <ItalyPending />;
+}
 
 export function App() {
   // Pathname and query identify a page; a new query (e.g. another practice filter) remounts it (from PR #22).
@@ -73,7 +91,7 @@ export function App() {
   if (!ready) return splash;
   return (
     <Suspense fallback={splash}>
-      <Shell><ErrorBoundary resetKey={path}><Suspense fallback={<div aria-busy="true" className="route-loading" />}><div key={location}>{settings.country === "IT" && !ITALY_SHARED_PATHS.has(path) ? <ItalyPending /> : route(path)}</div></Suspense></ErrorBoundary></Shell>
+      <Shell><ErrorBoundary resetKey={path}><Suspense fallback={<div aria-busy="true" className="route-loading" />}><div key={location}>{settings.country === "IT" ? italyRoute(path) : route(path)}</div></Suspense></ErrorBoundary></Shell>
     </Suspense>
   );
 }

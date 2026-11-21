@@ -1,6 +1,6 @@
 import { useState, type KeyboardEvent } from "react";
 import { Link } from "../app/router";
-import { MORE_LINKS } from "../app/Shell";
+import { moreLinksFor } from "../app/Shell";
 import { useApp, useNow } from "../app/state";
 import { LANGS, langDir, vocabMeaning } from "../app/i18n";
 import { T } from "../app/strings";
@@ -13,12 +13,13 @@ import { normalize } from "../lib/search";
 import { questionStatus, readiness, streakDays, topicStats } from "../lib/progress";
 
 export function More() {
+  const { settings } = useApp();
   return (
     <div>
       <header className="page-head"><h1><Bi t={T.nav.more} /></h1></header>
       <ul className="list" style={{ listStyle: "none", padding: 0, margin: 0 }}>
         {/* Account is reachable from the header button; it is intentionally not repeated in this list. */}
-        {MORE_LINKS.filter((l) => l.href !== "/account").map((l) => (
+        {moreLinksFor(settings.country).filter((l) => l.href !== "/account").map((l) => (
           <li key={l.href}>
             <Link href={l.href} className="card card-link list-item">
               <span className="tile-icon"><Icon name={l.icon} /></span><Bi t={l.t} /><Icon name="arrow" className="flip-rtl" />

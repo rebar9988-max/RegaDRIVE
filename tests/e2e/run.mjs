@@ -1132,6 +1132,56 @@ try {
     await ctx.setOffline(false);
     await ctx.close();
   });
+  // Italy: its own section, on a phone and on a desktop viewport, in Sorani, Badini and German.
+  await test("italy: chapters, VERO/FALSO practice, Badini language, German section untouched", async () => {
+    for (const viewport of [{ width: 390, height: 844 }, { width: 1280, height: 900 }]) {
+      // A fresh context, so Italy is chosen on the entry screen exactly as a learner would.
+      const ctx = await newContext({ viewport });
+      const page = await ctx.newPage();
+      await page.goto(BASE);
+      await page.locator(".country-card:has([lang=it])").click();
+      await page.locator("[data-testid=italy-home]").waitFor();
+      // Italy shows the 16 chapters of its own syllabus and never a German screen.
+      assert.equal(await page.locator("[data-testid=italy-chapters] > li").count(), 16, "16 Italian chapters");
+      assert.equal(await page.locator("[data-testid=home]").count(), 0, "no German home page under Italy");
+      assert.equal(await page.locator("[data-testid=italy-pending]").count(), 0, "Italy has content now");
+      // The layout never mirrors: the document stays right-to-left in every language.
+      assert.equal(await page.evaluate(() => document.documentElement.dir), "rtl");
+      await axe(page, `italy home ${viewport.width}`);
+
+      // Badini is a language of its own, written right to left.
+      await page.locator("[data-testid=header-lang-trigger]").click();
+      await page.locator("[data-testid=header-lang-kmr-arab]").click();
+      assert.equal(await page.evaluate(() => document.documentElement.lang), "kmr-arab");
+      assert.equal(await page.evaluate(() => document.documentElement.dir), "rtl");
+      assert.equal(await page.evaluate(() => document.documentElement.classList.contains("text-ltr")), false, "Badini is not a Latin-script language");
+
+      // Chapter 1 practice: answer VERO, see the feedback with the Italian original underneath.
+      await page.goto(`${BASE}/practice?chapter=1`);
+      await page.locator("[data-testid=it-question-card]").waitFor();
+      assert.equal(await page.locator("[data-testid=it-sign] img").count(), 1, "the sign illustration is shown");
+      assert.equal(await page.locator("[data-testid=question-card]").count(), 0, "no German question card in the Italian section");
+      await page.locator("[data-testid=it-option-vero] input").click();
+      await page.locator("[data-testid=it-feedback]").waitFor();
+      assert.equal(await page.locator("[data-testid=it-tag-correct]").count(), 1, "the answer key is shown after answering");
+      const italian = await page.locator("[data-testid=it-question-card] .de[lang=it]").first();
+      assert.equal(await italian.getAttribute("dir"), "ltr", "the Italian original keeps its own direction");
+      await page.screenshot({ path: `${OUT}/italy-practice-${viewport.width}.png`, fullPage: true });
+      await axe(page, `italy practice ${viewport.width}`);
+      await page.locator("[data-testid=it-next]").click();
+      await page.locator("[data-testid=it-question-card]").waitFor();
+      await ctx.close();
+    }
+
+    // Germany is untouched: its multiple-choice card still works in the same build.
+    const de = await browser.newContext({ viewport: { width: 390, height: 844 } });
+    const dePage = await de.newPage();
+    await dePage.goto(`${BASE}/practice`);
+    await dePage.locator("[data-testid=question-card]").waitFor();
+    assert.equal(await dePage.locator("[data-testid=it-question-card]").count(), 0, "no Italian card in the German section");
+    await de.close();
+  });
+
 } finally {
   await browser?.close();
   dev.kill("SIGTERM");
