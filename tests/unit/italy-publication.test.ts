@@ -10,6 +10,7 @@ import { PATENTE_B_RULES_IT, scoreItExam } from "../../src/lib/shared/examIt";
 import { pickItExam, itTimeLeft, formatClock } from "../../src/lib/itExam";
 import { readFlags } from "../../src/lib/shared/flags";
 import { KLASSE_B_RULES_2026 } from "../../src/lib/shared/exam";
+import type { D1Like, D1Stmt } from "../../worker/dr/db";
 
 const TODAY = "2026-11-21";
 const row = (over: Partial<ReviewRow> & { content_id: string; stage: ReviewRow["stage"] }): ReviewRow => ({
@@ -135,14 +136,18 @@ describe("what the Italian learner is served", () => {
 describe("one bank missing never breaks the other", () => {
   // The Italian review table only exists once the owner applies migration 0007. Until then the Italian
   // bank publishes nothing and the German bank must keep working exactly as before.
-  const onlyGerman = (): Parameters<typeof approvedContent>[0] => ({
-    prepare: (sql: string) => ({
-      bind: () => ({ first: async () => null, all: async () => ({ results: [] }), run: async () => undefined }),
+  const onlyGerman = (): D1Like => {
+    const stmt = (sql: string): D1Stmt => ({
+      bind: () => stmt(sql),
       first: async () => null,
-      all: async () => { if (sql.includes("dr_it_content_reviews")) throw new Error("no such table: dr_it_content_reviews"); return { results: [] }; },
+      all: async <T,>() => {
+        if (sql.includes("dr_it_content_reviews")) throw new Error("no such table: dr_it_content_reviews");
+        return { results: [] as T[] };
+      },
       run: async () => undefined,
-    }),
-  } as Parameters<typeof approvedContent>[0]);
+    });
+    return { prepare: stmt };
+  };
   it("reports the German bank ready and the Italian one not", async () => {
     const out = await approvedContent(onlyGerman());
     expect(out.ready).toEqual({ de: true, it: false });
