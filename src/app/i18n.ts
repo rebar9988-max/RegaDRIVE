@@ -25,8 +25,7 @@ export const LANGS: { id: Lang; native: string; flag: string | null }[] = [
 ];
 
 export const ITALY_LANGS: typeof LANGS = [
-  LANGS[0],
-  LANGS[2],
+  ...LANGS.filter(({ id }) => id === "ckb" || id === "kmr-arab"),
   { id: "it", native: "Italiano", flag: "/flags/it.svg" },
 ];
 export const languagesFor = (country: "DE" | "IT" | null) => country === "IT" ? ITALY_LANGS : LANGS;
