@@ -86,7 +86,7 @@ export function ItalyPractice() {
   if (list.length === 0) {
     return (
       <section className="stack" data-testid="italy-practice-empty">
-        <h1><Bi t={T.it.title} /></h1>
+        <h1><Bi t={title?.title ?? T.it.title} /></h1>
         {approved.questions.length === 0 ? <Gate loading={approved.loading} failed={approved.failed} /> : <p className="card"><Bi t={T.it.noQuestionsYet} /></p>}
         <Link href="/" className="btn"><Bi t={T.it.backToChapters} /></Link>
       </section>
