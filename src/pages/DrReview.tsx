@@ -2,27 +2,40 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { SignIcon } from "../components/SignIcon";
 import { SIGNS, signSource } from "../content/signs";
 import { SIGN_QUIZ } from "../content/signQuiz";
+import { IT_QUESTIONS } from "../content/italy/questions";
+import { IT_SIGNS, itSignById, itSignSrc } from "../content/italy/signs";
+import type { ItQuestion } from "../content/italy/types";
 import type { Question, TrafficSign } from "../content/types";
 import "./dr.css";
 
 /**
- * /dr → Content Review & Approval for the Verkehrszeichen release (40 signs, 89 quiz questions).
+ * /dr → Content Review & Approval for the Verkehrszeichen release (40 signs, 89 quiz questions) and
+ * for the Italian section (8 sign illustrations, 12 true/false questions).
  * The screen records decisions of NAMED HUMAN reviewers (Sorani translator → driving instructor → owner).
  * It never fills a reviewer, date or evidence in by itself, and publication stays with the server-side
  * publicationGate: an item goes live automatically once the gate passes, and not before.
  */
 type Stage = "TRANSLATION_REVIEW" | "EDUCATIONAL_REVIEW" | "APPROVED";
-interface StageInfo { state: "pass" | "fail" | "pending"; reviewer?: string; role?: string; reviewedOn?: string; evidenceRef?: string; note?: string; rowId?: number }
+interface StageInfo { state: "pass" | "fail" | "pending"; reviewer?: string; role?: string; reviewedOn?: string; evidenceRef?: string; note?: string; rowId?: number; rowSource?: "de" | "it" }
+type Kind = "sign" | "signQuiz" | "itSign" | "itQuestion";
 interface Item {
-  id: string; kind: "sign" | "signQuiz"; status: string; publishable: boolean; reasons: string[]; valid: boolean;
+  id: string; kind: Kind; status: string; publishable: boolean; reasons: string[]; valid: boolean;
   checks: { ok: boolean; label: string }[]; sourceRefs: string[]; stages: Record<Stage, StageInfo>;
 }
-interface HistoryRow { id: number; content_id: string; stage: Stage; outcome: string; reviewer_name: string; reviewer_role: string; reviewed_on: string; evidence_ref: string; note: string; recorded_by: string; recorded_at: number; revoked_at: number | null; revoke_reason: string | null }
-interface Data { items: Item[]; counts: { total: number; published: number; awaiting: number; inReview: number; rejected: number; signs: { total: number; published: number }; signQuiz: { total: number; published: number } }; history: HistoryRow[]; rulesVersion: string }
+interface HistoryRow { id: number; source?: "de" | "it"; content_id: string; stage: Stage; outcome: string; reviewer_name: string; reviewer_role: string; reviewed_on: string; evidence_ref: string; note: string; recorded_by: string; recorded_at: number; revoked_at: number | null; revoke_reason: string | null }
+interface KindCount { total: number; published: number }
+interface Data { items: Item[]; counts: { total: number; published: number; awaiting: number; inReview: number; rejected: number; signs: KindCount; signQuiz: KindCount; itSigns: KindCount; itQuestions: KindCount }; history: HistoryRow[]; rulesVersion: string; rulesVersionIt?: string }
 type ApiResult = { status: number; body: Record<string, unknown> };
 interface Props { api: (path: string, body?: unknown) => Promise<ApiResult>; onNeedStepUp: (retry: () => Promise<void>) => void }
 
 const STAGES: Stage[] = ["TRANSLATION_REVIEW", "EDUCATIONAL_REVIEW", "APPROVED"];
+const KIND_LABEL: Record<"all" | Kind, string> = {
+  all: "هەموو جۆرەکان",
+  sign: `هێماکان — ئەڵمانیا (${SIGNS.length})`,
+  signQuiz: `کویزی هێما — ئەڵمانیا (${SIGN_QUIZ.length})`,
+  itSign: `هێماکان — ئیتاڵیا (${IT_SIGNS.length})`,
+  itQuestion: `پرسیار — ئیتاڵیا (${IT_QUESTIONS.length})`,
+};
 const STAGE_LABEL: Record<Stage, { en: string; ckb: string; who: string }> = {
   TRANSLATION_REVIEW: { en: "پێداچوونەوەی وەرگێڕان", ckb: "", who: "وەرگێڕی سۆرانی" },
   EDUCATIONAL_REVIEW: { en: "پێداچوونەوەی فێرکاری", ckb: "", who: "مامۆستای شۆفێری" },
@@ -75,8 +88,11 @@ function Stages({ it }: { it: Item }) {
 }
 
 function ItemCard({ it, selected, onToggle }: { it: Item; selected: boolean; onToggle: () => void }) {
-  const sign = it.kind === "sign" ? SIGN_BY_ID.get(it.id) : SIGN_BY_ID.get(QUIZ_BY_ID.get(it.id)?.signId ?? "");
+  const italian = it.kind === "itSign" || it.kind === "itQuestion";
+  const sign = italian ? undefined : it.kind === "sign" ? SIGN_BY_ID.get(it.id) : SIGN_BY_ID.get(QUIZ_BY_ID.get(it.id)?.signId ?? "");
   const q = it.kind === "signQuiz" ? QUIZ_BY_ID.get(it.id) : undefined;
+  const itQ: ItQuestion | undefined = it.kind === "itQuestion" ? IT_QUESTIONS.find((x) => x.id === it.id) : undefined;
+  const itSign = it.kind === "itSign" ? itSignById(it.id) : itQ?.signId ? itSignById(itQ.signId) : undefined;
   const failing = it.checks.filter((c) => !c.ok);
   return (
     <article className="card rv-item" data-testid="review-item" data-id={it.id} data-status={it.status}>
@@ -86,10 +102,20 @@ function ItemCard({ it, selected, onToggle }: { it: Item; selected: boolean; onT
       </header>
       <div className="rv-body">
         {sign && <SignIcon sign={sign} className="rv-sign" label={sign.name.de} />}
+        {itSign && <img className="rv-sign" src={itSignSrc(itSign)} width={72} height={72} alt={itSign.name.it} />}
         <div className="rv-text">
           {it.kind === "sign" && sign && <>
             <Bi de={sign.name.de} ckb={sign.name.ckb} />
             <Bi de={sign.meaning.de} ckb={sign.meaning.ckb} />
+          </>}
+          {it.kind === "itSign" && itSign && <Bi de={itSign.name.it} ckb={itSign.name.ckb} />}
+          {itQ && <>
+            <Bi de={itQ.prompt.it} ckb={itQ.prompt.ckb} />
+            <ul className="rv-options">
+              <li className={itQ.answer ? "right" : ""}><span dir="ltr">VERO{itQ.answer ? " ✔" : ""}</span></li>
+              <li className={!itQ.answer ? "right" : ""}><span dir="ltr">FALSO{!itQ.answer ? " ✔" : ""}</span></li>
+            </ul>
+            <Bi de={itQ.explanation.it} ckb={itQ.explanation.ckb} />
           </>}
           {q && <>
             <Bi de={q.prompt.de} ckb={q.prompt.ckb} />
@@ -114,7 +140,7 @@ function ItemCard({ it, selected, onToggle }: { it: Item; selected: boolean; onT
 export function DrReview({ api, onNeedStepUp }: Props) {
   const [data, setData] = useState<Data | null>(null);
   const [note, setNote] = useState("بارکردن…");
-  const [kind, setKind] = useState<"all" | "sign" | "signQuiz">("all");
+  const [kind, setKind] = useState<"all" | Kind>("all");
   const [status, setStatus] = useState<"all" | "awaiting" | "review" | "published" | "rejected">("all");
   const [q, setQ] = useState("");
   const [sel, setSel] = useState<Set<string>>(new Set());
@@ -172,11 +198,11 @@ export function DrReview({ api, onNeedStepUp }: Props) {
     };
     await run();
   };
-  const revoke = async (rowId: number) => {
+  const revoke = async (rowId: number, source: "de" | "it" = "de") => {
     const reason = window.prompt("هۆکاری هەڵوەشاندنەوەی ئەم بڕیارە (کەمتر نەبێت لە ٥ پیت):") ?? "";
     if (reason.trim().length < 5) return;
     const run = async (): Promise<void> => {
-      const r = await api("/api/dr/reviews/revoke", { rowId, reason });
+      const r = await api("/api/dr/reviews/revoke", { rowId, source, reason });
       if (r.status === 200) { setMsg({ kind: "ok", text: "بڕیارەکە هەڵوەشێنرایەوە (لە مێژوودا دەمێنێتەوە)." }); await load(); }
       else if (r.body.error === "STEP_UP_REQUIRED") onNeedStepUp(run);
       else setMsg({ kind: "err", text: `هەڵوەشاندنەوە سەرنەکەوت (${r.status}).` });
@@ -200,7 +226,7 @@ export function DrReview({ api, onNeedStepUp }: Props) {
       <p className="small muted">ڕیزبەندی: ١) وەرگێڕی سۆرانی ← ٢) مامۆستای شۆفێری (کەسێکی جیاواز) ← ٣) پەسەندکردنی خاوەن. هەر بڕیارێک پێویستی بە پشکنەرێکی مرۆیی بە ناو، بەروار و بەڵگە هەیە. کاتێک دەروازەی بڵاوکردنەوە تێپەڕێت ناوەڕۆک خۆکار بڵاو دەبێتەوە؛ ناوەڕۆکی پەسەندنەکراو شاراوە دەمێنێتەوە. وەشانی یاساکانی تاقیکردنەوە: <code dir="ltr">{data.rulesVersion}</code>.</p>
 
       <div className="rv-filters" role="group" aria-label="فلتەرەکان">
-        {(["all", "sign", "signQuiz"] as const).map((k) => <button key={k} type="button" className="dr-chip" aria-pressed={kind === k} onClick={() => setKind(k)}>{k === "all" ? "هەموو جۆرەکان" : k === "sign" ? "هێماکان (٤٠)" : "کویز (٨٩)"}</button>)}
+        {(["all", "sign", "signQuiz", "itSign", "itQuestion"] as const).map((k) => <button key={k} type="button" className="dr-chip" aria-pressed={kind === k} onClick={() => setKind(k)} data-testid={`rv-kind-${k}`}>{KIND_LABEL[k]}</button>)}
         {(["all", "awaiting", "review", "published", "rejected"] as const).map((k) => <button key={k} type="button" className="dr-chip" aria-pressed={status === k} onClick={() => setStatus(k)}>{ST_LABEL[k]}</button>)}
         <input type="search" className="rv-search" placeholder="گەڕان: ناسنامە، هێما، دەق…" value={q} onChange={(e) => setQ(e.target.value)} aria-label="گەڕان" />
       </div>
@@ -232,7 +258,7 @@ export function DrReview({ api, onNeedStepUp }: Props) {
         <h3 id="rv-hist-h" className="dr-h">مێژووی پێداچوونەوە <small>دوایین ٣٠٠</small></h3>
         <div className="dr-scroll" tabIndex={0} role="region" aria-label="خشتەی مێژووی پێداچوونەوە"><table className="dr-table"><thead><tr><th>تۆمارکرا</th><th>بابەت</th><th>قۆناغ</th><th>ئەنجام</th><th>پشکنەر</th><th>بەروار</th><th>بەڵگە</th><th>تۆمارکەر</th><th /></tr></thead><tbody>
           {data.history.length === 0 && <tr><td colSpan={9}>هێشتا هیچ پێداچوونەوەیەکی مرۆیی تۆمار نەکراوە.</td></tr>}
-          {data.history.map((h) => <tr key={h.id} className={h.revoked_at ? "rv-revoked" : ""}><td>{stamp(h.recorded_at)}</td><td>{h.content_id}</td><td>{h.stage}</td><td>{h.outcome}{h.revoked_at ? ` (هەڵوەشێنراوەتەوە: ${h.revoke_reason})` : ""}</td><td>{h.reviewer_name}</td><td>{h.reviewed_on}</td><td>{h.evidence_ref}</td><td>{h.recorded_by}</td><td>{!h.revoked_at && <button type="button" className="btn btn-secondary btn-sm" onClick={() => void revoke(h.id)}>هەڵوەشاندنەوە</button>}</td></tr>)}
+          {data.history.map((h) => <tr key={h.id} className={h.revoked_at ? "rv-revoked" : ""}><td>{stamp(h.recorded_at)}</td><td>{h.content_id}</td><td>{h.stage}</td><td>{h.outcome}{h.revoked_at ? ` (هەڵوەشێنراوەتەوە: ${h.revoke_reason})` : ""}</td><td>{h.reviewer_name}</td><td>{h.reviewed_on}</td><td>{h.evidence_ref}</td><td>{h.recorded_by}</td><td>{!h.revoked_at && <button type="button" className="btn btn-secondary btn-sm" onClick={() => void revoke(h.id, h.source ?? "de")}>هەڵوەشاندنەوە</button>}</td></tr>)}
         </tbody></table></div>
       </section>
     </div>

@@ -1132,55 +1132,100 @@ try {
     await ctx.setOffline(false);
     await ctx.close();
   });
-  // Italy: its own section, on a phone and on a desktop viewport, in Sorani, Badini and German.
-  await test("italy: chapters, VERO/FALSO practice, Badini language, German section untouched", async () => {
+  // Italy, end to end for a student: entry choice → registration at no cost → back to the Italian
+  // section → practice with explanations and signs → progress recorded → the exam state is honest.
+  await test("italy student journey: free registration, practice, progress, exam state, no German leftovers", async () => {
+    const flags = await (await fetch(`${BASE}/api/flags`)).json();
+    assert.equal(flags.purchaseRequired, false, "no purchase may be required");
+    assert.equal(flags.checkoutEnabled, false, "checkout stays off");
+
     for (const viewport of [{ width: 390, height: 844 }, { width: 1280, height: 900 }]) {
-      // A fresh context, so Italy is chosen on the entry screen exactly as a learner would.
       // bypassCSP only so the axe test script can be injected; the app itself keeps its strict CSP.
       const ctx = await newContext({ viewport, bypassCSP: true });
       const page = await ctx.newPage();
+      const errors = [];
+      page.on("pageerror", (e) => errors.push(e.message));
       await page.goto(BASE);
       await page.locator(".country-card:has([lang=it])").click();
       await page.locator("[data-testid=italy-home]").waitFor();
-      // Italy shows the 16 chapters of its own syllabus and never a German screen.
       assert.equal(await page.locator("[data-testid=italy-chapters] > li").count(), 16, "16 Italian chapters");
-      assert.equal(await page.locator("[data-testid=home]").count(), 0, "no German home page under Italy");
-      assert.equal(await page.locator("[data-testid=italy-pending]").count(), 0, "Italy has content now");
-      // The layout never mirrors: the document stays right-to-left in every language.
-      assert.equal(await page.evaluate(() => document.documentElement.dir), "rtl");
+      assert.equal(await page.locator("[data-testid=italy-free]").count(), 1, "the Italian section states it is free");
       await axe(page, `italy home ${viewport.width}`);
 
-      // Badini is a language of its own, written right to left.
+      // Practice: answer, see the answer key, the explanation and the sign, and move on.
+      await page.goto(`${BASE}/practice?chapter=1`);
+      await page.locator("[data-testid=it-question-card]").waitFor();
+      assert.equal(await page.locator("[data-testid=it-sign] img").count(), 1, "the sign illustration is shown");
+      assert.equal(await page.locator("[data-testid=question-card]").count(), 0, "no German question card under Italy");
+      await page.locator("[data-testid=it-option-vero] input").click();
+      await page.locator("[data-testid=it-feedback]").waitFor();
+      assert.equal(await page.locator("[data-testid=it-tag-correct]").count(), 1, "the answer key appears after answering");
+      const italian = page.locator("[data-testid=it-question-card] .de[lang=it]").first();
+      assert.equal(await italian.getAttribute("dir"), "ltr", "the Italian original keeps its own direction");
+      assert.equal(await page.getAttribute("[data-testid=it-question-card] .pri", "dir"), "rtl", "Sorani is right to left");
+      await page.screenshot({ path: `${OUT}/italy-practice-${viewport.width}.png`, fullPage: true });
+      await axe(page, `italy practice ${viewport.width}`);
+
+      // Progress is recorded for the Italian question, under Italy's own storage key.
+      const answered = await page.evaluate(() => new Promise((res) => { const r = indexedDB.open("regadrive"); r.onsuccess = () => { try { const db = r.result; const store = db.objectStoreNames[0]; const g = db.transaction(store, "readonly").objectStore(store).get("progress:IT"); g.onsuccess = () => res(Object.keys(g.result?.questions ?? {}).length); g.onerror = () => res(-1); } catch { res(-1); } }; r.onerror = () => res(-1); }));
+      assert.ok(answered > 0, "the answer is stored under Italy's own progress key");
+
+      // The mock exam states the real Italian rules and refuses to invent a short paper.
+      await page.goto(`${BASE}/exam`);
+      await page.locator("[data-testid=italy-exam]").waitFor();
+      assert.equal(await page.locator("[data-testid=italy-exam-blocked]").count(), 1, "no exam before 30 approved questions");
+      assert.equal(await page.locator("[data-testid=italy-exam-start]").count(), 0, "the exam cannot be started");
+      assert.ok((await page.textContent("[data-testid=italy-exam]")).includes("patente-b-it"), "the Italian rules version is shown");
+      await axe(page, `italy exam ${viewport.width}`);
+
+      // Badini: a right-to-left language of its own, and the layout never mirrors.
       await page.locator("[data-testid=header-lang-trigger]").click();
       await page.locator("[data-testid=header-lang-kmr-arab]").click();
       assert.equal(await page.evaluate(() => document.documentElement.lang), "kmr-arab");
       assert.equal(await page.evaluate(() => document.documentElement.dir), "rtl");
-      assert.equal(await page.evaluate(() => document.documentElement.classList.contains("text-ltr")), false, "Badini is not a Latin-script language");
+      assert.equal(await page.evaluate(() => document.documentElement.classList.contains("text-ltr")), false, "Badini is not Latin-script");
 
-      // Chapter 1 practice: answer VERO, see the feedback with the Italian original underneath.
-      await page.goto(`${BASE}/practice?chapter=1`);
-      await page.locator("[data-testid=it-question-card]").waitFor();
-      assert.equal(await page.locator("[data-testid=it-sign] img").count(), 1, "the sign illustration is shown");
-      assert.equal(await page.locator("[data-testid=question-card]").count(), 0, "no German question card in the Italian section");
-      await page.locator("[data-testid=it-option-vero] input").click();
-      await page.locator("[data-testid=it-feedback]").waitFor();
-      assert.equal(await page.locator("[data-testid=it-tag-correct]").count(), 1, "the answer key is shown after answering");
-      const italian = await page.locator("[data-testid=it-question-card] .de[lang=it]").first();
-      assert.equal(await italian.getAttribute("dir"), "ltr", "the Italian original keeps its own direction");
-      await page.screenshot({ path: `${OUT}/italy-practice-${viewport.width}.png`, fullPage: true });
-      await axe(page, `italy practice ${viewport.width}`);
-      await page.locator("[data-testid=it-next]").click();
-      await page.locator("[data-testid=it-question-card]").waitFor();
+      // Nothing German is reachable or linked in the Italian section.
+      assert.equal(await page.locator(".tabbar a[href='/learn']").count(), 0, "no German lessons tab under Italy");
+      for (const path of ["/learn", "/vocabulary", "/sign-quiz", "/progress"]) {
+        await page.goto(`${BASE}${path}`);
+        await page.locator("[data-testid=italy-pending]").waitFor();
+        assert.equal(await page.locator("[data-testid=question-card], [data-testid=readiness]").count(), 0, `${path} shows no German content under Italy`);
+      }
+      assert.deepEqual(errors, [], "no page errors in the Italian section");
       await ctx.close();
     }
 
-    // Germany is untouched: its multiple-choice card still works in the same build.
-    const de = await browser.newContext({ viewport: { width: 390, height: 844 } });
-    const dePage = await de.newPage();
-    await dePage.goto(`${BASE}/practice`);
-    await dePage.locator("[data-testid=question-card]").waitFor();
-    assert.equal(await dePage.locator("[data-testid=it-question-card]").count(), 0, "no Italian card in the German section");
-    await de.close();
+    // Registration costs nothing and leads back into the Italian section.
+    const ctx = await newContext({ ...devices["iPhone 13"], bypassCSP: true });
+    const page = await ctx.newPage();
+    await page.goto(BASE);
+    await page.locator(".country-card:has([lang=it])").click();
+    await page.locator("[data-testid=italy-home]").waitFor();
+    const email = `e2e-it-${Date.now()}@example.de`;
+    await page.goto(`${BASE}/account`);
+    await page.locator("[data-testid=signin-form]").waitFor();
+    await page.click("[data-testid=to-register]");
+    await page.locator("[data-testid=register-form]").waitFor();
+    await page.fill("[data-testid=auth-name]", "E2E Italia");
+    await page.fill("[data-testid=auth-email]", email);
+    await page.fill("[data-testid=auth-password]", "E2E-sicheres-Passwort");
+    await page.click("[data-testid=register-submit]");
+    await page.locator("[data-testid=verify-form]").waitFor();
+    const code = codeFor(email);
+    assert.match(code, /^\d{6}$/, "verification e-mail delivered to the sink");
+    await page.fill("[data-testid=auth-code]", code);
+    await page.click("[data-testid=verify-submit]");
+    await page.locator("[data-testid=account-signed-in]").waitFor();
+    // No payment wall anywhere on the way in or back.
+    const text = (await page.textContent("[data-testid=account-signed-in]")) ?? "";
+    assert.equal(/€|EUR|Kauf|checkout/i.test(text), false, `no price or purchase on the account page: ${text.slice(0, 200)}`);
+    assert.equal((await fetch(`${BASE}/api/checkout`, { method: "POST" })).status >= 400, true, "checkout refuses");
+    await page.goto(BASE);
+    await page.locator("[data-testid=italy-home]").waitFor();
+    assert.equal(await page.locator("[data-testid=italy-pending]").count(), 0, "a registered learner lands back in the Italian section");
+    await page.screenshot({ path: `${OUT}/italy-registered.png`, fullPage: true });
+    await ctx.close();
   });
 
 } finally {

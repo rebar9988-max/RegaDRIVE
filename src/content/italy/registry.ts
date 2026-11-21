@@ -1,4 +1,5 @@
 import { publicationGate, type ContentRecord, type GateResult, type Provenance, type ReviewRecord } from "../pipeline.ts";
+import { PATENTE_B_RULES_IT } from "../../lib/shared/examIt.ts";
 import { IT_QUESTIONS, IT_CONTENT_VERSION } from "./questions.ts";
 import { IT_SIGNS } from "./signs.ts";
 import type { ItQuestion } from "./types.ts";
@@ -15,7 +16,7 @@ const CREATED_ON = "2026-11-21";
 const AUTHOR = "RegaDRIVE content team, from the owner's Patente B material (drafted with AI assistance, Claude Code)";
 
 /** The exam-rule release Italian questions have to be validated against before they may be published. */
-export const IT_RULES_VERSION = "patente-b-it-2026-11";
+export const IT_RULES_VERSION = PATENTE_B_RULES_IT.version;
 
 /** Legal references per question, checked by the educational reviewer before approval. CdS = Codice della Strada. */
 const IT_QUESTION_SOURCES: Record<string, string[]> = {

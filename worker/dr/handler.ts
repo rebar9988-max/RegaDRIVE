@@ -6,7 +6,7 @@
  * cookie; only their hash is stored. Sessions end after 30 min idle or 8 h. Critical changes need a fresh code
  * (step-up, valid 10 min). Every decision is written to dr_audit_log.
  */
-import { evaluateAll, loadRows, parseSubmission, checkSubmission, recordReview, REVIEW_ITEMS, REVIEW_ITEM_BY_ID, ROLE_FOR_STAGE } from "./reviews";
+import { evaluateAll, loadRows, parseSubmission, checkSubmission, recordReview, ALL_REVIEW_ITEMS, REVIEW_ITEM_BY_ID, REVIEW_TABLE, ROLE_FOR_STAGE, rulesVersionFor } from "./reviews";
 import { KLASSE_B_RULES_2026 } from "../../src/lib/shared/exam";
 import type { D1Like } from "./db";
 import { invalidateOverrides, loadOverrides } from "./db";
@@ -396,10 +396,12 @@ export async function handleDr(req: Request, env: DrEnv, deps: DrDeps = {}): Pro
   if (path === "/api/dr/reviews" && req.method === "GET") {
     const rows = await loadRows(db);
     const states = new Map(evaluateAll(rows).map((x) => [x.id, x]));
-    const items = REVIEW_ITEMS.map((i) => ({ ...states.get(i.id)!, checks: i.checks, valid: i.valid, sourceRefs: i.sourceRefs, contentVersion: i.contentVersion }));
-    const counts = { total: items.length, published: 0, awaiting: 0, inReview: 0, rejected: 0, signs: { total: 0, published: 0 }, signQuiz: { total: 0, published: 0 } };
+    const items = ALL_REVIEW_ITEMS.map((i) => ({ ...states.get(i.id)!, checks: i.checks, valid: i.valid, sourceRefs: i.sourceRefs, contentVersion: i.contentVersion }));
+    const counts = { total: items.length, published: 0, awaiting: 0, inReview: 0, rejected: 0,
+      signs: { total: 0, published: 0 }, signQuiz: { total: 0, published: 0 },
+      itSigns: { total: 0, published: 0 }, itQuestions: { total: 0, published: 0 } };
     for (const x of items) {
-      const k = x.kind === "sign" ? "signs" : "signQuiz";
+      const k = x.kind === "sign" ? "signs" : x.kind === "signQuiz" ? "signQuiz" : x.kind === "itSign" ? "itSigns" : "itQuestions";
       counts[k].total++;
       if (x.publishable) { counts.published++; counts[k].published++; }
       else if (x.status === "REJECTED") counts.rejected++;
@@ -407,7 +409,7 @@ export async function handleDr(req: Request, env: DrEnv, deps: DrDeps = {}): Pro
       else counts.inReview++;
     }
     const history = rows.slice(-300).reverse();
-    return reply({ items, counts, history, rulesVersion: KLASSE_B_RULES_2026.version, roles: ROLE_FOR_STAGE, steppedUp });
+    return reply({ items, counts, history, rulesVersion: KLASSE_B_RULES_2026.version, rulesVersionIt: rulesVersionFor("itQuestion"), roles: ROLE_FOR_STAGE, steppedUp });
   }
 
   if (path === "/api/dr/reviews" && req.method === "POST") {
@@ -431,17 +433,20 @@ export async function handleDr(req: Request, env: DrEnv, deps: DrDeps = {}): Pro
   }
 
   if (path === "/api/dr/reviews/revoke" && req.method === "POST") {
-    let body: { rowId?: unknown; reason?: unknown };
+    let body: { rowId?: unknown; reason?: unknown; source?: unknown };
     try { body = await req.json(); } catch { return reply({ error: "BAD_REQUEST" }, 400); }
     const rowId = typeof body.rowId === "number" && Number.isInteger(body.rowId) ? body.rowId : null;
     const reason = typeof body.reason === "string" ? body.reason.trim() : "";
-    if (rowId === null || reason.length < 5 || reason.length > 300) return reply({ error: "BAD_REQUEST" }, 400);
+    // Each content system keeps its own review table, so ids are per table and the table must be named.
+    const source = body.source === "it" ? "it" : body.source === "de" || body.source === undefined ? "de" : null;
+    if (rowId === null || source === null || reason.length < 5 || reason.length > 300) return reply({ error: "BAD_REQUEST" }, 400);
     if (!steppedUp) return needStepUp("review.revoke");
-    const row = await db.prepare("SELECT id, revoked_at FROM dr_content_reviews WHERE id = ?").bind(rowId).first<{ id: number; revoked_at: number | null }>();
+    const table = REVIEW_TABLE[source];
+    const row = await db.prepare(`SELECT id, revoked_at FROM ${table} WHERE id = ?`).bind(rowId).first<{ id: number; revoked_at: number | null }>();
     if (!row) return reply({ error: "NOT_FOUND" }, 404);
     if (row.revoked_at !== null) return reply({ error: "ALREADY_REVOKED" }, 409);
-    await db.prepare("UPDATE dr_content_reviews SET revoked_at = ?, revoked_by = ?, revoke_reason = ? WHERE id = ? AND revoked_at IS NULL").bind(now, actor, reason, rowId).run();
-    await audit(actor, "review.revoke", "allowed", { rowId, reason });
+    await db.prepare(`UPDATE ${table} SET revoked_at = ?, revoked_by = ?, revoke_reason = ? WHERE id = ? AND revoked_at IS NULL`).bind(now, actor, reason, rowId).run();
+    await audit(actor, "review.revoke", "allowed", { rowId, source, reason });
     return reply({ ok: true });
   }
 

@@ -2,6 +2,9 @@ import { defineConfig, type Plugin } from "vite";
 import react from "@vitejs/plugin-react";
 import { readFileSync, writeFileSync, existsSync, readdirSync } from "node:fs";
 import { contentFor } from "./src/content/access.ts";
+import { itContentFor } from "./src/content/italy/access.ts";
+import { IT_PLANNED_TOTAL } from "./src/content/italy/chapters.ts";
+import { PATENTE_B_RULES_IT } from "./src/lib/shared/examIt.ts";
 import { KLASSE_B_RULES_2026 } from "./src/lib/shared/exam.ts";
 import { execSync } from "node:child_process";
 
@@ -29,9 +32,15 @@ function swVersion(): Plugin {
       // Machine-readable build facts for scripts/preflight.mjs (what this build would actually publish).
       const mode = process.env.VITE_CONTENT_MODE === "preview" ? "preview" : "production";
       const c = contentFor(mode);
+      // Italy ships its own bank; in production both banks are empty until the human reviews exist.
+      const it = itContentFor(mode);
       writeFileSync("dist/build-info.json", JSON.stringify({
         buildId: id, commit: commit(), contentMode: mode, adminUi: process.env.VITE_ADMIN_UI === "true", rulesVersion: KLASSE_B_RULES_2026.version,
+        rulesVersionIt: PATENTE_B_RULES_IT.version,
         visible: { questions: c.questions.length, lessons: c.lessons.length, signs: c.signs.length, vocabulary: c.vocabulary.length },
+        // What the static build itself carries for Italy. In production the learner still sees only what
+        // the server's publication gate approves at runtime (/api/content/approved).
+        italy: { bundled: { questions: it.questions.length, signs: it.signs.length, chapters: it.chapters.length }, plannedTotal: IT_PLANNED_TOTAL },
       }, null, 2));
     },
   };
