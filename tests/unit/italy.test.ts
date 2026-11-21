@@ -54,8 +54,8 @@ describe("Italian questions", () => {
       expect(t.ar?.trim().length ?? 0).toBeGreaterThan(0);
     }
   });
-  it("leaves Latin-script Kurmanji to the reviewer", () => {
-    for (const t of texts()) expect(t.kmr).toBeUndefined();
+  it("carries a Kurmanji draft in every text as well", () => {
+    for (const t of texts()) expect(t.kmr?.trim().length ?? 0).toBeGreaterThan(0);
   });
 });
 
@@ -70,7 +70,7 @@ describe("Italian sign illustrations", () => {
     for (const s of IT_SIGNS) expect(existsSync(new URL(`../../public/signs/it/${s.file}`, import.meta.url)), s.file).toBe(true);
   });
   it("serves signs from /signs/it", () => {
-    expect(itSignSrc(IT_SIGNS[0])).toBe(`/signs/it/${IT_SIGNS[0].file}`);
+    for (const s of IT_SIGNS) expect(itSignSrc(s)).toBe(`/signs/it/${s.file}`);
   });
   it("uses unique ids and files", () => {
     expect(new Set(IT_SIGNS.map((s) => s.id)).size).toBe(IT_SIGNS.length);

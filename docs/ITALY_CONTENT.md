@@ -37,9 +37,10 @@ four learner languages or the fixed RTL layout is touched by this change.
 - `ckb` (Sorani) and `it` (Italian) are the authored source wording, taken from the owner's site.
 - `kmrArab` is Kurmanji in Arabic script ("Badini"), also from the site. It is deliberately a field of
   its own: the app's `kmr` is Latin-script Kurmanji (`src/app/i18n.ts`) and must stay that way.
-- `de` and `ar` are drafted translations (AI-assisted) and are part of the same pending review.
-- Latin-script `kmr` is left empty on purpose rather than transliterated by guesswork; the reviewer
-  fills it in. `tests/unit/italy.test.ts` enforces this.
+- `de`, `ar` and Latin-script `kmr` are drafted translations (AI-assisted) and are part of the same
+  pending review. `tests/unit/i18n.test.ts` requires all four learner languages wherever `ckb` and
+  `de` appear together, so none of them may be left out; `tests/unit/italy.test.ts` checks that every
+  text actually carries them.
 
 ## Review status
 
