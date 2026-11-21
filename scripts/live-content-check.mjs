@@ -37,9 +37,27 @@ await check("/build-info.json (deployed commit)", async () => {
   if (expect) assert.ok(String(b.commit ?? b.sha ?? "").startsWith(expect.slice(0, 7)), `live commit ${b.commit ?? b.sha} != expected ${expect}`);
   return `commit ${String(b.commit ?? b.sha ?? "?").slice(0, 12)} · build ${b.buildId}`;
 });
-for (const p of ["/signs", "/sign-quiz", "/dr"]) {
+for (const p of ["/signs", "/sign-quiz", "/dr", "/practice", "/exam"]) {
   await check(`GET ${p}`, async () => { const r = await get(p); assert.equal(r.status, 200); assert.match(r.headers.get("content-type") ?? "", /text\/html/); const t = await r.text(); assert.ok(t.includes("<div id=\"root\"") || t.includes("id=\"root\""), "app shell"); return "200 html"; });
 }
+// Italy is free for every registered student, and that is enforced server-side, not only in the interface.
+await check("Italy is free (server-side)", async () => {
+  const r = await get("/api/flags"); assert.equal(r.status, 200);
+  const f = await r.json();
+  assert.equal(f.accessPolicy?.IT, "FREE_FOREVER", "Italy must be FREE_FOREVER");
+  assert.equal(f.purchaseRequiredByCountry?.IT, false, "a purchase must never be required in Italy");
+  assert.equal(f.purchaseRequired, false, "no purchase required at all while payments are off");
+  assert.equal(f.checkoutEnabled, false, "checkout must stay off");
+  assert.equal(f.paymentsEnabled, false, "payments must stay off");
+  return `IT ${f.accessPolicy?.IT} · purchaseRequired IT=${f.purchaseRequiredByCountry?.IT} DE=${f.purchaseRequiredByCountry?.DE} · checkout ${f.checkoutEnabled}`;
+});
+await check("checkout refuses for Italy", async () => {
+  const r = await fetch(`${base}/api/purchase/checkout`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ country: "IT" }) });
+  const body = await r.json().catch(() => ({}));
+  assert.equal(r.status, 403, `checkout answered ${r.status}`);
+  assert.equal(body.error, "FREE_FOREVER_COUNTRY", `unexpected refusal: ${JSON.stringify(body)}`);
+  return `POST /api/purchase/checkout (IT) → 403 ${body.error}`;
+});
 let approved;
 await check("/api/content/approved", async () => {
   const r = await get("/api/content/approved"); assert.equal(r.status, 200);
