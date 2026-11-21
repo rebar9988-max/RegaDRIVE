@@ -2,7 +2,7 @@ import { useState, type KeyboardEvent } from "react";
 import { Link } from "../app/router";
 import { moreLinksFor } from "../app/Shell";
 import { useApp, useNow } from "../app/state";
-import { LANGS, langDir, vocabMeaning } from "../app/i18n";
+import { languagesFor, langDir, vocabMeaning } from "../app/i18n";
 import { T } from "../app/strings";
 import { Bi, useBiText } from "../components/Bi";
 import { ProgressRing } from "../components/ProgressRing";
@@ -205,7 +205,7 @@ export function Settings() {
       <section className="card stack">
         <h2 className="section-title"><Bi t={{ ckb: "زمان", de: "Sprache", kmr: "Ziman", ar: "اللغة" }} /></h2>
         <div className="chip-row lang-grid" role="radiogroup" onKeyDown={moveRadio} aria-label={label({ ckb: "زمان", de: "Sprache", kmr: "Ziman", ar: "اللغة" })}>
-          {LANGS.map((l) => (
+          {languagesFor(settings.country).map((l) => (
             <button key={l.id} type="button" role="radio" aria-checked={settings.lang === l.id} lang={l.id} dir={langDir(l.id)}
               className="chip" tabIndex={settings.lang === l.id ? 0 : -1} onClick={() => setSettings({ lang: l.id })} data-testid={`lang-${l.id}`}>{l.native}</button>
           ))}

@@ -1,7 +1,7 @@
 import type { ElementType } from "react";
 import { useApp } from "../app/state";
 import { langDir } from "../app/i18n";
-import { sourceText, textLines, type AnyText } from "../app/anyText";
+import { isItText, sourceText, textLines, type AnyText } from "../app/anyText";
 
 /**
  * The learner's language first (Sorani, Kurmanji, Badini, Arabic or German), and the source wording
@@ -10,7 +10,7 @@ import { sourceText, textLines, type AnyText } from "../app/anyText";
  */
 export function Bi({ t, as: Tag = "div", className = "", inline = false }: { t: AnyText; as?: ElementType; className?: string; inline?: boolean }) {
   const { settings } = useApp();
-  const { primary, source } = textLines(t, settings.lang, settings.withGerman);
+  const { primary, source } = textLines(t, settings.lang, settings.withGerman && (settings.country !== "IT" || isItText(t)));
   // Reading the source language itself has no second line. Two invisible half-height placeholders (one
   // above, one below) keep the same height as in the other languages and keep the text centred, so
   // nothing jumps up or down when switching.
