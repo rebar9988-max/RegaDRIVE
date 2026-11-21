@@ -29,7 +29,9 @@ html { -webkit-text-size-adjust: 100%; scroll-padding-top: 90px; }
 /* Body text: 17px / 1.7, measured from the owner's Sorani reference (2026-11-13). */
 body { margin: 0; background: var(--canvas); color: var(--ink); font: 17px/1.7 var(--font-ckb); -webkit-font-smoothing: antialiased; }
 html[lang='de'] body, html[lang='kmr'] body, [lang='de'], [lang='kmr'] { font-family: var(--font-de); }
-[lang='ckb'], [lang='ar'] { font-family: var(--font-ckb); }
+[lang='ckb'], [lang='ar'], [lang='kmr-arab'] { font-family: var(--font-ckb); }
+:lang(kmr-arab) { letter-spacing: normal; }
+.bi [lang='kmr-arab'] { line-height: 1.75; }
 /* Latin-script languages (Kurmanji, German): the layout stays right-to-left and nothing moves;
    only the words themselves run left-to-right, so punctuation and numbers stay correct. */
 .text-ltr body { text-align: right; }

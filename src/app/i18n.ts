@@ -1,4 +1,4 @@
-import { italianInterface } from "./italyInterface.ts";
+import { badiniInterface, italianInterface } from "./italyInterface.ts";
 import type { Bilingual } from "../content/types";
 
 /**
@@ -43,7 +43,10 @@ export function pick(t: Bilingual, lang: Lang): { text: string; lang: Lang } {
   if (lang === "ckb") return { text: t.ckb, lang };
   if (lang === "de") return { text: t.de, lang };
   // German content and interface strings have no Badini wording of their own: Sorani is the fallback.
-  if (lang === "kmr-arab") return { text: t.ckb, lang: "ckb" };
+  if (lang === "kmr-arab") {
+    const text = badiniInterface[t.de];
+    return text ? { text, lang } : { text: t.ckb, lang: "ckb" };
+  }
   const v = t[lang];
   return v ? { text: v, lang } : { text: t.de, lang: "de" };
 }

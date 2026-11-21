@@ -17,3 +17,31 @@ export const italianInterface: Record<string, string> = {
   "Falsch gewählt": "Risposta errata", "Merken": "Salva", "Gemerkt": "Salvato",
   "Offline": "Offline", "Diese Inhalte werden noch fachlich geprüft und erst nach Freigabe veröffentlicht.": "Questi contenuti sono in fase di revisione e saranno pubblicati dopo l’approvazione.",
 };
+
+// Duhok Arabic-script usage reference: https://uod.ac/documents/7119/Graduation_guide_2025-2026.pdf
+export const badiniInterface: Record<string, string> = {
+  "Start": "دەستپێک", "Lernen": "فێربوون", "Üben": "ڕاهێنان", "Prüfung": "ئەزموون",
+  "Mehr": "پتر", "Verkehrszeichen": "نیشانێن هاتنوچوونێ", "Fortschritt": "پێشکەفتن",
+  "Konto": "هەژمار", "Einstellungen": "ڕێکخستن", "Über & Rechtliches": "دەربارە و یاسا",
+  "Preise & Zugang": "بها و دەستگەهشتن", "Sprache": "زمان", "Zum Inhalt springen": "بچۆ ناڤەڕۆکێ",
+  "Italien — Führerschein B": "ئیتالیا — دەستوورا شۆفێریێ B", "Kapitel": "بەش",
+  "Verfügbare Fragen": "پرسێن بەردەست", "Geplant insgesamt": "ژمارا گشتی یا پلانکری",
+  "Richtig": "ڕاستە", "Falsch": "چەوتە", "Deine Antwort ist richtig": "بەرسڤا تە ڕاستە",
+  "Deine Antwort ist falsch": "بەرسڤا تە چەوتە", "Erklärung": "ڕوونکرنەوە",
+  "Nächste Frage": "پرسا پاشتر", "Übung beendet": "ڕاهێنان ب دووماهی هات",
+  "Nochmal": "دیسان", "Zurück zu den Kapiteln": "ڤەگەرە بۆ بەشان",
+  "In diesem Kapitel gibt es noch keine freigegebenen Fragen.": "هێشتا چ پرسێن پەسەندکری ل ڤی بەشی نینن.",
+  "Diese Fragen sind eigene Inhalte in Prüfung, keine amtlichen Prüfungsfragen.": "ئەڤ پرسە یێن RegaDRIVE ـن و ل بەر هندێنە بهێنە پشکنین. پرسێن فەرمی یێن ئەزموونێ نینن.",
+  "Italienischer Originaltext": "دەقێ ڕەسەن یێ ئیتالی",
+  "Italienischen Originaltext darunter zeigen": "دەقێ ڕەسەن یێ ئیتالی ل بنێ نیشان بدە",
+  "Beantwortet": "بەرسڤدای", "Gemeisterte Fragen": "پرسێن فێربووی", "Richtige Antwort": "بەرسڤا ڕاست",
+  "Falsch gewählt": "هەلبژارتنا چەوت", "Merken": "نیشان بکە", "Gemerkt": "نیشانکری", "Offline": "بێ ئینتەرنێت",
+  "Diese Inhalte werden noch fachlich geprüft und erst nach Freigabe veröffentlicht.": "پسپۆڕ هێشتا ل ڤی ناڤەڕۆکی دڤەکۆلن. پشتی پەسەندکرنێ دێ بهێتە بەلاڤکرن.",
+  "Musterprüfung": "ئەزموونا نموونەیی",
+  "30 Richtig/Falsch-Fragen · 20 Minuten · höchstens 3 Fehler": "٣٠ پرسێن ڕاست یان چەوت · ٢٠ دەقیقە · هەری زێدە ٣ چەوتی",
+  "Die Musterprüfung ist möglich, sobald 30 freigegebene Fragen verfügbar sind.": "گاڤا ٣٠ پرسێن پەسەندکری بەردەست بن، دێ شیێی ئەزموونا نموونەیی بدەی.",
+  "Freigegebene Fragen": "پرسێن پەسەندکری", "Benötigt": "پێدڤی", "Prüfung starten": "دەست ب ئەزموونێ بکە",
+  "Restzeit": "دەمێ مای", "Bestanden": "دەرکەفتی", "Nicht bestanden": "دەرنەکەفتی", "Fehler": "چەوتی",
+  "Regeln nach dem italienischen Erlass (DM 27.10.2021)": "ڕێسایێن فەرمانا ئیتالی (DM 27.10.2021)",
+  "Kostenlos für registrierte Lernende": "بێ بەرامبەر بۆ قوتابیێن تۆمارکری",
+};
