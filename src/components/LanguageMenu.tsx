@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useId, useRef, useState, type KeyboardEvent as ReactKeyboardEvent } from "react";
 import { createPortal } from "react-dom";
-import { langDir, type Lang } from "../app/i18n";
+import { ITALY_LANGS, langDir, type Lang } from "../app/i18n";
 import { useApp } from "../app/state";
 import { Icon } from "./Icon";
 import { useBiText } from "./Bi";
@@ -39,7 +39,8 @@ export function LanguageMenu() {
   const trigger = useRef<HTMLButtonElement>(null);
   const panel = useRef<HTMLDivElement>(null);
   const panelId = useId();
-  const current = OPTIONS.find((o) => o.id === settings.lang) ?? SORANI;
+  const options = settings.country === "IT" ? ITALY_LANGS.map((l) => OPTIONS.find((o) => o.id === l.id) ?? { ...l, code: "IT", flag: "/flags/it.svg" }) : OPTIONS;
+  const current = options.find((o) => o.id === settings.lang) ?? SORANI;
   const title = label(TITLE);
 
   const close = useCallback((refocus: boolean) => {
@@ -129,7 +130,7 @@ export function LanguageMenu() {
             <span className="lang-grip" aria-hidden="true" />
             <p className="lang-title" lang={settings.lang} dir={langDir(settings.lang)}>{title}</p>
             <ul className="lang-list" onKeyDown={onListKey}>
-              {OPTIONS.map((o) => {
+              {options.map((o) => {
                 const active = settings.lang === o.id;
                 return (
                   <li key={o.id}>

@@ -1,5 +1,5 @@
 import { MASTERY_THRESHOLD_DEFAULT } from "../lib/progress";
-import { isLang, type Lang } from "./i18n";
+import { languagesFor, isLang, type Lang } from "./i18n";
 
 /** lang: the learner's reading language. withGerman: show the German original under it (ignored when lang is "de"). */
 export type CountryId = "DE" | "IT";
@@ -19,5 +19,6 @@ export function normalizeSettings(stored: unknown): Settings {
   if (typeof s.withGerman === "boolean") out.withGerman = s.withGerman;
   if (typeof s.masteryThreshold === "number") out.masteryThreshold = s.masteryThreshold;
   if (typeof s.dailyGoal === "number") out.dailyGoal = s.dailyGoal;
+  if (!languagesFor(out.country).some((option) => option.id === out.lang)) out.lang = "ckb";
   return out;
 }

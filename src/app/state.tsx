@@ -73,7 +73,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     root.classList.toggle("text-ltr", langDir(settings.lang) === "ltr");
   }, [settings.lang]);
 
-  const setSettings = useCallback((s: Partial<Settings>) => setSettingsState((prev) => ({ ...prev, ...s })), []);
+  const setSettings = useCallback((s: Partial<Settings>) => setSettingsState((prev) => normalizeSettings({ ...prev, ...s })), []);
   const update = useCallback((fn: (p: ProgressState) => ProgressState) => setProgress(fn), []);
   const resetProgress = useCallback(() => setProgress(emptyProgress()), []);
 
