@@ -76,7 +76,7 @@ describe("/dr Content Review & Approval", () => {
     expect(REVIEW_ITEMS.every((i) => i.valid)).toBe(true);
     const t = setup();
     const out = await approvedContent(t.env.DB);
-    expect(out).toEqual({ ok: true, signs: {}, signQuiz: {}, itSigns: {}, itQuestions: {} });
+    expect(out).toEqual({ ok: true, signs: {}, signQuiz: {}, itSigns: {}, itQuestions: {}, ready: { de: true, it: true } });
     await t.login();
     const r = await t.call("/api/dr/reviews");
     expect(r.status).toBe(200);
@@ -196,9 +196,9 @@ describe("/dr Content Review & Approval", () => {
   });
 
   it("fails closed: no database or an unmigrated database publishes nothing", async () => {
-    expect(await approvedContent(undefined)).toEqual({ ok: false, signs: {}, signQuiz: {}, itSigns: {}, itQuestions: {} });
+    expect(await approvedContent(undefined)).toEqual({ ok: false, signs: {}, signQuiz: {}, itSigns: {}, itQuestions: {}, ready: { de: false, it: false } });
     const bare = new DatabaseSync(":memory:");
     const stmt = (sql: string, params: unknown[]): D1Stmt => ({ bind: (...v: unknown[]) => stmt(sql, v), first: async <T,>() => (bare.prepare(sql).get(...params) as T | undefined) ?? null, all: async <T,>() => ({ results: bare.prepare(sql).all(...params) as T[] }), run: async () => bare.prepare(sql).run(...params) });
-    expect(await approvedContent({ prepare: (s: string) => stmt(s, []) })).toEqual({ ok: false, signs: {}, signQuiz: {}, itSigns: {}, itQuestions: {} });
+    expect(await approvedContent({ prepare: (s: string) => stmt(s, []) })).toEqual({ ok: false, signs: {}, signQuiz: {}, itSigns: {}, itQuestions: {}, ready: { de: false, it: false } });
   });
 });

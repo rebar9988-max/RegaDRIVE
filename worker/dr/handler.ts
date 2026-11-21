@@ -6,7 +6,7 @@
  * cookie; only their hash is stored. Sessions end after 30 min idle or 8 h. Critical changes need a fresh code
  * (step-up, valid 10 min). Every decision is written to dr_audit_log.
  */
-import { evaluateAll, loadRows, parseSubmission, checkSubmission, recordReview, ALL_REVIEW_ITEMS, REVIEW_ITEM_BY_ID, REVIEW_TABLE, ROLE_FOR_STAGE, rulesVersionFor } from "./reviews";
+import { evaluateAll, loadRowsWithState, parseSubmission, checkSubmission, recordReview, ALL_REVIEW_ITEMS, REVIEW_ITEM_BY_ID, REVIEW_TABLE, ROLE_FOR_STAGE, rulesVersionFor, sourceFor } from "./reviews";
 import { KLASSE_B_RULES_2026 } from "../../src/lib/shared/exam";
 import type { D1Like } from "./db";
 import { invalidateOverrides, loadOverrides } from "./db";
@@ -394,7 +394,7 @@ export async function handleDr(req: Request, env: DrEnv, deps: DrDeps = {}): Pro
 
   // ── Content Review & Approval (Verkehrszeichen release) ──────────────────
   if (path === "/api/dr/reviews" && req.method === "GET") {
-    const rows = await loadRows(db);
+    const { rows, ready: tablesReady } = await loadRowsWithState(db);
     const states = new Map(evaluateAll(rows).map((x) => [x.id, x]));
     const items = ALL_REVIEW_ITEMS.map((i) => ({ ...states.get(i.id)!, checks: i.checks, valid: i.valid, sourceRefs: i.sourceRefs, contentVersion: i.contentVersion }));
     const counts = { total: items.length, published: 0, awaiting: 0, inReview: 0, rejected: 0,
@@ -409,7 +409,7 @@ export async function handleDr(req: Request, env: DrEnv, deps: DrDeps = {}): Pro
       else counts.inReview++;
     }
     const history = rows.slice(-300).reverse();
-    return reply({ items, counts, history, rulesVersion: KLASSE_B_RULES_2026.version, rulesVersionIt: rulesVersionFor("itQuestion"), roles: ROLE_FOR_STAGE, steppedUp });
+    return reply({ items, counts, history, tablesReady, rulesVersion: KLASSE_B_RULES_2026.version, rulesVersionIt: rulesVersionFor("itQuestion"), roles: ROLE_FOR_STAGE, steppedUp });
   }
 
   if (path === "/api/dr/reviews" && req.method === "POST") {
@@ -419,7 +419,12 @@ export async function handleDr(req: Request, env: DrEnv, deps: DrDeps = {}): Pro
     if (typeof sub === "string") return reply({ error: sub }, 400);
     const action = `review.${sub.stage}.${sub.outcome}`;
     if (!steppedUp) return needStepUp(action);
-    const rows = await loadRows(db);
+    const { rows, ready: tablesReady } = await loadRowsWithState(db);
+    const needed = [...new Set(sub.ids.map((id) => REVIEW_ITEM_BY_ID.get(id)).filter((i) => i !== undefined).map((i) => sourceFor(i.kind)))];
+    if (needed.some((src) => !tablesReady[src])) {
+      await audit(actor, action, "denied", { reason: "migration missing", tablesReady });
+      return reply({ error: "REVIEW_TABLE_MISSING", tablesReady }, 503);
+    }
     const today = new Date(now).toISOString().slice(0, 10);
     const errors: { id: string; error: string }[] = [];
     for (const id of sub.ids) { const e = checkSubmission(sub, REVIEW_ITEM_BY_ID.get(id), rows, today); if (e) errors.push({ id, error: e }); }

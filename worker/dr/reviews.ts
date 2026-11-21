@@ -126,12 +126,29 @@ export function evaluate(item: AnyReviewItem, rows: ReviewRow[]): ItemState {
 
 /**
  * Every review decision from both tables, oldest first. Row ids are per table, so each row carries the
- * table it came from and revoking one needs both.
+ * table it came from and revoking one needs both. A table that cannot be read — the owner has not
+ * applied its migration yet — yields no rows for that bank and never blocks the other one: fail closed
+ * for the bank that is not ready, unchanged for the bank that is.
  */
 export async function loadRows(db: D1Like): Promise<ReviewRow[]> {
-  const de = (await db.prepare(`SELECT * FROM ${REVIEW_TABLE.de} ORDER BY recorded_at, id`).all<ReviewRow>()).results.map((r) => ({ ...r, source: "de" as const }));
-  const it = (await db.prepare(`SELECT * FROM ${REVIEW_TABLE.it} ORDER BY recorded_at, id`).all<ReviewRow>()).results.map((r) => ({ ...r, source: "it" as const }));
-  return [...de, ...it].sort((a, b) => a.recorded_at - b.recorded_at || a.id - b.id);
+  const { rows } = await loadRowsWithState(db);
+  return rows;
+}
+
+export interface RowsState { rows: ReviewRow[]; ready: Record<ReviewSource, boolean> }
+
+export async function loadRowsWithState(db: D1Like): Promise<RowsState> {
+  const read = async (source: ReviewSource): Promise<ReviewRow[] | null> => {
+    try {
+      const r = await db.prepare(`SELECT * FROM ${REVIEW_TABLE[source]} ORDER BY recorded_at, id`).all<ReviewRow>();
+      return r.results.map((x) => ({ ...x, source }));
+    } catch { return null; }
+  };
+  const [de, it] = await Promise.all([read("de"), read("it")]);
+  return {
+    rows: [...(de ?? []), ...(it ?? [])].sort((a, b) => a.recorded_at - b.recorded_at || a.id - b.id),
+    ready: { de: de !== null, it: it !== null },
+  };
 }
 
 export function evaluateAll(rows: ReviewRow[]): ItemState[] {
@@ -139,23 +156,31 @@ export function evaluateAll(rows: ReviewRow[]): ItemState[] {
 }
 
 export interface ApprovedContent {
+  /** True when the review records could be read. False means nothing is published (fail closed). */
   ok: boolean;
   signs: Record<string, string>;
   signQuiz: Record<string, string>;
   itSigns: Record<string, string>;
   itQuestions: Record<string, string>;
+  /** Per bank: whether its review table could be read at all. A bank that is not ready publishes nothing. */
+  ready: Record<ReviewSource, boolean>;
 }
 
 /** Public: ids (with fingerprint) of everything the gate lets through. Fail closed: any error means nothing. */
 export async function approvedContent(db: D1Like | undefined): Promise<ApprovedContent> {
   const empty = () => ({ signs: {} as Record<string, string>, signQuiz: {} as Record<string, string>, itSigns: {} as Record<string, string>, itQuestions: {} as Record<string, string> });
-  const out: ApprovedContent = { ok: false, ...empty() };
+  const out: ApprovedContent = { ok: false, ...empty(), ready: { de: false, it: false } };
   if (!db) return out;
   try {
-    const rows = await loadRows(db);
-    for (const st of evaluateAll(rows)) if (st.publishable) out[st.kind === "sign" ? "signs" : st.kind === "signQuiz" ? "signQuiz" : st.kind === "itSign" ? "itSigns" : "itQuestions"][st.id] = st.hash;
-    out.ok = true;
-  } catch { Object.assign(out, empty()); }
+    const { rows, ready } = await loadRowsWithState(db);
+    out.ready = ready;
+    // A bank whose table could not be read publishes nothing, whatever the other bank does.
+    for (const st of evaluateAll(rows)) {
+      if (!st.publishable || !ready[sourceFor(st.kind)]) continue;
+      out[st.kind === "sign" ? "signs" : st.kind === "signQuiz" ? "signQuiz" : st.kind === "itSign" ? "itSigns" : "itQuestions"][st.id] = st.hash;
+    }
+    out.ok = ready.de || ready.it;
+  } catch { Object.assign(out, empty()); out.ready = { de: false, it: false }; out.ok = false; }
   return out;
 }
 
