@@ -1,6 +1,6 @@
 import { useState, type KeyboardEvent } from "react";
 import { Link } from "../app/router";
-import { MORE_LINKS } from "../app/Shell";
+import { moreLinksFor } from "../app/Shell";
 import { useApp, useNow } from "../app/state";
 import { LANGS, langDir, vocabMeaning } from "../app/i18n";
 import { T } from "../app/strings";
@@ -13,12 +13,13 @@ import { normalize } from "../lib/search";
 import { questionStatus, readiness, streakDays, topicStats } from "../lib/progress";
 
 export function More() {
+  const { settings } = useApp();
   return (
     <div>
       <header className="page-head"><h1><Bi t={T.nav.more} /></h1></header>
       <ul className="list" style={{ listStyle: "none", padding: 0, margin: 0 }}>
         {/* Account is reachable from the header button; it is intentionally not repeated in this list. */}
-        {MORE_LINKS.filter((l) => l.href !== "/account").map((l) => (
+        {moreLinksFor(settings.country).filter((l) => l.href !== "/account").map((l) => (
           <li key={l.href}>
             <Link href={l.href} className="card card-link list-item">
               <span className="tile-icon"><Icon name={l.icon} /></span><Bi t={l.t} /><Icon name="arrow" className="flip-rtl" />
@@ -209,8 +210,13 @@ export function Settings() {
               className="chip" tabIndex={settings.lang === l.id ? 0 : -1} onClick={() => setSettings({ lang: l.id })} data-testid={`lang-${l.id}`}>{l.native}</button>
           ))}
         </div>
-        <h3 className="section-title"><Bi t={{ ckb: "دەقی ئەڵمانی لە ژێرەوە", de: "Deutsch darunter zeigen", kmr: "Nivîsa almanî ya orîjînal li jêr", ar: "إظهار النص الألماني الأصلي أسفله" }} /></h3>
-        <div className="chip-row" role="radiogroup" onKeyDown={moveRadio} aria-label={label({ ckb: "دەقی ئەڵمانی", de: "Deutscher Text", kmr: "Nivîsa almanî", ar: "النص الألماني" })}>
+        {/* The second line is the source wording of the chosen country: German for Germany, Italian for Italy. */}
+        <h3 className="section-title"><Bi t={settings.country === "IT"
+          ? { ckb: "دەقی ئیتالی لە ژێرەوە", de: "Italienischen Originaltext darunter zeigen", kmr: "Nivîsa îtalî ya orîjînal li jêr", ar: "إظهار النص الإيطالي الأصلي أسفله" }
+          : { ckb: "دەقی ئەڵمانی لە ژێرەوە", de: "Deutsch darunter zeigen", kmr: "Nivîsa almanî ya orîjînal li jêr", ar: "إظهار النص الألماني الأصلي أسفله" }} /></h3>
+        <div className="chip-row" role="radiogroup" onKeyDown={moveRadio} aria-label={label(settings.country === "IT"
+          ? { ckb: "دەقی ئیتالی", de: "Italienischer Text", kmr: "Nivîsa îtalî", ar: "النص الإيطالي" }
+          : { ckb: "دەقی ئەڵمانی", de: "Deutscher Text", kmr: "Nivîsa almanî", ar: "النص الألماني" })}>
           {([true, false] as const).map((on) => (
             <button key={String(on)} type="button" role="radio" className="chip" disabled={settings.lang === "de"}
               tabIndex={settings.lang !== "de" && settings.withGerman === on ? 0 : -1} aria-checked={settings.lang !== "de" && settings.withGerman === on} onClick={() => setSettings({ withGerman: on })} data-testid={`with-german-${on ? "on" : "off"}`}>

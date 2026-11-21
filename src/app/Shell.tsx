@@ -7,6 +7,7 @@ import { Bi, useBiText } from "../components/Bi";
 import { Icon, type IconName } from "../components/Icon";
 import { LanguageMenu } from "../components/LanguageMenu";
 import type { Bilingual } from "../content/types";
+import type { CountryId } from "./settings";
 
 const TABS: { href: string; icon: IconName; t: Bilingual }[] = [
   { href: "/", icon: "home", t: T.nav.home },
@@ -14,6 +15,13 @@ const TABS: { href: string; icon: IconName; t: Bilingual }[] = [
   { href: "/learn", icon: "book", t: T.nav.learn },
   { href: "/practice", icon: "check", t: T.nav.practice },
   { href: "/exam", icon: "exam", t: T.nav.exam },
+  { href: "/more", icon: "more", t: T.nav.more },
+];
+/** Italy's tabs: its own start screen, its own practice, its signs. Nothing German is linked here. */
+const IT_TABS: { href: string; icon: IconName; t: Bilingual }[] = [
+  { href: "/", icon: "home", t: T.nav.home },
+  { href: "/practice", icon: "check", t: T.nav.practice },
+  { href: "/signs", icon: "sign", t: T.nav.signs },
   { href: "/more", icon: "more", t: T.nav.more },
 ];
 export const MORE_LINKS: { href: string; icon: IconName; t: Bilingual }[] = [
@@ -27,11 +35,18 @@ export const MORE_LINKS: { href: string; icon: IconName; t: Bilingual }[] = [
   { href: "/about", icon: "info", t: T.nav.about },
 ];
 
+/** Links under "More" that exist for a country. German lessons, vocabulary and progress are not part of the Italian section yet. */
+const IT_MORE_HREFS = new Set(["/account", "/settings", "/signs", "/services", "/access", "/about"]);
+export const moreLinksFor = (country: CountryId | null) => (country === "IT" ? MORE_LINKS.filter((l) => IT_MORE_HREFS.has(l.href)) : MORE_LINKS);
+export const tabsFor = (country: CountryId | null) => (country === "IT" ? IT_TABS : TABS);
+
 const isActive = (path: string, href: string) => (href === "/" ? path === "/" : path === href || path.startsWith(`${href}/`));
 
 export function Shell({ children }: { children: ReactNode }) {
   const path = usePath();
-  const { online, saveError } = useApp();
+  const { online, saveError, settings } = useApp();
+  const tabs = tabsFor(settings.country);
+  const moreLinks = moreLinksFor(settings.country);
   const label = useBiText();
 
   return (
@@ -56,7 +71,7 @@ export function Shell({ children }: { children: ReactNode }) {
       </header>
       <div className="layout">
         <nav className="sidenav" aria-label={label({ ckb: "ڕێنیشاندەری سەرەکی", de: "Hauptnavigation", kmr: "Navîgasyona sereke", ar: "التنقل الرئيسي" })}>
-          {[...TABS.filter((t) => t.href !== "/more"), ...MORE_LINKS].map((l) => (
+          {[...tabs.filter((t) => t.href !== "/more"), ...moreLinks].map((l) => (
             <Link key={l.href} href={l.href} className="navlink" aria-current={isActive(path, l.href) ? "page" : undefined}>
               <Icon name={l.icon} /><Bi t={l.t} />
             </Link>
@@ -74,7 +89,7 @@ export function Shell({ children }: { children: ReactNode }) {
         </main>
       </div>
       <nav className="tabbar" aria-label={label({ ckb: "ڕێنیشاندەری سەرەکی", de: "Hauptnavigation", kmr: "Navîgasyona sereke", ar: "التنقل الرئيسي" })}>
-        {TABS.map((t) => {
+        {tabs.map((t) => {
           const active = isActive(path, t.href);
           return (
             <Link key={t.href} href={t.href} className="tab" aria-current={active ? "page" : undefined}>

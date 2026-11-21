@@ -5,12 +5,17 @@ import { useApp } from "../app/state";
 import { Icon } from "./Icon";
 import { useBiText } from "./Bi";
 
-/** The four learner languages, in the order of the owner's brief. Names are written in their own language. */
+/**
+ * The learner languages, in the order of the owner's brief. Names are written in their own language.
+ * "KMR" is Kurmanji in Latin script and keeps its existing name and behaviour; "BAD" is the same
+ * language written in Arabic script (Duhok Badini), a separate right-to-left option added beside it.
+ */
 type LangOption = { id: Lang; code: string; native: string; flag: string };
 const SORANI: LangOption = { id: "ckb", code: "CKB", native: "کوردی (سۆرانی)", flag: "/flags/kurdistan.png" };
 const OPTIONS: LangOption[] = [
   SORANI,
   { id: "kmr", code: "KMR", native: "Kurmancî (Badînî)", flag: "/flags/kurdistan.png" },
+  { id: "kmr-arab", code: "BAD", native: "بادینی (دهۆک)", flag: "/flags/kurdistan.png" },
   { id: "de", code: "DE", native: "Deutsch", flag: "/flags/de.png" },
   { id: "ar", code: "AR", native: "العربية", flag: "/flags/arabic.png" },
 ];

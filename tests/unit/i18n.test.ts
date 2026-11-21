@@ -77,7 +77,7 @@ describe("language engine", () => {
     expect(pick(t, "ckb").text).toBe("سڵاو");
   });
   it("knows each script direction", () => {
-    expect(LANGS.map((l) => [l.id, langDir(l.id)])).toEqual([["ckb", "rtl"], ["kmr", "ltr"], ["ar", "rtl"], ["de", "ltr"]]);
+    expect(LANGS.map((l) => [l.id, langDir(l.id)])).toEqual([["ckb", "rtl"], ["kmr", "ltr"], ["kmr-arab", "rtl"], ["ar", "rtl"], ["de", "ltr"]]);
   });
   it("shows vocabulary meanings in the learner's language (Sorani for German readers)", () => {
     const v = VOCABULARY[0]!;
