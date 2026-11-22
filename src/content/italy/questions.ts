@@ -4,6 +4,7 @@ export const IT_CONTENT_VERSION = "2026.11-it-original-1";
 
 /**
  * ORIGINAL RegaDRIVE practice questions for the Italian Patente B section.
+ * Questions 013–017 were drafted against the Codice della Strada to cover the five empty chapters.
  *
  * They are NOT official ministerial examination questions, carry no official question code and stay
  * "pending" until a qualified Italian driving instructor and a native Sorani/Badini reviewer approve
@@ -296,6 +297,116 @@ export const IT_QUESTIONS: ItQuestion[] = [
       kmr: "RAST: Nedayîna alîkariyê di qezayeke bi birîndaran de sûcekî cezayî yê giran e.",
       de: "RICHTIG: Unterlassene Hilfeleistung bei einem Unfall mit Verletzten ist eine schwere Straftat.",
       ar: "صحيح: الامتناع عن تقديم المساعدة في حادث فيه جرحى يُعدّ جريمة جنائية خطيرة.",
+    },
+    ...ORIGINAL,
+  },
+  {
+    id: "it-b-013",
+    chapter: 6,
+    answer: false,
+    prompt: {
+      ckb: "شۆفێر دەتوانێت بۆ تێپەڕاندن لە هێڵی درێژی بەردەوامی ناوەڕاستی شەقام بپەڕێتەوە.",
+      it: "Per sorpassare si può oltrepassare la striscia continua al centro della carreggiata.",
+      kmrArab: "شۆفێر دشێت ژ بۆ دەربازبوونێ ژ هێلا بەردەوام یا ناڤەراستا ڕێکێ دەرباز ببیت.",
+      kmr: "Ji bo derbasbûnê ajokar dikare ji xeta domdar a navenda rê derbas bibe.",
+      de: "Zum Überholen darf man die durchgezogene Mittellinie überfahren.",
+      ar: "يجوز عبور الخط المتصل في وسط الطريق للتجاوز."
+    },
+    explanation: {
+      ckb: "هێڵی بەردەوامی ناوەڕاست نابێت ببڕدرێت.",
+      it: "FALSO: La linea mediana continua non va oltrepassata.",
+      kmrArab: "نابیت ژ هێلا بەردەوام یا ناڤەراستێ دەرباز ببیت.",
+      kmr: "Divê mirov ji xeta domdar a navendê derbas nebe.",
+      de: "Die durchgezogene Mittellinie darf nicht überfahren werden.",
+      ar: "لا يجوز عبور الخط المتصل في وسط الطريق."
+    },
+    ...ORIGINAL,
+  },
+  {
+    id: "it-b-014",
+    chapter: 8,
+    answer: true,
+    prompt: {
+      ckb: "نیشانەکانی ڕێنمایی دەتوانن ئاراستەی شارێک پیشان بدەن.",
+      it: "Un segnale di indicazione può mostrare la direzione per raggiungere una città.",
+      kmrArab: "نیشانەیێن ڕێنیشاندانێ دشێن ئاراستەیا باژێرەکی نیشان بدەن.",
+      kmr: "Nîşanên rêberiyê dikarin berê bajarekî nîşan bidin.",
+      de: "Ein Hinweiszeichen kann die Richtung zu einer Stadt anzeigen.",
+      ar: "يمكن لإشارة إرشادية أن تدل على اتجاه مدينة."
+    },
+    explanation: {
+      ckb: "نیشانەی ئاراستە یارمەتیی شۆفێر دەدات ڕێگای شوێنی مەبەست بدۆزێتەوە.",
+      it: "VERO: Le indicazioni di direzione aiutano a trovare la strada per la destinazione.",
+      kmrArab: "نیشانا ئاراستەیێ هاریکاریا شۆفێری دکەت ڕێکا جهێ مەبەست ببینیت.",
+      kmr: "Nîşana berê rê alîkariya ajokar dike ku rêya cihê armancê bibîne.",
+      de: "Wegweiser helfen, die Route zum Ziel zu finden.",
+      ar: "تساعد لوحات الاتجاه السائق على إيجاد الطريق إلى وجهته."
+    },
+    ...ORIGINAL,
+  },
+  {
+    id: "it-b-015",
+    chapter: 10,
+    answer: true,
+    prompt: {
+      ckb: "دەبێت بۆشایی نێوان دوو ئۆتۆمبێل بەس بێت بۆ وەستان ئەگەر ئۆتۆمبێلی پێشەوە لەناکاو بوەستێت.",
+      it: "La distanza dal veicolo davanti deve consentire di fermarsi se questo si arresta improvvisamente.",
+      kmrArab: "پێدڤییە دووراهییا دگەل ترۆمبێلا ل پێش بەس بیت بۆ ڕاوەستیانێ ئەگەر ئەو ژ نشکەکێ ڕاوەستیت.",
+      kmr: "Divê navbera bi wesayîta pêş re têrê bike ku ajokar raweste, heke ew ji nişka ve raweste.",
+      de: "Der Abstand zum vorausfahrenden Fahrzeug muss ein Anhalten ermöglichen, wenn es plötzlich stoppt.",
+      ar: "يجب أن تكفي المسافة للتوقف إذا توقفت المركبة أمامك فجأة."
+    },
+    explanation: {
+      ckb: "بۆشایی سەلامەتی بۆ خۆپاراستنە لە پێکدادان لەگەڵ ئۆتۆمبێلی پێشەوە.",
+      it: "VERO: La distanza di sicurezza serve a evitare il tamponamento.",
+      kmrArab: "دووراهیا سەلامەتیێ بۆ خۆپاراستنە ژ لێکدانا ترۆمبێلا ل پێش.",
+      kmr: "Navbera ewlehiyê ji bo pêşîgirtina li lihevketinê ye.",
+      de: "Der Sicherheitsabstand soll einen Auffahrunfall verhindern.",
+      ar: "تساعد مسافة الأمان على تجنب الاصطدام بالمركبة التي أمامك."
+    },
+    ...ORIGINAL,
+  },
+  {
+    id: "it-b-016",
+    chapter: 12,
+    answer: false,
+    prompt: {
+      ckb: "پێش تێپەڕاندن پێویست ناکات سەیری ئەوە بکەیت کە ئۆتۆمبێلی پشتەوە دەستی بە تێپەڕاندن کردووە یان نا.",
+      it: "Prima di sorpassare è inutile controllare se chi segue ha già iniziato il sorpasso.",
+      kmrArab: "بەری دەربازبوونێ پێدڤی ناکەت تەماشە بکەی کا ترۆمبێلا ل پشت دەست ب دەربازبوونێ کریە یان نە.",
+      kmr: "Berî derbasbûnê ne pêwîst e mirov kontrol bike ka wesayîta li paş dest bi derbasbûnê kiriye.",
+      de: "Vor dem Überholen braucht man nicht zu prüfen, ob ein Fahrzeug dahinter schon zum Überholen angesetzt hat.",
+      ar: "لا يلزم التحقق قبل التجاوز مما إذا كانت مركبة خلفك قد بدأت التجاوز."
+    },
+    explanation: {
+      ckb: "پێش تێپەڕاندن دڵنیا ببەوە کە ئۆتۆمبێلی پشتەوە دەستی بە تێپەڕاندن نەکردووە.",
+      it: "FALSO: Prima di sorpassare verifica che chi segue non abbia già iniziato a superarti.",
+      kmrArab: "بەری دەربازبوونێ پشتڕاست بە کو ترۆمبێلا ل پشت دەست ب دەربازکرنا تە نەکریە.",
+      kmr: "Berî derbasbûnê kontrol bike ku wesayîta li paş dest bi derbaskirina te nekiriye.",
+      de: "Prüfe vor dem Überholen, ob ein Fahrzeug hinter dir bereits zum Überholen angesetzt hat.",
+      ar: "تحقق قبل التجاوز من أن المركبة خلفك لم تبدأ بتجاوزك."
+    },
+    ...ORIGINAL,
+  },
+  {
+    id: "it-b-017",
+    chapter: 14,
+    answer: false,
+    prompt: {
+      ckb: "کاتێک ئۆتۆمبێلێک لە بەرامبەرەوە نزیک دەبێتەوە، دەتوانیت گڵۆپی دوور هەر داگیرساو بهێڵیتەوە.",
+      it: "Quando si incrocia un veicolo in senso opposto si possono lasciare accesi gli abbaglianti.",
+      kmrArab: "دەمێ ترۆمبێلەک ژ بەرامبەر نزیک دبیت، دشێی گڵۆپێن دویر ڤەکری بهێلی.",
+      kmr: "Gava wesayîtek ji aliyê hember tê, tu dikarî ronahiyên dûr vekirî bihêlî.",
+      de: "Bei Gegenverkehr darf das Fernlicht eingeschaltet bleiben.",
+      ar: "يمكن إبقاء الضوء العالي مضاء عند اقتراب مركبة من الاتجاه المعاكس."
+    },
+    explanation: {
+      ckb: "بۆ ئەوەی شۆفێری بەرامبەر چاوی نەبرەوە، لە گڵۆپی دوورەوە بگۆڕە بۆ گڵۆپی نزیک.",
+      it: "FALSO: Per evitare di abbagliare chi arriva di fronte, passa agli anabbaglianti.",
+      kmrArab: "دا چاڤێ شۆفێرێ بەرامبەر نەبرقیت، گڵۆپێن دویر بگوهۆڕە بۆ گڵۆپێن نزیک.",
+      kmr: "Ji bo ku çavên ajokarê hember neyên kor kirin, derbasî ronahiyên nêzîk bibe.",
+      de: "Blende ab, damit der Gegenverkehr nicht geblendet wird.",
+      ar: "انتقل إلى الضوء المنخفض حتى لا تبهر السائق القادم من الاتجاه المعاكس."
     },
     ...ORIGINAL,
   },

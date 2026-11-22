@@ -27,7 +27,7 @@ describe("Italian syllabus", () => {
 
 describe("Italian questions", () => {
   it("carries every question that exists, with unique ids", () => {
-    expect(IT_QUESTIONS.length).toBe(12);
+    expect(IT_QUESTIONS.length).toBe(17);
     expect(new Set(IT_QUESTIONS.map((q) => q.id)).size).toBe(IT_QUESTIONS.length);
   });
   it("belongs to a known chapter", () => {
@@ -35,7 +35,9 @@ describe("Italian questions", () => {
   });
   it("groups by chapter", () => {
     expect(itQuestionsByChapter(1).length).toBe(2);
-    expect(itQuestionsByChapter(6).length).toBe(0);
+    for (const chapter of IT_CHAPTERS) {
+      expect(itQuestionsByChapter(chapter.id).length).toBeGreaterThan(0);
+    }
   });
   // Repository rule: original content never claims an official question code and is never pre-approved.
   it("stays original and unapproved", () => {

@@ -107,7 +107,7 @@ describe("Italian content access", () => {
   it("filters by chapter", () => {
     const preview = itContentFor("preview");
     expect(itQuestionsOf(preview, 1).every((q) => q.chapter === 1)).toBe(true);
-    expect(itQuestionsOf(preview, 6)).toEqual([]);
+    expect(itQuestionsOf(preview, 6).map((q) => q.id)).toEqual(["it-b-013"]);
     expect(itQuestionsOf(itContentFor("production"), 1)).toEqual([]);
   });
 });

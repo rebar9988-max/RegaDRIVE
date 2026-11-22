@@ -9,7 +9,7 @@ lesson and sign in the repository was German (StVO).
 Source of the material: the owner's own Patente B practice site
 (`patenta-b-ismael-rasool.netlify.app`), authored by Ismael Hamadameen. The site advertises 7,020
 questions, but its `index.html` contains **12 true/false questions and 8 sign illustrations** — that
-is everything that existed to bring over. The 7,020 figure is the planned size of the syllabus and is
+is everything that existed to bring over. Five additional original drafts cover the previously empty chapters 6, 8, 10, 12 and 14. The 7,020 figure is the planned size of the syllabus and is
 kept here only as `plannedCount` per chapter (`IT_PLANNED_TOTAL`), never as a count of questions that
 exist.
 
@@ -19,7 +19,7 @@ exist.
 | --- | --- |
 | `src/content/italy/types.ts` | `ItText`, `ItChapter`, `ItSign`, `ItQuestion` |
 | `src/content/italy/chapters.ts` | the 16 syllabus chapters, five languages each |
-| `src/content/italy/questions.ts` | the 12 true/false questions |
+| `src/content/italy/questions.ts` | the 17 true/false questions |
 | `src/content/italy/signs.ts` | the 8 sign illustrations and their public URLs |
 | `public/signs/it/*.svg` | the illustrations themselves (original artwork) |
 | `tests/unit/italy.test.ts` | data consistency, review status, files on disk |
@@ -88,7 +88,7 @@ Rules the server enforces, so none of this can be shortcut:
 
 Signs (8): `it-autostrada`, `it-pericolo`, `it-divieto`, `it-obbligo`, `it-precedenza`, `it-stop`, `it-semaforo`, `it-parcheggio`
 
-Questions (12):
+Questions (17):
 
 | id | chapter | answer key |
 | --- | --- | --- |
@@ -110,7 +110,7 @@ Questions (12):
 | Part | State |
 | --- | --- |
 | 16 chapters | in the app, five languages each |
-| 12 true/false questions | in the app, **pending review** — not visible to learners in production |
+| 17 true/false questions | in the app, **pending review** — not visible to learners in production |
 | 8 sign illustrations | in the app, **pending review** — not visible to learners in production |
 | Practice per chapter | works; shows the answer key, the explanation and the sign; records progress under Italy's own key |
 | Mock exam | real rules wired in (30 statements, 20 minutes, max 3 errors; `src/lib/shared/examIt.ts`). It refuses to start until 30 **approved** questions exist, because a shorter paper would not be this exam |
@@ -122,7 +122,7 @@ Questions (12):
 
 1. **The two human reviews** (above). Until they are recorded, production shows 0 Italian questions and
    0 Italian signs — by design, not by fault.
-2. **More questions.** 12 exist. The mock exam needs 30 approved ones; the syllabus plans 7,020.
+2. **More questions.** 17 exist. The mock exam needs 30 approved ones; the syllabus plans 7,020.
 3. **Italian lessons and vocabulary.** The Italian section has none; those screens are not linked under
    Italy rather than showing German ones.
 4. **Latin-script Kurmanji, German and Arabic** wording for the Italian items is drafted, not reviewed;
