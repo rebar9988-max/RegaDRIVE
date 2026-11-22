@@ -46,9 +46,15 @@ with fitz.open(pdf) as doc:
                 group, section = group_titles[top]
             verdict, = (w for w in verdicts if abs(w[1] - y) < 1)
             end = next((v for v in boundaries if v > y), page.rect.height)
-            prompt = " ".join(w[4] for w in sorted(words, key=lambda w: (round(w[1], 1), w[0]))
-                              if 80 <= w[0] < 354 and y - .2 <= w[1] < end - .2)
-            assert prompt and group, (page.number, key[4])
+            prompt_words = sorted(
+                (w for w in words if 77 <= w[0] < 354 and y - .2 <= w[1] < end - .2),
+                key=lambda w: (round(w[1], 1), w[0]),
+            )
+            # The Italian PDF starts each prompt at x=77.5. Check the start of each row
+            # so a column offset cannot silently clip the first word of every statement.
+            if not prompt_words or abs(prompt_words[0][0] - 77.5) > 0.5 or group is None:
+                raise ValueError(f"Invalid prompt start on page {page.number + 1}, question {key[4]}")
+            prompt = " ".join(w[4] for w in prompt_words)
             associated = [p for p in pictures if y - .2 <= p["bbox"][1] < end - .2]
             assert len(associated) <= 1, (page.number, key[4])
             filename = None
