@@ -18,7 +18,7 @@ export function CountrySelection() {
   const tx = useText();
   return <main className="country-entry" id="main">
     <section className="country-panel" aria-labelledby="country-title">
-      <img src="/brand/regadrive-logo.webp" width={84} height={84} alt="RegaDRIVE" fetchPriority="high" />
+      <img src="/brand/regadrive-logo.webp" width={252} height={84} alt="RegaDRIVE" fetchPriority="high" />
       <h1 id="country-title">{tx(T.chooseCountry)}</h1>
       <div className="country-options">
         <button type="button" className="country-card" onClick={() => setSettings({ country: "IT" })} data-testid="country-it">
