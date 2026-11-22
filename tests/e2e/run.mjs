@@ -1148,7 +1148,7 @@ try {
       await page.goto(BASE);
       await page.locator(".country-card:has([lang=it])").click();
       await page.locator("[data-testid=italy-home]").waitFor();
-      assert.equal(await page.locator("[data-testid=italy-chapters] > li").count(), 16, "16 Italian chapters");
+      assert.equal(await page.locator("[data-testid=italy-quick] a").count(), 4, "the Italian start screen offers lessons, practice, progress and the exam");
       assert.equal(await page.locator("[data-testid=italy-free]").count(), 1, "the Italian section states it is free");
       await axe(page, `italy home ${viewport.width}`);
 
@@ -1185,9 +1185,44 @@ try {
       assert.equal(await page.evaluate(() => document.documentElement.dir), "rtl");
       assert.equal(await page.evaluate(() => document.documentElement.classList.contains("text-ltr")), false, "Badini is not Latin-script");
 
+      // Lessons: the syllabus as structure, with the legal basis and the signs of the chapter.
+      await page.goto(`${BASE}/learn`);
+      await page.locator("[data-testid=italy-lessons]").waitFor();
+      assert.equal(await page.locator("[data-testid=italy-lessons] .grid > li").count(), 16, "16 Italian chapters");
+      await page.locator("[data-testid=italy-lesson-1]").click();
+      await page.locator("[data-testid=italy-lesson]").waitFor();
+      assert.equal(await page.locator("[data-testid=italy-lesson-sources] li").count() > 0, true, "the chapter shows its legal basis");
+      assert.equal(await page.locator("[data-testid=italy-lesson-signs] img").count() > 0, true, "the chapter shows its signs");
+      await axe(page, `italy lesson ${viewport.width}`);
+      await page.locator("[data-testid=italy-lesson-practice]").click();
+      await page.locator("[data-testid=it-question-card]").waitFor();
+
+      // Progress and the two review runs.
+      await page.goto(`${BASE}/progress`);
+      await page.locator("[data-testid=italy-progress]").waitFor();
+      assert.equal(await page.locator("[data-testid=italy-progress-chapters] > li").count(), 16, "progress per chapter");
+      await axe(page, `italy progress ${viewport.width}`);
+      await page.locator("[data-testid=italy-review-wrong]").click();
+      // The learner answered correctly above, so there is nothing to review and the page says so.
+      await page.locator("[data-testid=italy-practice-empty], [data-testid=it-question-card]").first().waitFor();
+      await page.goto(`${BASE}/practice?mode=bookmarks`);
+      await page.locator("[data-testid=italy-practice-empty], [data-testid=it-question-card]").first().waitFor();
+
+      // Only three languages in the Italian section: Sorani, Badini, Italian.
+      await page.goto(BASE);
+      await page.locator("[data-testid=italy-home]").waitFor();
+      await page.locator("[data-testid=header-lang-trigger]").click();
+      assert.deepEqual(await page.locator(".lang-option-code").allTextContents(), ["CKB", "BAD", "IT"], "Italy offers exactly Sorani, Badini and Italian");
+      await page.locator("[data-testid=header-lang-it]").click();
+      assert.equal(await page.evaluate(() => document.documentElement.lang), "it");
+      assert.equal(await page.evaluate(() => document.documentElement.dir), "rtl", "the layout never mirrors");
+      const nav = await page.textContent(".tabbar");
+      assert.equal(/Lernen|Üben|Prüfung|Mehr/.test(nav ?? ""), false, `no German left in the Italian navigation: ${nav}`);
+      assert.ok(/Esercitati|Esame|Altro/.test(nav ?? ""), `Italian navigation: ${nav}`);
+
       // Nothing German is reachable or linked in the Italian section.
       assert.equal(await page.locator(".tabbar a[href='/learn']").count(), 0, "no German lessons tab under Italy");
-      for (const path of ["/learn", "/vocabulary", "/sign-quiz", "/progress"]) {
+      for (const path of ["/vocabulary", "/sign-quiz", "/lessons"]) {
         await page.goto(`${BASE}${path}`);
         await page.locator("[data-testid=italy-pending]").waitFor();
         assert.equal(await page.locator("[data-testid=question-card], [data-testid=readiness]").count(), 0, `${path} shows no German content under Italy`);

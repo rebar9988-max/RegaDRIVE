@@ -1,5 +1,17 @@
 // Shared controls use their German source wording as a translation key.
 export const italianInterface: Record<string, string> = {
+  "Lektionen": "Lezioni",
+  "Jedes Kapitel: seine Rechtsgrundlage, seine Schilder und seine Fragen.": "Ogni capitolo: la sua base giuridica, i suoi segnali e le sue domande.",
+  "Rechtsgrundlage": "Base giuridica",
+  "Schilder dieses Kapitels": "Segnali di questo capitolo",
+  "Übung starten": "Inizia l'esercitazione",
+  "Falsch beantwortete Fragen": "Domande sbagliate",
+  "Gemerkte Fragen": "Domande salvate",
+  "Hier ist nichts zu wiederholen. Das ist gut.": "Non c'è nulla da ripassare qui. Ottimo.",
+  "Fortschritt nach Kapitel": "Progressi per capitolo",
+  "Falsch": "Falso",
+  "Gemeistert": "Apprese",
+  "Kapitel öffnen": "Apri il capitolo",
   "Start": "Home", "Lernen": "Studia", "Üben": "Esercitati", "Prüfung": "Esame",
   "Mehr": "Altro", "Verkehrszeichen": "Segnali stradali", "Fortschritt": "Progressi",
   "Konto": "Account", "Einstellungen": "Impostazioni", "Über & Rechtliches": "Informazioni e note legali",
@@ -20,6 +32,17 @@ export const italianInterface: Record<string, string> = {
 
 // Duhok Arabic-script usage reference: https://uod.ac/documents/7119/Graduation_guide_2025-2026.pdf
 export const badiniInterface: Record<string, string> = {
+  "Lektionen": "دەرس",
+  "Jedes Kapitel: seine Rechtsgrundlage, seine Schilder und seine Fragen.": "هەر بەشەک: بنگەهێ وی یێ یاسایی، نیشانێن وی و پرسێن وی.",
+  "Rechtsgrundlage": "بنگەهێ یاسایی",
+  "Schilder dieses Kapitels": "نیشانێن ڤی بەشی",
+  "Übung starten": "ڕاهێنان دەست پێ بکە",
+  "Falsch beantwortete Fragen": "پرسێن چەوت بەرسڤدای",
+  "Gemerkte Fragen": "پرسێن نیشانکری",
+  "Hier ist nichts zu wiederholen. Das ist gut.": "چ تشتەک ل ڤێرێ نینە بۆ دوبارەکرنێ. ئەڤە باشە.",
+  "Fortschritt nach Kapitel": "پێشکەفتن ل گۆرا بەشان",
+  "Gemeistert": "فێربووی",
+  "Kapitel öffnen": "بەشی ڤەکە",
   "Start": "دەستپێک", "Lernen": "فێربوون", "Üben": "ڕاهێنان", "Prüfung": "ئەزموون",
   "Mehr": "پتر", "Verkehrszeichen": "نیشانێن هاتنوچوونێ", "Fortschritt": "پێشکەفتن",
   "Konto": "هەژمار", "Einstellungen": "ڕێکخستن", "Über & Rechtliches": "دەربارە و یاسا",

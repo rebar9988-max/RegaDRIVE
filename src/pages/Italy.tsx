@@ -11,10 +11,12 @@ import type { ItQuestion } from "../content/italy/types";
 import { PATENTE_B_RULES_IT, scoreItExam } from "../lib/shared/examIt";
 import { formatClock, itTimeLeft, pickItExam } from "../lib/itExam";
 import { questionStatus } from "../lib/progress";
+import { isItPracticeMode, itChapterSources, itChapterStats, itOverall, itPracticeSet, type ItPracticeMode } from "../lib/italyStudy";
+import { IT_CONTENT_REGISTRY } from "../content/italy/registry";
+import { itSignById } from "../content/italy/signs";
 import { IT_FREE_FOREVER_LABEL } from "../lib/shared/accessPolicy";
 
 const newSession = () => `it-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
-const inChapter = (qs: readonly ItQuestion[], chapter: number) => qs.filter((q) => q.chapter === chapter);
 
 /** Shown while the approved list is being fetched, and when the fetch failed (fail closed: nothing is shown). */
 function Gate({ loading, failed }: { loading: boolean; failed: boolean }) {
@@ -26,6 +28,7 @@ function Gate({ loading, failed }: { loading: boolean; failed: boolean }) {
 /** Italy's start screen: the 16 chapters of the syllabus with what is approved in each. */
 export function ItalyHome() {
   const { progress, settings } = useApp();
+  const label = useBiText();
   const approved = useItApproved();
   const answered = approved.questions.filter((q) => progress.questions[q.id]).length;
   const mastered = approved.questions.filter((q) => questionStatus(progress.questions[q.id], settings.masteryThreshold) === "mastered").length;
@@ -42,21 +45,12 @@ export function ItalyHome() {
         <div className="card stat"><span className="num" dir="ltr">{mastered}</span><span className="stat-label"><Bi t={T.mastered} /></span></div>
         <div className="card stat"><span className="num" dir="ltr">{IT_PLANNED_TOTAL}</span><span className="stat-label"><Bi t={T.it.plannedTotal} /></span></div>
       </div>
-      <h2><Bi t={T.it.chapters} /></h2>
-      <ul className="grid grid-tiles" data-testid="italy-chapters">
-        {IT_CHAPTERS.map((c) => {
-          const n = inChapter(approved.questions, c.id).length;
-          return (
-            <li key={c.id}>
-              <Link href={`/practice?chapter=${c.id}`} className="card card-link tile" data-testid={`italy-chapter-${c.id}`}>
-                <span className="badge" dir="ltr">{c.id}</span>
-                <strong><Bi t={c.title} /></strong>
-                <span className="small muted" dir="ltr">{n} / {c.plannedCount}</span>
-              </Link>
-            </li>
-          );
-        })}
-      </ul>
+      <nav className="q-actions" aria-label={label(T.it.lessons)} data-testid="italy-quick">
+        <Link href="/learn" className="btn btn-primary" data-testid="italy-go-lessons"><Bi t={T.it.lessons} /></Link>
+        <Link href="/practice" className="btn" data-testid="italy-go-practice"><Bi t={T.it.startPractice} /></Link>
+        <Link href="/progress" className="btn" data-testid="italy-go-progress"><Bi t={T.nav.progress} /></Link>
+        <Link href="/exam" className="btn" data-testid="italy-go-exam"><Bi t={T.it.exam} /></Link>
+      </nav>
     </section>
   );
 }
@@ -65,29 +59,38 @@ export function ItalyHome() {
 export function ItalyPractice() {
   const label = useBiText();
   const approved = useItApproved();
-  const chapter = useMemo(() => {
-    const raw = new URLSearchParams(location.search).get("chapter");
+  const { progress, settings } = useApp();
+  const { chapter, mode } = useMemo(() => {
+    const params = new URLSearchParams(location.search);
+    const raw = params.get("chapter");
     const n = raw === null ? NaN : Number(raw);
-    return Number.isInteger(n) && IT_CHAPTERS.some((c) => c.id === n) ? n : null;
+    const ch = Number.isInteger(n) && IT_CHAPTERS.some((c) => c.id === n) ? n : null;
+    const asked = params.get("mode");
+    const m: ItPracticeMode = isItPracticeMode(asked) ? asked : ch !== null ? "chapter" : "all";
+    return { chapter: ch, mode: m };
   }, []);
   const [session, setSession] = useState(newSession);
   const [pos, setPos] = useState(0);
   const [done, setDone] = useState<Record<string, boolean>>({});
   // Snapshot the list once per run, so answering never reshuffles the current set.
   const list = useMemo(
-    () => (chapter === null ? approved.questions : inChapter(approved.questions, chapter)),
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- intentionally recomputed only on chapter/session/bank change
-    [chapter, session, approved.questions],
+    () => itPracticeSet(approved.questions, progress, mode, chapter, settings.masteryThreshold),
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- a run keeps the set it started with; only a new run or a new bank changes it
+    [chapter, mode, session, approved.questions],
   );
   const restart = () => { setSession(newSession()); setPos(0); setDone({}); };
-  const title = chapter === null ? null : IT_CHAPTERS.find((c) => c.id === chapter);
+  const title = mode === "wrong" ? { title: T.it.reviewWrong }
+    : mode === "bookmarks" ? { title: T.it.reviewBookmarks }
+    : chapter === null ? null : IT_CHAPTERS.find((c) => c.id === chapter) ?? null;
   const q = list[pos];
 
   if (list.length === 0) {
     return (
       <section className="stack" data-testid="italy-practice-empty">
         <h1><Bi t={title?.title ?? T.it.title} /></h1>
-        {approved.questions.length === 0 ? <Gate loading={approved.loading} failed={approved.failed} /> : <p className="card"><Bi t={T.it.noQuestionsYet} /></p>}
+        {approved.questions.length === 0
+          ? <Gate loading={approved.loading} failed={approved.failed} />
+          : <p className="card" role="status"><Bi t={mode === "wrong" || mode === "bookmarks" ? T.it.noneToReview : T.it.noQuestionsYet} /></p>}
         <Link href="/" className="btn"><Bi t={T.it.backToChapters} /></Link>
       </section>
     );
@@ -234,4 +237,116 @@ function useNowTicking(active: boolean): number {
   }, [active]);
   // The per-second value can be one tick behind a freshly started exam, so the minute clock is the floor.
   return active ? Math.max(tick, minute) : minute;
+}
+
+/**
+ * Italy's lessons: the syllabus itself as the structure. Each chapter page shows the legal basis of its
+ * own questions (Codice della Strada references recorded with the content), the signs that belong to
+ * them and the learner's progress — nothing is written here that a reviewer has not seen.
+ */
+export function ItalyLessons() {
+  const { progress, settings } = useApp();
+  const approved = useItApproved();
+  const chapter = useMemo(() => {
+    const raw = new URLSearchParams(location.search).get("chapter");
+    const n = raw === null ? NaN : Number(raw);
+    return Number.isInteger(n) && IT_CHAPTERS.some((c) => c.id === n) ? n : null;
+  }, []);
+  const stats = itChapterStats(progress, approved.questions, settings.masteryThreshold);
+
+  if (chapter === null) {
+    return (
+      <section className="stack" data-testid="italy-lessons">
+        <h1><Bi t={T.it.lessons} /></h1>
+        <p className="card muted small"><Bi t={T.it.lessonIntro} /></p>
+        {approved.questions.length === 0 && <Gate loading={approved.loading} failed={approved.failed} />}
+        <ul className="grid grid-tiles">
+          {stats.map((s) => (
+            <li key={s.chapter.id}>
+              <Link href={`/learn?chapter=${s.chapter.id}`} className="card card-link tile" data-testid={`italy-lesson-${s.chapter.id}`}>
+                <span className="badge" dir="ltr">{s.chapter.id}</span>
+                <strong><Bi t={s.chapter.title} /></strong>
+                <span className="small muted" dir="ltr">{s.mastered} / {s.total}</span>
+              </Link>
+            </li>
+          ))}
+        </ul>
+      </section>
+    );
+  }
+
+  const stat = stats.find((s) => s.chapter.id === chapter)!;
+  const sources = itChapterSources(chapter, approved.questions, (id) => IT_CONTENT_REGISTRY.get(id)?.provenance.sourceRefs ?? []);
+  const signs = [...new Set(approved.questions.filter((q) => q.chapter === chapter).map((q) => q.signId))]
+    .flatMap((id) => (id ? [itSignById(id)] : []))
+    .flatMap((s) => (s ? [s] : []));
+  return (
+    <section className="stack" data-testid="italy-lesson">
+      <h1><Bi t={stat.chapter.title} /></h1>
+      <div className="grid grid-2 compact-stats">
+        <div className="card stat"><span className="num" dir="ltr">{stat.total}</span><span className="stat-label"><Bi t={T.it.questionsHere} /></span></div>
+        <div className="card stat"><span className="num" dir="ltr">{stat.mastered}</span><span className="stat-label"><Bi t={T.it.masteredCount} /></span></div>
+      </div>
+      {sources.length > 0 && (
+        <div className="card stack" data-testid="italy-lesson-sources">
+          <h2 className="section-title"><Bi t={T.it.legalBasis} /></h2>
+          <ul className="stack">{sources.map((ref) => <li key={ref} className="small" lang="it" dir="ltr">{ref}</li>)}</ul>
+        </div>
+      )}
+      {signs.length > 0 && (
+        <div className="stack" data-testid="italy-lesson-signs">
+          <h2 className="section-title"><Bi t={T.it.signsOfChapter} /></h2>
+          <ul className="grid grid-tiles">
+            {signs.map((s) => (
+              <li key={s.id}><div className="card tile"><ItSignImage sign={s} labelled={false} /><strong><Bi t={s.name} /></strong></div></li>
+            ))}
+          </ul>
+        </div>
+      )}
+      <div className="q-actions">
+        {stat.total > 0 && <Link href={`/practice?chapter=${chapter}`} className="btn btn-primary" data-testid="italy-lesson-practice"><Bi t={T.it.startPractice} /></Link>}
+        <Link href="/learn" className="btn"><Bi t={T.it.lessons} /></Link>
+      </div>
+    </section>
+  );
+}
+
+/** Italy's progress: what the learner has done, per chapter, with the two review runs. */
+export function ItalyProgress() {
+  const { progress, settings } = useApp();
+  const approved = useItApproved();
+  const all = itOverall(progress, approved.questions, settings.masteryThreshold);
+  const stats = itChapterStats(progress, approved.questions, settings.masteryThreshold);
+  return (
+    <section className="stack" data-testid="italy-progress">
+      <h1><Bi t={T.nav.progress} /></h1>
+      {approved.questions.length === 0 && <Gate loading={approved.loading} failed={approved.failed} />}
+      <div className="grid grid-2 compact-stats">
+        <div className="card stat"><span className="num" dir="ltr">{all.answered}</span><span className="stat-label"><Bi t={T.answeredL} /></span></div>
+        <div className="card stat"><span className="num" dir="ltr">{all.mastered}</span><span className="stat-label"><Bi t={T.it.masteredCount} /></span></div>
+        <div className="card stat"><span className="num" dir="ltr">{all.wrong}</span><span className="stat-label"><Bi t={T.it.wrongCount} /></span></div>
+        <div className="card stat"><span className="num" dir="ltr">{all.bookmarked}</span><span className="stat-label"><Bi t={T.it.reviewBookmarks} /></span></div>
+      </div>
+      <div className="q-actions">
+        <Link href="/practice?mode=wrong" className="btn btn-primary" data-testid="italy-review-wrong"><Bi t={T.it.reviewWrong} /></Link>
+        <Link href="/practice?mode=bookmarks" className="btn" data-testid="italy-review-bookmarks"><Bi t={T.it.reviewBookmarks} /></Link>
+      </div>
+      <h2 className="section-title"><Bi t={T.it.chapterProgress} /></h2>
+      <ul className="stack" data-testid="italy-progress-chapters">
+        {stats.map((s) => (
+          <li key={s.chapter.id} className="card">
+            <div className="q-meta">
+              <span className="badge" dir="ltr">{s.chapter.id}</span>
+              <strong><Bi t={s.chapter.title} /></strong>
+              <span className="spacer" />
+              <span className="small muted" dir="ltr">{s.mastered}/{s.total}</span>
+            </div>
+            <div className="progressbar" role="progressbar" aria-valuemin={0} aria-valuemax={s.total} aria-valuenow={s.mastered}>
+              <span style={{ width: `${s.total === 0 ? 0 : (s.mastered / s.total) * 100}%` }} />
+            </div>
+          </li>
+        ))}
+      </ul>
+    </section>
+  );
 }
