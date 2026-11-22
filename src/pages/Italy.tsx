@@ -16,6 +16,12 @@ import { IT_FREE_FOREVER_LABEL } from "../lib/shared/accessPolicy";
 const newSession = () => `it-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
 const inChapter = (qs: readonly ItQuestion[], chapter: number) => qs.filter((q) => q.chapter === chapter);
 
+const OFFICIAL_QUIZ_PORTAL = "https://www.ilportaledellautomobilista.it/web/portale-automobilista/dettaglio-news/-/asset_publisher/V57QhEdoCmc7/content/quiz-per-le-patenti-am-a-b-superiori-e-cqc";
+
+function OfficialQuizLink() {
+  return <a href={OFFICIAL_QUIZ_PORTAL} className="btn" lang="it" dir="ltr">Quiz ministeriali – Patenti A/B</a>;
+}
+
 /** Shown while the approved list is being fetched, and when the fetch failed (fail closed: nothing is shown). */
 function Gate({ loading, failed }: { loading: boolean; failed: boolean }) {
   if (loading) return <p className="card muted" aria-busy="true" data-testid="italy-loading">…</p>;
@@ -36,6 +42,7 @@ export function ItalyHome() {
       <p className="card muted small"><Bi t={T.it.reviewNotice} /></p>
       <p className="card muted small" data-testid="italy-free"><Bi t={T.it.free} /></p>
       {approved.questions.length === 0 && <Gate loading={approved.loading} failed={approved.failed} />}
+      {!approved.loading && approved.questions.length === 0 && <OfficialQuizLink />}
       <div className="grid grid-2 compact-stats">
         <div className="card stat"><span className="num" dir="ltr">{approved.questions.length}</span><span className="stat-label"><Bi t={T.it.questionsHere} /></span></div>
         <div className="card stat"><span className="num" dir="ltr">{answered}</span><span className="stat-label"><Bi t={T.answeredL} /></span></div>
@@ -88,6 +95,7 @@ export function ItalyPractice() {
       <section className="stack" data-testid="italy-practice-empty">
         <h1><Bi t={title?.title ?? T.it.title} /></h1>
         {approved.questions.length === 0 ? <Gate loading={approved.loading} failed={approved.failed} /> : <p className="card"><Bi t={T.it.noQuestionsYet} /></p>}
+        {!approved.loading && <OfficialQuizLink />}
         <Link href="/" className="btn"><Bi t={T.it.backToChapters} /></Link>
       </section>
     );
@@ -179,6 +187,7 @@ export function ItalyExam() {
         {enough
           ? <button type="button" className="btn btn-primary" onClick={start} data-testid="italy-exam-start"><Bi t={T.it.examStart} /></button>
           : <p className="card" role="status" data-testid="italy-exam-blocked"><Bi t={T.it.examNeedsMore} /></p>}
+        {!enough && !approved.loading && <OfficialQuizLink />}
         <p className="small muted"><Bi t={T.it.examRulesSource} /> <bdi dir="ltr">({rules.version})</bdi></p>
       </section>
     );

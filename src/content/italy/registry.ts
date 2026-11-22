@@ -1,4 +1,4 @@
-import { publicationGate, type ContentRecord, type GateResult, type Provenance, type ReviewRecord } from "../pipeline.ts";
+import { publicationGate, type ContentRecord, type GateResult, type ReviewRecord } from "../pipeline.ts";
 import { PATENTE_B_RULES_IT } from "../../lib/shared/examIt.ts";
 import { IT_QUESTIONS, IT_CONTENT_VERSION } from "./questions.ts";
 import { IT_SIGNS } from "./signs.ts";
@@ -32,9 +32,14 @@ const IT_QUESTION_SOURCES: Record<string, string[]> = {
   "it-b-010": ["CdS art. 158 (divieto di fermata e sosta)"],
   "it-b-011": ["CdS art. 117 (limitazioni per i neopatentati)"],
   "it-b-012": ["CdS art. 189 (comportamento in caso di incidente)"],
+  "it-b-013": ["CdS art. 40"],
+  "it-b-014": ["CdS art. 39"],
+  "it-b-015": ["CdS art. 149"],
+  "it-b-016": ["CdS art. 148"],
+  "it-b-017": ["CdS art. 153"],
 };
 
-const provenance = (sourceRefs: string[]): Provenance => ({ author: AUTHOR, aiAssisted: true, createdOn: CREATED_ON, sourceRefs });
+const NEW_QUESTIONS = new Set(["it-b-013", "it-b-014", "it-b-015", "it-b-016", "it-b-017"]);
 
 const automated = (stage: "SOURCE_CHECK" | "LICENSE_CHECK"): ReviewRecord => ({
   stage, reviewer: "content-pipeline", role: "automated", date: CREATED_ON,
@@ -48,7 +53,12 @@ function record(id: string, kind: ContentRecord["kind"], sourceRefs: string[]): 
     licenseClass: "original_regadrive",
     licenseId: null,
     contentVersion: IT_CONTENT_VERSION,
-    provenance: provenance(sourceRefs),
+    provenance: {
+      author: NEW_QUESTIONS.has(id) ? "RegaDRIVE content team (drafted with AI assistance, Codex)" : AUTHOR,
+      aiAssisted: true,
+      createdOn: NEW_QUESTIONS.has(id) ? "2026-11-22" : CREATED_ON,
+      sourceRefs,
+    },
     reviews: [automated("SOURCE_CHECK"), automated("LICENSE_CHECK")],
     // Never validated by a human against the Italian exam rules yet.
     validatedAgainstRules: null,

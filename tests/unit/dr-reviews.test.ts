@@ -70,7 +70,7 @@ const AP = (ids: string[], o: Record<string, unknown> = {}) => flow(ids, { stage
 type Item = { id: string; kind: string; status: string; publishable: boolean };
 
 describe("/dr Content Review & Approval", () => {
-  it("covers exactly the 40 signs and 89 sign-quiz questions, all unpublished while nothing is reviewed", async () => {
+  it("covers both countries, with all items unpublished before review", async () => {
     expect(REVIEW_ITEMS.filter((i) => i.kind === "sign").length).toBe(40);
     expect(REVIEW_ITEMS.filter((i) => i.kind === "signQuiz").length).toBe(89);
     expect(REVIEW_ITEMS.every((i) => i.valid)).toBe(true);
@@ -81,8 +81,8 @@ describe("/dr Content Review & Approval", () => {
     const r = await t.call("/api/dr/reviews");
     expect(r.status).toBe(200);
     const items = r.body.items as Item[];
-    // 40 German signs + 89 German sign-quiz questions + 8 Italian signs + 12 Italian questions.
-    expect(items.length).toBe(149);
+    // 40 German signs + 89 German sign-quiz questions + 8 Italian signs + 17 Italian questions.
+    expect(items.length).toBe(154);
     expect(items.every((i) => !i.publishable && i.status === "AWAITING_REVIEW")).toBe(true);
     expect((r.body.counts as { published: number }).published).toBe(0);
   });
