@@ -132,7 +132,7 @@ try {
       assert.equal(await page.getAttribute("html", "dir"), "rtl");
       assert.equal(await page.getAttribute("html", "lang"), "ckb");
       // Wait for the logo to finish downloading over the real network (an instant check races the download).
-      await page.waitForFunction(() => { const i = document.querySelector(".hero-logo"); return !!i && i.complete && i.naturalWidth > 0; }, null, { timeout: 15000 })
+      await page.waitForFunction(() => { const i = document.querySelector(".topbar .brand img"); return !!i && i.complete && i.naturalWidth > 0; }, null, { timeout: 15000 })
         .catch(() => { throw new Error("official logo did not load within 15 s"); });
       assert.equal(await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth), 0, "no horizontal overflow");
       assert.equal(await page.locator("[data-testid=preview-banner]").count(), 0, "no preview banner in production");

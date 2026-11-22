@@ -111,11 +111,17 @@ try {
       await page.waitForSelector("[data-testid=home]");
       assert.equal(await page.getAttribute("html", "dir"), "rtl");
       assert.equal(await page.getAttribute("html", "lang"), "ckb");
-      await page.locator(".hero-logo").evaluate(async (img) => { if (!img.complete) await new Promise((resolve) => { img.addEventListener("load", resolve, { once: true }); img.addEventListener("error", resolve, { once: true }); }); });
-      const logoOk = await page.$eval(".hero-logo", (img) => img.complete && img.naturalWidth > 0);
-      assert.ok(logoOk, "official logo loads");
-      const emblemOk = await page.$eval(".brand img", (img) => img.complete && img.naturalWidth > 0);
-      assert.ok(emblemOk, "header emblem loads");
+      const logo = page.locator(".topbar .brand img");
+      await logo.evaluate((img) => img.decode());
+      assert.equal(await page.locator('img[src="/brand/regadrive-logo.webp"]').count(), 1, "one home logo");
+      const banner = await logo.boundingBox();
+      assert.ok(Math.abs(banner.width / banner.height - 3) < 0.01, "banner keeps the original 3:1 ratio");
+      if (await page.evaluate(() => innerWidth <= 640)) {
+        const header = await page.locator(".topbar").boundingBox();
+        const toolbar = await page.locator(".header-tools").first().boundingBox();
+        assert.ok(Math.abs(banner.width - Math.min(header.width, 480)) < 1, "banner fills its mobile header row");
+        assert.ok(toolbar.y >= banner.y + banner.height - 1, "controls sit below the art");
+      }
       const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
       assert.equal(overflow, 0, "no horizontal overflow");
       // Quick tiles and stat tiles must be equal height (no ragged layout).
@@ -640,7 +646,7 @@ try {
       // The preview-only test banner (never shown in production) has a different length per language.
       await page.addStyleTag({ content: "[data-testid=preview-banner] { display: none !important; }" });
       // Horizontal edges and vertical positions: nothing may move sideways or up and down.
-      const boxes = () => page.evaluate(() => [".topbar .brand", ".lang-trigger", ".hero-logo", ".tabbar", ".sidenav", ".overview-card", ".learning-cta", ".home-menu"].map((sel) => {
+      const boxes = () => page.evaluate(() => [".topbar .brand", ".lang-trigger", ".tabbar", ".sidenav", ".overview-card", ".learning-cta", ".home-menu"].map((sel) => {
         const el = document.querySelector(sel); const r = el?.getBoundingClientRect();
         return r && r.width > 0 ? [sel, r.left, r.right, r.top + scrollY, r.height] : [sel, null];
       }));

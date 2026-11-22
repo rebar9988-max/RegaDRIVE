@@ -50,7 +50,6 @@ export function Home() {
     <div className="dashboard" data-testid="home">
       <div className="dashboard-main">
         <section className="welcome" aria-labelledby="home-title">
-          <img className="hero-logo" src="/brand/regadrive-logo.webp" width={2172} height={724} alt="RegaDRIVE" fetchPriority="high" />
           <div>
             <span className="eyebrow" lang="de" dir="ltr">Führerschein · Klasse B</span>
             <h1 id="home-title"><Bi t={T.greeting} /></h1>
