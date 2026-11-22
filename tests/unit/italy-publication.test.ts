@@ -158,6 +158,21 @@ describe("one bank missing never breaks the other", () => {
 });
 
 describe("Italian exam rules", () => {
+  it("never passes an incomplete or oversized paper", () => {
+    for (const length of [0, 1, 29, 31]) {
+      const answers = Array.from({ length }, (_, i) => ({ questionId: `q${i}`, correct: true }));
+      expect(scoreItExam(answers).passed).toBe(false);
+      expect(scoreItExam(answers).failReason).toBe("invalid_question_count");
+    }
+  });
+  it("does not fill an exam with duplicate IDs", () => {
+    const pool = Array.from({ length: 30 }, () => IT_QUESTIONS[0]!);
+    expect(pickItExam(pool)).toBeNull();
+    const unique = Array.from({ length: 30 }, (_, i) => ({ ...IT_QUESTIONS[0]!, id: `unique-${i}` }));
+    const paper = pickItExam([...unique, ...unique]);
+    expect(paper).toHaveLength(30);
+    expect(new Set(paper!.map(q => q.id)).size).toBe(30);
+  });
   it("are the real ministerial format: 30 statements, 20 minutes, at most 3 errors", () => {
     expect(PATENTE_B_RULES_IT.questionCount).toBe(30);
     expect(PATENTE_B_RULES_IT.minutes).toBe(20);
