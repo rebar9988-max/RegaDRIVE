@@ -326,7 +326,7 @@ export function Account() {
     <button type="button" className="btn btn-secondary" onClick={() => go(v)} disabled={busy !== null} data-testid={testid}>{text(label)}</button>
   );
   const heading = (t: Bilingual) => <Tx t={t} as="h2" id="auth-heading" tabIndex={-1} className="acct-form-title" />;
-  const logo = <img className="account-logo acct-logo" src="/brand/regadrive-logo.webp" alt="RegaDRIVE" width={72} height={72} />;
+  const logo = <img className="account-logo acct-logo" src="/brand/regadrive-logo.webp" alt="RegaDRIVE" width={216} height={72} />;
 
   /** A full-width settings-style row: icon, label, optional value, chevron or action. */
   const row = (icon: IconName, label: Bilingual, value?: ReactNode, extra?: { danger?: boolean }) => (

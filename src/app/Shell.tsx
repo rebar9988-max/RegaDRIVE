@@ -59,7 +59,7 @@ export function Shell({ children }: { children: ReactNode }) {
           <Link href="/more" className="icon-button" aria-label={label(T.nav.more)}><Icon name="more" /></Link>
         </div>
         <Link href="/" className="brand" aria-label="RegaDRIVE">
-          <img src="/brand/regadrive-logo.webp" width={58} height={58} alt="" />
+          <img src="/brand/regadrive-logo.webp" width={144} height={48} alt="" />
         </Link>
         <div className="header-tools">
           <LanguageMenu />

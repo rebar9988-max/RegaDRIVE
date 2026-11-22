@@ -1,7 +1,7 @@
 /* /dr owner control center — uses the existing RegaDRIVE tokens only (src/styles/app.css). */
 .dr { min-height: 100dvh; background: var(--canvas); color: var(--ink); font-family: var(--font-ckb); }
 .dr-top { position: sticky; top: 0; z-index: 20; display: flex; align-items: center; gap: 10px; padding: 10px 14px calc(10px); padding-top: max(10px, env(safe-area-inset-top)); background: rgb(255 255 255 / 97%); border-bottom: 1px solid var(--border); }
-.dr-top img { width: 40px; height: 40px; object-fit: contain; }
+.dr-top img { width: min(120px, 32vw); height: auto; }
 .dr-top-title { flex: 1; min-width: 0; line-height: 1.2; }
 .dr-top-title strong { display: block; font: italic 800 1rem/1.1 var(--font-de); direction: ltr; text-align: start; }
 .dr-top-title strong span { color: var(--primary); }
@@ -36,7 +36,7 @@
 .dr-badge.info { background: var(--primary-soft); color: var(--primary); }
 .dr-login { min-height: 100dvh; display: grid; place-items: center; padding: 20px; }
 .dr-login .card { width: min(420px, 100%); display: grid; gap: 14px; text-align: center; }
-.dr-login img { width: 96px; height: 96px; margin-inline: auto; object-fit: contain; }
+.dr-login img { width: min(288px, 100%); height: auto; margin-inline: auto; }
 .dr-code { font: 800 1.6rem/1 var(--font-de); letter-spacing: .4em; text-align: center; direction: ltr; }
 .dr-msg { border-radius: 12px; padding: 10px 12px; font-size: .9rem; }
 .dr-msg.err { background: var(--danger-bg); color: var(--danger-ink); }

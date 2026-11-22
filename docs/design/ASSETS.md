@@ -1,6 +1,6 @@
 # Reference overhaul assets
 
-- Official RegaDRIVE branding uses the supplied red-background steering-wheel logo. The favicon uses its central R emblem, and the PWA icons use the full logo.
+- Official RegaDRIVE branding uses the supplied 2172 × 724 banner. The web artwork preserves the full frame, and the square icons pad the entire banner to preserve its proportions.
 - UI icons: @phosphor-icons/react, MIT, bundled locally (no service calls).
 - Vazirmatn variable font 33.0.3 (npm `vazirmatn`): SIL Open Font License; license included at public/fonts/OFL-Vazirmatn.txt. Subset to the Arabic block, Latin and a rarely used extended range (weights 400–900), name table kept; it replaced Noto Sans Arabic on 2026-11-13 to match the owner's Sorani typography reference.
 - German flag raster: https://flagcdn.com/w40/de.png
