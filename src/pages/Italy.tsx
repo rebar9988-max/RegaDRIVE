@@ -1,3 +1,4 @@
+import "./italy.css";
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "../app/router";
 import { useApp, useNow } from "../app/state";
@@ -29,34 +30,70 @@ export function ItalyHome() {
   const approved = useItApproved();
   const answered = approved.questions.filter((q) => progress.questions[q.id]).length;
   const mastered = approved.questions.filter((q) => questionStatus(progress.questions[q.id], settings.masteryThreshold) === "mastered").length;
+  const label = useBiText();
+  const [search, setSearch] = useState("");
+  const errors = approved.questions.filter((q) => progress.questions[q.id]?.lastCorrect === false).length;
+  const percent = approved.questions.length ? Math.round(mastered / approved.questions.length * 100) : 0;
+  const chapters = IT_CHAPTERS.filter((c) => label(c.title).toLocaleLowerCase().includes(search.toLocaleLowerCase()) || c.title.it.toLocaleLowerCase().includes(search.toLocaleLowerCase()));
   return (
-    <section className="stack" data-testid="italy-home">
-      <h1><Bi t={T.it.title} /></h1>
-      <p className="card" data-testid="italy-free-forever" lang="it" dir="ltr"><strong>{IT_FREE_FOREVER_LABEL}</strong></p>
-      <p className="card muted small"><Bi t={T.it.reviewNotice} /></p>
-      <p className="card muted small" data-testid="italy-free"><Bi t={T.it.free} /></p>
-      {approved.questions.length === 0 && <Gate loading={approved.loading} failed={approved.failed} />}
-      <div className="grid grid-2 compact-stats">
-        <div className="card stat"><span className="num" dir="ltr">{approved.questions.length}</span><span className="stat-label"><Bi t={T.it.questionsHere} /></span></div>
-        <div className="card stat"><span className="num" dir="ltr">{answered}</span><span className="stat-label"><Bi t={T.answeredL} /></span></div>
-        <div className="card stat"><span className="num" dir="ltr">{mastered}</span><span className="stat-label"><Bi t={T.mastered} /></span></div>
-        <div className="card stat"><span className="num" dir="ltr">{IT_PLANNED_TOTAL}</span><span className="stat-label"><Bi t={T.it.plannedTotal} /></span></div>
+    <section className="stack italy-dashboard" data-testid="italy-home">
+      <header className="it-welcome">
+        <span className="it-country" lang="it" dir="ltr">🇮🇹 ITALIA · PATENTE B</span>
+        <h1><Bi t={T.it.title} /></h1>
+        <p data-testid="italy-free-forever" lang="it" dir="ltr">{IT_FREE_FOREVER_LABEL}</p>
+      </header>
+      <div className="it-feature">
+        <div className="stack">
+          <span className="it-eyebrow"><Bi t={T.nav.practice} /></span>
+          <h2><Bi t={T.it.chapters} /></h2>
+          <p><Bi t={T.it.examRules} /></p>
+          <Link href="/practice" className="btn btn-primary"><Bi t={T.nav.practice} /></Link>
+        </div>
+        <div className="it-progress">
+          <div className="it-ring" style={{ background: `conic-gradient(var(--success) ${percent}%, var(--track) 0)` }}>
+            <strong dir="ltr">{percent}%</strong>
+          </div>
+          <Bi t={T.mastered} />
+          <span dir="ltr">{mastered} / {approved.questions.length}</span>
+        </div>
       </div>
-      <h2><Bi t={T.it.chapters} /></h2>
-      <ul className="grid grid-tiles" data-testid="italy-chapters">
-        {IT_CHAPTERS.map((c) => {
-          const n = inChapter(approved.questions, c.id).length;
-          return (
-            <li key={c.id}>
-              <Link href={`/practice?chapter=${c.id}`} className="card card-link tile" data-testid={`italy-chapter-${c.id}`}>
-                <span className="badge" dir="ltr">{c.id}</span>
-                <strong><Bi t={c.title} /></strong>
-                <span className="small muted" dir="ltr">{n} / {c.plannedCount}</span>
-              </Link>
-            </li>
-          );
+      <div className="it-actions">
+        <Link href="/exam" className="card it-action"><span className="it-action-symbol" aria-hidden="true">◷</span><strong><Bi t={T.it.exam} /></strong><span className="muted"><Bi t={T.it.examRules} /></span></Link>
+        <Link href="/practice?mode=errors" className="card it-action"><span className="it-action-symbol" aria-hidden="true">↺</span><strong><Bi t={T.reviewMistakes} /></strong><span className="it-count" dir="ltr">{errors}</span></Link>
+        <Link href="/signs" className="card it-action"><span className="it-action-symbol" aria-hidden="true">△</span><strong><Bi t={T.nav.signs} /></strong><span className="it-count" dir="ltr">{approved.signs.length}</span></Link>
+        <Link href="/practice?mode=new" className="card it-action"><span className="it-action-symbol" aria-hidden="true">✧</span><strong><Bi t={T.unanswered} /></strong><span className="it-count" dir="ltr">{approved.questions.length - answered}</span></Link>
+      </div>
+      <div className="it-metrics">
+        <div><strong dir="ltr">{approved.questions.length}</strong><Bi t={T.it.questionsHere} /></div>
+        <div><strong dir="ltr">{answered}</strong><Bi t={T.answeredL} /></div>
+        <div><strong dir="ltr">{mastered}</strong><Bi t={T.mastered} /></div>
+      </div>
+      {approved.questions.length === 0 && <Gate loading={approved.loading} failed={approved.failed} />}
+      <div className="it-chapter-heading">
+        <h2><Bi t={T.it.chapters} /></h2>
+        <input type="search" aria-label={label(T.it.chapters)} placeholder={label(T.it.chapters)} value={search} onChange={(e) => setSearch(e.target.value)} />
+      </div>
+      <ul className="it-chapters" data-testid="italy-chapters">
+        {chapters.map((c) => {
+          const questions = inChapter(approved.questions, c.id);
+          const completed = questions.filter((q) => questionStatus(progress.questions[q.id], settings.masteryThreshold) === "mastered").length;
+          return <li key={c.id}>
+            <Link href={`/practice?chapter=${c.id}`} className="card card-link it-chapter" data-testid={`italy-chapter-${c.id}`}>
+              <span className="it-chapter-number" dir="ltr">{String(c.id).padStart(2, "0")}</span>
+              <div className="it-chapter-body"><strong><Bi t={c.title} /></strong>
+                <progress value={completed} max={questions.length || 1} aria-label={label(c.title)} />
+                <span className="small muted"><Bi t={T.mastered} inline /> <bdi>{completed} / {questions.length}</bdi></span>
+              </div>
+            </Link>
+          </li>;
         })}
       </ul>
+      {chapters.length === 0 && <p role="status"><Bi t={T.it.noQuestionsYet} /></p>}
+      <aside className="card it-notice">
+        <p className="muted small"><Bi t={T.it.reviewNotice} /></p>
+        <p className="muted small" data-testid="italy-free"><Bi t={T.it.free} /></p>
+        <p className="muted small"><Bi t={T.it.plannedTotal} inline /> <bdi>{IT_PLANNED_TOTAL}</bdi></p>
+      </aside>
     </section>
   );
 }
@@ -64,6 +101,9 @@ export function ItalyHome() {
 /** Italy's practice run: the true/false questions of one chapter, or of every chapter. */
 export function ItalyPractice() {
   const label = useBiText();
+  const { progress } = useApp();
+  const [initialProgress] = useState(progress);
+  const mode = new URLSearchParams(location.search).get("mode");
   const approved = useItApproved();
   const chapter = useMemo(() => {
     const raw = new URLSearchParams(location.search).get("chapter");
@@ -75,9 +115,9 @@ export function ItalyPractice() {
   const [done, setDone] = useState<Record<string, boolean>>({});
   // Snapshot the list once per run, so answering never reshuffles the current set.
   const list = useMemo(
-    () => (chapter === null ? approved.questions : inChapter(approved.questions, chapter)),
+    () => (chapter === null ? approved.questions : inChapter(approved.questions, chapter)).filter((q) => mode === "errors" ? initialProgress.questions[q.id]?.lastCorrect === false : mode === "new" ? !initialProgress.questions[q.id] : true),
     // eslint-disable-next-line react-hooks/exhaustive-deps -- intentionally recomputed only on chapter/session/bank change
-    [chapter, session, approved.questions],
+    [chapter, session, approved.questions, mode, initialProgress],
   );
   const restart = () => { setSession(newSession()); setPos(0); setDone({}); };
   const title = chapter === null ? null : IT_CHAPTERS.find((c) => c.id === chapter);

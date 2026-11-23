@@ -1157,6 +1157,13 @@ try {
       assert.equal(await page.locator("[data-testid=italy-chapters] > li").count(), 16, "16 Italian chapters");
       assert.equal(await page.locator("[data-testid=italy-free]").count(), 1, "the Italian section states it is free");
       await axe(page, `italy home ${viewport.width}`);
+      const search = page.locator(".it-chapter-heading input");
+      await search.fill("zzzz-no-chapter");
+      assert.equal(await page.locator("[data-testid=italy-chapters] > li").count(), 0);
+      await search.fill("");
+      assert.equal(await page.locator("[data-testid=italy-chapters] > li").count(), 16);
+      assert.equal(await page.locator(".it-actions a").count(), 4);
+
 
       // Practice: answer, see the answer key, the explanation and the sign, and move on.
       await page.goto(`${BASE}/practice?chapter=1`);
@@ -1175,6 +1182,12 @@ try {
       // Progress is recorded for the Italian question, under Italy's own storage key.
       const answered = await page.evaluate(() => new Promise((res) => { const r = indexedDB.open("regadrive"); r.onsuccess = () => { try { const db = r.result; const store = db.objectStoreNames[0]; const g = db.transaction(store, "readonly").objectStore(store).get("progress:IT"); g.onsuccess = () => res(Object.keys(g.result?.questions ?? {}).length); g.onerror = () => res(-1); } catch { res(-1); } }; r.onerror = () => res(-1); }));
       assert.ok(answered > 0, "the answer is stored under Italy's own progress key");
+
+
+      const answeredId = await page.locator("[data-testid=it-question-card]").getAttribute("data-qid");
+      await page.goto(`${BASE}/practice?mode=new`);
+      await page.locator("[data-testid=it-question-card]").waitFor();
+      assert.notEqual(await page.locator("[data-testid=it-question-card]").getAttribute("data-qid"), answeredId, "unseen practice excludes answered questions");
 
       // The mock exam states the real Italian rules and refuses to invent a short paper.
       await page.goto(`${BASE}/exam`);
