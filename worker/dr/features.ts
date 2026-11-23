@@ -61,7 +61,7 @@ export function resolveFeatures(flags: Flags, overrides: Overrides): FeatureView
   return FEATURES.map((d) => {
     const allowed = d.allowed(flags);
     if (!d.controllable) {
-      return { key: d.key, group: d.group, ckb: d.ckb, en: d.en, controllable: false, critical: d.critical, state: "LOCKED", effective: allowed, reason: allowed ? null : "owner activation required (docs/OWNER_ACTIVATION.md)" };
+      return { key: d.key, group: d.group, ckb: d.ckb, en: d.en, controllable: false, critical: d.critical, state: allowed ? "ON" : "LOCKED", effective: allowed, reason: allowed ? null : "owner activation required (docs/OWNER_ACTIVATION.md)" };
     }
     const state: FeatureState = overrides.get(d.key) ?? (d.defaultOn ? "ON" : "OFF");
     if (d.key === "emergency_lock") return { key: d.key, group: d.group, ckb: d.ckb, en: d.en, controllable: true, critical: true, state, effective: state === "ON", reason: null };

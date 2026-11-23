@@ -26,9 +26,9 @@ if (stage === "deploy") {
   gate(branch === "main", `deploying from production branch main (got '${branch}')`);
 }
 
-// 2. Payments and production database OFF
-for (const k of ["PAYMENTS_ENABLED", "CHECKOUT_ENABLED", "LIVE_PAYMENT_WEBHOOKS_ENABLED", "PURCHASE_REQUIRED", "DATABASE_PRODUCTION_ENABLED",
-  "OFFICIAL_QUESTION_BANK_ENABLED", "CONTENT_ADMIN_ENABLED", "CONTENT_IMPORT_EXECUTION_ENABLED", "PUBLIC_OFFICIAL_MOCK_EXAMS_ENABLED", "CONTENT_AUTO_SYNC_ENABLED", "SUBSCRIPTIONS_ENABLED"]) gate(v[k] === "false", `${k}=false`);
+// 2. Owner activated content on 2026-11-23. Payment gates remain closed.
+for (const k of ["PAYMENTS_ENABLED", "CHECKOUT_ENABLED", "LIVE_PAYMENT_WEBHOOKS_ENABLED", "PURCHASE_REQUIRED", "CONTENT_AUTO_SYNC_ENABLED", "SUBSCRIPTIONS_ENABLED"]) gate(v[k] === "false", `${k}=false`);
+for (const k of ["DATABASE_PRODUCTION_ENABLED", "OFFICIAL_QUESTION_BANK_ENABLED", "CONTENT_ADMIN_ENABLED", "CONTENT_IMPORT_EXECUTION_ENABLED", "PUBLIC_OFFICIAL_MOCK_EXAMS_ENABLED"]) gate(v[k] === "true", `${k}=true (owner activation 2026-11-23)`);
 gate(!Object.keys(v).some((k) => k.startsWith("OWNER_")), "no owner activation present in config");
 // Allowed D1 bindings: the owner-approved (2026-11-07) /dr database, and the owner-approved (2026-11-11) separate
 // student-accounts database, and the owner-approved (2026-11-12) separate content database. They stay different
