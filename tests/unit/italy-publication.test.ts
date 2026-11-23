@@ -1,7 +1,6 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { approvedContent, evaluate, evaluateAll, activeRows, ALL_REVIEW_ITEMS, REVIEW_ITEM_BY_ID, REVIEW_TABLE, checkSubmission, parseSubmission, rulesVersionFor, sourceFor, type ReviewRow } from "../../worker/dr/reviews";
 import { IT_REVIEW_ITEMS, IT_REVIEW_ITEM_BY_ID } from "../../src/content/italy/reviewItems";
-import { IT_QUESTIONS } from "../../src/content/italy/questions";
 import { IT_SIGNS } from "../../src/content/italy/signs";
 import { IT_RULES_VERSION } from "../../src/content/italy/registry";
 import { itQuestionHash, itSignHash } from "../../src/content/italy/hash";
@@ -11,6 +10,37 @@ import { pickItExam, itTimeLeft, formatClock } from "../../src/lib/itExam";
 import { readFlags } from "../../src/lib/shared/flags";
 import { KLASSE_B_RULES_2026 } from "../../src/lib/shared/exam";
 import type { D1Like, D1Stmt } from "../../worker/dr/db";
+
+import type { ItQuestion } from "../../src/content/italy/types";
+
+const question = vi.hoisted(() => ({
+  id: "test-it-publication",
+  chapter: 1,
+  prompt: { it: "Questa è una domanda di prova.", ckb: "ئەمە پرسیارێکی تێستە.", kmrArab: "ئەڤ پرسیارە بۆ تاقیکرنێ یە.", kmr: "Ev pirseke testê ye.", de: "Das ist eine Testfrage.", ar: "هذا سؤال اختباري." },
+  explanation: { it: "VERO. Serve per il test.", ckb: "ڕاستە. بۆ تێستە.", kmrArab: "درستە. بۆ تاقیکرنێ یە.", kmr: "Rast e. Ji bo testê ye.", de: "Richtig. Sie dient dem Test.", ar: "صحيح. هذا للاختبار." },
+  answer: true,
+  questionCode: null,
+  licenseClasses: ["B"],
+  sourceType: "original",
+  contentVersion: "test-it",
+  reviewStatus: "draft",
+  publicationStatus: "published",
+}) satisfies ItQuestion);
+
+// Exercise the question review path independently of the current learner catalogue.
+vi.mock("../../src/content/italy/questions", async (importOriginal) => ({
+  ...await importOriginal<typeof import("../../src/content/italy/questions")>(),
+  IT_QUESTIONS: [question],
+}));
+
+vi.mock("../../src/content/italy/registry", async (importOriginal) => {
+  const registry = await importOriginal<typeof import("../../src/content/italy/registry")>();
+  const records = new Map(registry.IT_CONTENT_REGISTRY);
+  const record = records.get(question.id);
+  if (!record) throw new Error("Missing Italian question review fixture");
+  records.set(question.id, { ...record, provenance: { ...record.provenance, sourceRefs: ["Synthetic publication test"] } });
+  return { ...registry, IT_CONTENT_REGISTRY: records };
+});
 
 const TODAY = "2026-11-21";
 const row = (over: Partial<ReviewRow> & { content_id: string; stage: ReviewRow["stage"] }): ReviewRow => ({
@@ -22,7 +52,7 @@ const row = (over: Partial<ReviewRow> & { content_id: string; stage: ReviewRow["
 
 describe("Italian items in the review pipeline", () => {
   it("are all reviewable, with their own ids", () => {
-    expect(IT_REVIEW_ITEMS.length).toBe(IT_QUESTIONS.length + IT_SIGNS.length);
+    expect(IT_REVIEW_ITEMS.length).toBe(1 + IT_SIGNS.length);
     for (const i of IT_REVIEW_ITEMS) expect(REVIEW_ITEM_BY_ID.get(i.id)).toBe(i);
     expect(ALL_REVIEW_ITEMS.length).toBeGreaterThan(IT_REVIEW_ITEMS.length);
   });
@@ -30,7 +60,7 @@ describe("Italian items in the review pipeline", () => {
     for (const i of IT_REVIEW_ITEMS) expect(i.checks.filter((c) => !c.ok).map((c) => c.label), i.id).toEqual([]);
   });
   it("carry the fingerprint of the content that ships", () => {
-    for (const q of IT_QUESTIONS) expect(IT_REVIEW_ITEM_BY_ID.get(q.id)?.hash).toBe(itQuestionHash(q));
+    expect(IT_REVIEW_ITEM_BY_ID.get(question.id)?.hash).toBe(itQuestionHash(question));
     for (const s of IT_SIGNS) expect(IT_REVIEW_ITEM_BY_ID.get(s.id)?.hash).toBe(itSignHash(s));
   });
   it("live in their own review table, apart from the German audit trail", () => {
@@ -47,14 +77,14 @@ describe("Italian items in the review pipeline", () => {
     expect(IT_RULES_VERSION).not.toBe(KLASSE_B_RULES_2026.version);
   });
   it("ignore a review row recorded in the other table", () => {
-    const item = IT_REVIEW_ITEM_BY_ID.get(IT_QUESTIONS[0]!.id)!;
+    const item = IT_REVIEW_ITEM_BY_ID.get(question.id)!;
     expect(activeRows(item, [row({ content_id: item.id, stage: "TRANSLATION_REVIEW", content_hash: item.hash, source: "de" })])).toEqual([]);
     expect(activeRows(item, [row({ content_id: item.id, stage: "TRANSLATION_REVIEW", content_hash: item.hash })]).length).toBe(1);
   });
 });
 
 describe("Italian publication gate", () => {
-  const item = () => IT_REVIEW_ITEM_BY_ID.get(IT_QUESTIONS[0]!.id)!;
+  const item = () => IT_REVIEW_ITEM_BY_ID.get(question.id)!;
   it("publishes nothing without review rows", () => {
     for (const st of evaluateAll([])) {
       expect(st.publishable, st.id).toBe(false);
@@ -118,17 +148,17 @@ describe("what the Italian learner is served", () => {
   it("shows nothing when the server approved nothing, or failed", () => {
     expect(filterItApproved({ ok: true })).toEqual({ signs: [], questions: [] });
     expect(filterItApproved(null)).toEqual({ signs: [], questions: [] });
-    expect(filterItApproved({ ok: false, itQuestions: { [IT_QUESTIONS[0]!.id]: itQuestionHash(IT_QUESTIONS[0]!) } })).toEqual({ signs: [], questions: [] });
+    expect(filterItApproved({ ok: false, itQuestions: { [question.id]: itQuestionHash(question) } })).toEqual({ signs: [], questions: [] });
   });
   it("shows exactly the approved version of an item", () => {
-    const q = IT_QUESTIONS[0]!;
+    const q = question;
     const s = IT_SIGNS[0]!;
     const got = filterItApproved({ ok: true, itQuestions: { [q.id]: itQuestionHash(q) }, itSigns: { [s.id]: itSignHash(s) } });
     expect(got.questions.map((x) => x.id)).toEqual([q.id]);
     expect(got.signs.map((x) => x.id)).toEqual([s.id]);
   });
   it("ignores an approval whose fingerprint no longer matches", () => {
-    const q = IT_QUESTIONS[0]!;
+    const q = question;
     expect(filterItApproved({ ok: true, itQuestions: { [q.id]: "stale" } }).questions).toEqual([]);
   });
 });
@@ -158,6 +188,21 @@ describe("one bank missing never breaks the other", () => {
 });
 
 describe("Italian exam rules", () => {
+  it("never passes an incomplete or oversized paper", () => {
+    for (const length of [0, 1, 29, 31]) {
+      const answers = Array.from({ length }, (_, i) => ({ questionId: `q${i}`, correct: true }));
+      expect(scoreItExam(answers).passed).toBe(false);
+      expect(scoreItExam(answers).failReason).toBe("invalid_question_count");
+    }
+  });
+  it("does not fill an exam with duplicate IDs", () => {
+    const pool = Array.from({ length: 30 }, () => question);
+    expect(pickItExam(pool)).toBeNull();
+    const unique = Array.from({ length: 30 }, (_, i) => ({ ...question, id: `unique-${i}` }));
+    const paper = pickItExam([...unique, ...unique]);
+    expect(paper).toHaveLength(30);
+    expect(new Set(paper!.map(q => q.id)).size).toBe(30);
+  });
   it("are the real ministerial format: 30 statements, 20 minutes, at most 3 errors", () => {
     expect(PATENTE_B_RULES_IT.questionCount).toBe(30);
     expect(PATENTE_B_RULES_IT.minutes).toBe(20);
@@ -182,11 +227,11 @@ describe("Italian exam rules", () => {
   });
   // A short paper would not be this exam, so there is none until 30 approved questions exist.
   it("refuse a paper when fewer than 30 approved questions exist", () => {
-    expect(pickItExam(IT_QUESTIONS)).toBeNull();
+    expect(pickItExam([question])).toBeNull();
     expect(pickItExam([])).toBeNull();
   });
   it("draw exactly 30 different questions when enough exist", () => {
-    const pool = Array.from({ length: 40 }, (_, i) => ({ ...IT_QUESTIONS[0]!, id: `x-${i}` }));
+    const pool = Array.from({ length: 40 }, (_, i) => ({ ...question, id: `x-${i}` }));
     const paper = pickItExam(pool);
     expect(paper?.length).toBe(30);
     expect(new Set(paper?.map((q) => q.id)).size).toBe(30);

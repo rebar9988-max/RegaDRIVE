@@ -35,7 +35,7 @@ export const PATENTE_B_RULES_IT: ItExamRules = {
 };
 
 export interface ItScoredAnswer { questionId: string; correct: boolean }
-export interface ItExamResult { rulesVersion: string; answered: number; errors: number; passed: boolean; failReason: "none" | "too_many_errors" }
+export interface ItExamResult { rulesVersion: string; answered: number; errors: number; passed: boolean; failReason: "none" | "too_many_errors" | "invalid_question_count" }
 
 /** Score an Italian mock exam. Each question counts once; more than maxErrors wrong answers fails. */
 export function scoreItExam(answers: ItScoredAnswer[], rules: ItExamRules = PATENTE_B_RULES_IT): ItExamResult {
@@ -45,6 +45,9 @@ export function scoreItExam(answers: ItScoredAnswer[], rules: ItExamRules = PATE
     if (seen.has(a.questionId)) continue;
     seen.add(a.questionId);
     if (!a.correct) errors += 1;
+  }
+  if (seen.size !== rules.questionCount) {
+    return { rulesVersion: rules.version, answered: seen.size, errors, passed: false, failReason: "invalid_question_count" };
   }
   const failed = errors > rules.maxErrors;
   return { rulesVersion: rules.version, answered: seen.size, errors, passed: !failed, failReason: failed ? "too_many_errors" : "none" };

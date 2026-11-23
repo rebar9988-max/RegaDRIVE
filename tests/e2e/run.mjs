@@ -111,11 +111,17 @@ try {
       await page.waitForSelector("[data-testid=home]");
       assert.equal(await page.getAttribute("html", "dir"), "rtl");
       assert.equal(await page.getAttribute("html", "lang"), "ckb");
-      await page.locator(".hero-logo").evaluate(async (img) => { if (!img.complete) await new Promise((resolve) => { img.addEventListener("load", resolve, { once: true }); img.addEventListener("error", resolve, { once: true }); }); });
-      const logoOk = await page.$eval(".hero-logo", (img) => img.complete && img.naturalWidth > 0);
-      assert.ok(logoOk, "official logo loads");
-      const emblemOk = await page.$eval(".brand img", (img) => img.complete && img.naturalWidth > 0);
-      assert.ok(emblemOk, "header emblem loads");
+      const logo = page.locator(".topbar .brand img");
+      await logo.evaluate((img) => img.decode());
+      assert.equal(await page.locator('img[src="/brand/regadrive-logo.webp"]').count(), 1, "one home logo");
+      const banner = await logo.boundingBox();
+      assert.ok(Math.abs(banner.width / banner.height - 3) < 0.01, "banner keeps the original 3:1 ratio");
+      if (await page.evaluate(() => innerWidth <= 640)) {
+        const header = await page.locator(".topbar").boundingBox();
+        const toolbar = await page.locator(".header-tools").first().boundingBox();
+        assert.ok(Math.abs(banner.width - Math.min(header.width, 480)) < 1, "banner fills its mobile header row");
+        assert.ok(toolbar.y >= banner.y + banner.height - 1, "controls sit below the art");
+      }
       const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
       assert.equal(overflow, 0, "no horizontal overflow");
       // Quick tiles and stat tiles must be equal height (no ragged layout).
@@ -640,7 +646,7 @@ try {
       // The preview-only test banner (never shown in production) has a different length per language.
       await page.addStyleTag({ content: "[data-testid=preview-banner] { display: none !important; }" });
       // Horizontal edges and vertical positions: nothing may move sideways or up and down.
-      const boxes = () => page.evaluate(() => [".topbar .brand", ".lang-trigger", ".hero-logo", ".tabbar", ".sidenav", ".overview-card", ".learning-cta", ".home-menu"].map((sel) => {
+      const boxes = () => page.evaluate(() => [".topbar .brand", ".lang-trigger", ".tabbar", ".sidenav", ".overview-card", ".learning-cta", ".home-menu"].map((sel) => {
         const el = document.querySelector(sel); const r = el?.getBoundingClientRect();
         return r && r.width > 0 ? [sel, r.left, r.right, r.top + scrollY, r.height] : [sel, null];
       }));
@@ -1133,8 +1139,8 @@ try {
     await ctx.close();
   });
   // Italy, end to end for a student: entry choice → registration at no cost → back to the Italian
-  // section → practice with explanations and signs → progress recorded → the exam state is honest.
-  await test("italy student journey: free registration, practice, progress, exam state, no German leftovers", async () => {
+  // section → chapter, signs and exam availability while the replacement question bank is pending.
+  await test("italy student journey: free registration, empty practice bank, signs, exam and Italian navigation", async () => {
     const flags = await (await fetch(`${BASE}/api/flags`)).json();
     assert.equal(flags.purchaseRequired, false, "no purchase may be required");
     assert.equal(flags.checkoutEnabled, false, "checkout stays off");
@@ -1152,23 +1158,24 @@ try {
       assert.equal(await page.locator("[data-testid=italy-free]").count(), 1, "the Italian section states it is free");
       await axe(page, `italy home ${viewport.width}`);
 
-      // Practice: answer, see the answer key, the explanation and the sign, and move on.
-      await page.goto(`${BASE}/practice?chapter=1`);
-      await page.locator("[data-testid=it-question-card]").waitFor();
-      assert.equal(await page.locator("[data-testid=it-sign] img").count(), 1, "the sign illustration is shown");
-      assert.equal(await page.locator("[data-testid=question-card]").count(), 0, "no German question card under Italy");
-      await page.locator("[data-testid=it-option-vero] input").click();
-      await page.locator("[data-testid=it-feedback]").waitFor();
-      assert.equal(await page.locator("[data-testid=it-tag-correct]").count(), 1, "the answer key appears after answering");
-      const italian = page.locator("[data-testid=it-question-card] .de[lang=it]").first();
-      assert.equal(await italian.getAttribute("dir"), "ltr", "the Italian original keeps its own direction");
-      assert.equal(await page.getAttribute("[data-testid=it-question-card] .pri", "dir"), "rtl", "Sorani is right to left");
+      // Open a chapter from the home page and check the real empty state.
+      await page.locator("[data-testid=italy-chapter-1]").click();
+      const practice = page.locator("[data-testid=italy-practice-empty]");
+      await practice.locator("[data-testid=italy-in-review]").waitFor();
+      assert.equal(new URL(page.url()).searchParams.get("chapter"), "1");
+      assert.equal(await page.locator("[data-testid=it-question-card], [data-testid=question-card]").count(), 0);
       await page.screenshot({ path: `${OUT}/italy-practice-${viewport.width}.png`, fullPage: true });
       await axe(page, `italy practice ${viewport.width}`);
+      await practice.locator("a[href='/']").click();
+      await page.locator("[data-testid=italy-home]").waitFor();
 
-      // Progress is recorded for the Italian question, under Italy's own storage key.
-      const answered = await page.evaluate(() => new Promise((res) => { const r = indexedDB.open("regadrive"); r.onsuccess = () => { try { const db = r.result; const store = db.objectStoreNames[0]; const g = db.transaction(store, "readonly").objectStore(store).get("progress:IT"); g.onsuccess = () => res(Object.keys(g.result?.questions ?? {}).length); g.onerror = () => res(-1); } catch { res(-1); } }; r.onerror = () => res(-1); }));
-      assert.ok(answered > 0, "the answer is stored under Italy's own progress key");
+      // Signs are independent of the question bank.
+      await page.goto(`${BASE}/signs`);
+      const signs = page.locator("[data-testid=italy-signs]");
+      await signs.locator('img[src^="/signs/it/"]').first().waitFor();
+      const sign = signs.locator('img[src^="/signs/it/"]').first();
+      await sign.evaluate((img) => img.decode());
+      await axe(page, `italy signs ${viewport.width}`);
 
       // The mock exam states the real Italian rules and refuses to invent a short paper.
       await page.goto(`${BASE}/exam`);

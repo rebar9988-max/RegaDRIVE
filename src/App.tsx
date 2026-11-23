@@ -89,7 +89,7 @@ export function App() {
   if (ready && settings.country === null) return <CountrySelection />;
   // Until stored settings are read, and while the shell's code arrives, show the logo only: no layout jump and
   // nothing that would need the app shell, the icons or the content.
-  const splash = <div className="splash" aria-busy="true"><img className="splash-logo" src="/brand/regadrive-logo.webp" width={112} height={112} alt="RegaDRIVE" /></div>;
+  const splash = <div className="splash" aria-busy="true"><img className="splash-logo" src="/brand/regadrive-logo.webp" width={336} height={112} alt="RegaDRIVE" /></div>;
   if (!ready) return splash;
   return (
     <Suspense fallback={splash}>
