@@ -129,3 +129,7 @@ Questions (12):
    it is part of the same `TRANSLATION_REVIEW`.
 5. **Exam results are not stored.** An Italian mock exam is scored in the browser; nothing is written to
    `mock_exam_results`, which is the German schema.
+
+## Database inventory (2026-11-23)
+
+The owner requested a visible home in the database for Italy. Content migration `0004_italy_inventory.sql` stores the existing 12 questions, 8 signs and 16 chapters in `regadrive-content.italy_content`, with `country=IT`, complete multilingual JSON and source references. It is an inventory of the imported original material, not a new approval or a replacement for the learner publication gate. The owner workbench reads counts and question rows from D1 through the authenticated `/api/dr/content/status` endpoint. Re-running the seed preserves existing rows. Later editorial changes must be imported explicitly; these stored snapshots do not silently follow source-file edits.
