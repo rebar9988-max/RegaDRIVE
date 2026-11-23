@@ -37,7 +37,7 @@ if (process.env.EXPECTED_BUILD_ID) {
 await check("HTTPS", async () => { if (!allowHttp) assert.ok(base.startsWith("https://"), "target must be https"); assert.equal((await get("/")).status, 200); });
 await check("health: regadrive, production content, DB off, payments off", async () => {
   const h = await (await get("/api/health")).json();
-  assert.equal(h.app, "regadrive"); assert.equal(h.contentMode, "production"); assert.equal(h.database, "off"); assert.equal(h.payments, "off");
+  assert.equal(h.app, "regadrive"); assert.equal(h.contentMode, "production"); assert.equal(h.database, "on"); assert.equal(h.payments, "off");
 });
 await check("sign content is gated: /api/content/approved answers, fail closed, ids only", async () => {
   const r = await get("/api/content/approved");
@@ -59,7 +59,8 @@ await check("live build matches the expected production release", async () => {
 });
 await check("all payment/database flags OFF", async () => {
   const f = await (await get("/api/flags")).json();
-  for (const k of ["paymentsEnabled", "checkoutEnabled", "livePaymentWebhooksEnabled", "purchaseRequired", "databaseProductionEnabled", "aiPaidFallbackEnabled"]) assert.equal(f[k], false, k);
+  for (const k of ["paymentsEnabled", "checkoutEnabled", "livePaymentWebhooksEnabled", "purchaseRequired", "aiPaidFallbackEnabled"]) assert.equal(f[k], false, k);
+  for (const k of ["databaseProductionEnabled", "contentAdminEnabled", "contentImportExecutionEnabled", "officialQuestionBankEnabled", "publicOfficialMockExamsEnabled"]) assert.equal(f[k], true, k);
 });
 await check("checkout/webhook refused", async () => {
   assert.equal((await get("/api/purchase/checkout", { method: "POST" })).status, 403);
