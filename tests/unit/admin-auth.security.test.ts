@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { authenticateOwner } from "../worker/lib/adminAuth";
+import { authenticateOwner } from "../../worker/lib/adminAuth";
 
 const ownerToken = "a".repeat(64);
 async function hash(token: string): Promise<string> {
@@ -33,7 +33,7 @@ describe("owner-only admin authentication security regression", () => {
   it("requires the configured Access email as an additional condition", async () => {
     const env = { ADMIN_OWNER_TOKEN_SHA256: await hash(ownerToken), ADMIN_ACCESS_EMAIL: "owner@example.com" };
     expect((await authenticateOwner(request(ownerToken), env)).ok).toBe(false);
-    expect((await authenticateOwner(request(ownerToken), "attacker@example.com"), env)).ok).toBe(false);
-    expect((await authenticateOwner(request(ownerToken), "OWNER@example.com"), env)).ok).toBe(true);
+    expect((await authenticateOwner(request(ownerToken, "attacker@example.com"), env)).ok).toBe(false);
+    expect((await authenticateOwner(request(ownerToken, "OWNER@example.com"), env)).ok).toBe(true);
   });
 });
