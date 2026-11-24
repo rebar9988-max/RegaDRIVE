@@ -115,7 +115,6 @@ a { color: var(--primary); }
 .welcome { color: var(--ink); background: linear-gradient(135deg, #fff 0%, #f0faf4 70%, #e5f5ec 100%); border: 1px solid var(--border); box-shadow: var(--shadow-card); }
 .welcome .eyebrow { color: var(--primary); }
 .welcome .muted, .welcome .bi > .de { color: var(--muted); }
-.welcome .hero-logo { background: #fff; box-shadow: 0 6px 16px rgb(6 95 70 / 12%), inset 0 0 0 1px var(--border); }
 .overview-card { position: relative; overflow: hidden; background: radial-gradient(circle at 15% 20%, #e7f7ee, transparent 55%), linear-gradient(180deg, #fff, #f6fbf8); }
 .ring-track { stroke: #e1efe7; }
 .progress-ring { filter: drop-shadow(0 6px 10px rgb(34 197 94 / 20%)); }
@@ -323,7 +322,7 @@ a { color: var(--primary); }
 .acct-delete > p { margin: 0; color: var(--ink); }
 
 /* Sign-in, registration and code forms. */
-.acct-logo { justify-self: center; width: 72px; height: 72px; margin: 0; }
+.acct-logo { justify-self: center; width: min(216px, 100%); height: auto; margin: 0; }
 .acct-form-title { margin: 0; font-size: 1.2rem; text-align: center; }
 .acct-intro { text-align: center; }
 .acct-switch { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 8px 12px; padding-top: 12px; border-top: 1px solid var(--border); }

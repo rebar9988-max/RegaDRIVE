@@ -7,10 +7,10 @@ import type { ItChapter, ItQuestion } from "../content/italy/types";
  * learner's own progress; they never reach into the German content or its topic model.
  */
 
-export type ItPracticeMode = "chapter" | "wrong" | "bookmarks" | "all";
+export type ItPracticeMode = "chapter" | "wrong" | "bookmarks" | "new" | "all";
 
 export const isItPracticeMode = (v: unknown): v is ItPracticeMode =>
-  v === "chapter" || v === "wrong" || v === "bookmarks" || v === "all";
+  v === "chapter" || v === "wrong" || v === "bookmarks" || v === "new" || v === "all";
 
 export interface ItChapterStat {
   chapter: ItChapter;
@@ -62,6 +62,7 @@ export function itPracticeSet(
   threshold: number,
 ): ItQuestion[] {
   if (mode === "wrong") return questions.filter((q) => statusOf(progress, q, threshold) === "incorrect");
+  if (mode === "new") return questions.filter((q) => (chapter === null || q.chapter === chapter) && statusOf(progress, q, threshold) === "unanswered");
   if (mode === "bookmarks") return questions.filter((q) => progress.bookmarks.includes(q.id));
   if (mode === "chapter" && chapter !== null) return questions.filter((q) => q.chapter === chapter);
   return [...questions];

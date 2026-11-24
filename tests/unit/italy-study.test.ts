@@ -8,7 +8,11 @@ const TH = MASTERY_THRESHOLD_DEFAULT;
 const q = (i: number) => IT_QUESTIONS[i]!;
 const answer = (p: ProgressState, id: string, correct: boolean, times = 1): ProgressState => {
   let out = p;
-  for (let n = 0; n < times; n += 1) out = recordAnswer(out, "s1", id, correct, 1000 + n);
+  const previousAttempts = p.questions[id]?.attempts ?? 0;
+  for (let n = 0; n < times; n += 1) {
+    const attempt = previousAttempts + n;
+    out = recordAnswer(out, `s${attempt}`, id, correct, 1000 + attempt);
+  }
   return out;
 };
 
@@ -66,8 +70,8 @@ describe("Italian practice sets", () => {
       expect(itPracticeSet(one, p, mode, null, TH).every((x) => x.id === q(0).id)).toBe(true);
     }
   });
-  it("accepts only the four modes", () => {
-    for (const m of ["chapter", "wrong", "bookmarks", "all"]) expect(isItPracticeMode(m)).toBe(true);
+  it("accepts only the five modes", () => {
+    for (const m of ["chapter", "wrong", "bookmarks", "new", "all"]) expect(isItPracticeMode(m)).toBe(true);
     for (const m of ["", "WRONG", "exam", null, 3]) expect(isItPracticeMode(m)).toBe(false);
   });
 });

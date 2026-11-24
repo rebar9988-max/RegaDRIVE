@@ -58,3 +58,7 @@ Flags (all `false` and enforced in `src/lib/shared/flags.ts`): `OFFICIAL_QUESTIO
 4. Import execution needs step 3 of this document (production D1, owner activation) plus `CONTENT_IMPORT_EXECUTION_ENABLED=true`. Media storage needs a RegaDRIVE-only R2 bucket; check the free-tier limits first.
 5. Showing official content needs `OWNER_OFFICIAL_CONTENT_ACTIVATION=I-APPROVE-LIVE-ACTIVATION` and `OFFICIAL_QUESTION_BANK_ENABLED=true`. Public official mock exams additionally need `PUBLIC_OFFICIAL_MOCK_EXAMS_ENABLED=true`. Every item still needs an owner APPROVED review; the database enforces this.
 6. Update `scripts/preflight.mjs`, which currently fails while any of these flags is true, in the same reviewed PR.
+
+## Activation record — 2026-11-23
+
+The owner explicitly requested enabling the question bank, mock exams and content import. The five content/database flags are enabled and the two owner activation acknowledgements are stored as Worker secrets. Payments remain disabled. Per-item approval and licence checks remain enforced. The content D1 database was empty at activation; enabling flags does not import or approve any questions. Deployment-controlled features display ON when effective, while remaining non-controllable from /dr.

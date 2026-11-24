@@ -111,11 +111,17 @@ try {
       await page.waitForSelector("[data-testid=home]");
       assert.equal(await page.getAttribute("html", "dir"), "rtl");
       assert.equal(await page.getAttribute("html", "lang"), "ckb");
-      await page.locator(".hero-logo").evaluate(async (img) => { if (!img.complete) await new Promise((resolve) => { img.addEventListener("load", resolve, { once: true }); img.addEventListener("error", resolve, { once: true }); }); });
-      const logoOk = await page.$eval(".hero-logo", (img) => img.complete && img.naturalWidth > 0);
-      assert.ok(logoOk, "official logo loads");
-      const emblemOk = await page.$eval(".brand img", (img) => img.complete && img.naturalWidth > 0);
-      assert.ok(emblemOk, "header emblem loads");
+      const logo = page.locator(".topbar .brand img");
+      await logo.evaluate((img) => img.decode());
+      assert.equal(await page.locator('img[src="/brand/regadrive-logo.webp"]').count(), 1, "one home logo");
+      const banner = await logo.boundingBox();
+      assert.ok(Math.abs(banner.width / banner.height - 3) < 0.01, "banner keeps the original 3:1 ratio");
+      if (await page.evaluate(() => innerWidth <= 640)) {
+        const header = await page.locator(".topbar").boundingBox();
+        const toolbar = await page.locator(".header-tools").first().boundingBox();
+        assert.ok(Math.abs(banner.width - Math.min(header.width, 480)) < 1, "banner fills its mobile header row");
+        assert.ok(toolbar.y >= banner.y + banner.height - 1, "controls sit below the art");
+      }
       const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
       assert.equal(overflow, 0, "no horizontal overflow");
       // Quick tiles and stat tiles must be equal height (no ragged layout).
@@ -640,7 +646,7 @@ try {
       // The preview-only test banner (never shown in production) has a different length per language.
       await page.addStyleTag({ content: "[data-testid=preview-banner] { display: none !important; }" });
       // Horizontal edges and vertical positions: nothing may move sideways or up and down.
-      const boxes = () => page.evaluate(() => [".topbar .brand", ".lang-trigger", ".hero-logo", ".tabbar", ".sidenav", ".overview-card", ".learning-cta", ".home-menu"].map((sel) => {
+      const boxes = () => page.evaluate(() => [".topbar .brand", ".lang-trigger", ".tabbar", ".sidenav", ".overview-card", ".learning-cta", ".home-menu"].map((sel) => {
         const el = document.querySelector(sel); const r = el?.getBoundingClientRect();
         return r && r.width > 0 ? [sel, r.left, r.right, r.top + scrollY, r.height] : [sel, null];
       }));
@@ -1148,9 +1154,16 @@ try {
       await page.goto(BASE);
       await page.locator(".country-card:has([lang=it])").click();
       await page.locator("[data-testid=italy-home]").waitFor();
-      assert.equal(await page.locator("[data-testid=italy-quick] a").count(), 4, "the Italian start screen offers lessons, practice, progress and the exam");
+      assert.equal(await page.locator("[data-testid=italy-chapters] > li").count(), 16, "16 Italian chapters");
       assert.equal(await page.locator("[data-testid=italy-free]").count(), 1, "the Italian section states it is free");
       await axe(page, `italy home ${viewport.width}`);
+      const search = page.locator(".it-chapter-heading input");
+      await search.fill("zzzz-no-chapter");
+      assert.equal(await page.locator("[data-testid=italy-chapters] > li").count(), 0);
+      await search.fill("");
+      assert.equal(await page.locator("[data-testid=italy-chapters] > li").count(), 16);
+      assert.equal(await page.locator(".it-actions a").count(), 4);
+
 
       // Practice: answer, see the answer key, the explanation and the sign, and move on.
       await page.goto(`${BASE}/practice?chapter=1`);
@@ -1170,6 +1183,12 @@ try {
       const answered = await page.evaluate(() => new Promise((res) => { const r = indexedDB.open("regadrive"); r.onsuccess = () => { try { const db = r.result; const store = db.objectStoreNames[0]; const g = db.transaction(store, "readonly").objectStore(store).get("progress:IT"); g.onsuccess = () => res(Object.keys(g.result?.questions ?? {}).length); g.onerror = () => res(-1); } catch { res(-1); } }; r.onerror = () => res(-1); }));
       assert.ok(answered > 0, "the answer is stored under Italy's own progress key");
 
+
+      const answeredId = await page.locator("[data-testid=it-question-card]").getAttribute("data-qid");
+      await page.goto(`${BASE}/practice?mode=new`);
+      await page.locator("[data-testid=it-question-card]").waitFor();
+      assert.notEqual(await page.locator("[data-testid=it-question-card]").getAttribute("data-qid"), answeredId, "unseen practice excludes answered questions");
+
       // The mock exam states the real Italian rules and refuses to invent a short paper.
       await page.goto(`${BASE}/exam`);
       await page.locator("[data-testid=italy-exam]").waitFor();
@@ -1186,7 +1205,8 @@ try {
       assert.equal(await page.evaluate(() => document.documentElement.classList.contains("text-ltr")), false, "Badini is not Latin-script");
 
       // Lessons: the syllabus as structure, with the legal basis and the signs of the chapter.
-      await page.goto(`${BASE}/learn`);
+      await page.goto(BASE);
+      await page.locator("[data-testid=italy-go-lessons]").click();
       await page.locator("[data-testid=italy-lessons]").waitFor();
       assert.equal(await page.locator("[data-testid=italy-lessons] .grid > li").count(), 16, "16 Italian chapters");
       await page.locator("[data-testid=italy-lesson-1]").click();
@@ -1221,7 +1241,7 @@ try {
       assert.ok(/Esercitati|Esame|Altro/.test(nav ?? ""), `Italian navigation: ${nav}`);
 
       // Nothing German is reachable or linked in the Italian section.
-      assert.equal(await page.locator(".tabbar a[href='/learn']").count(), 0, "no German lessons tab under Italy");
+      assert.equal(await page.locator(".tabbar a[href='/learn']").count(), 1, "the Italian lessons tab opens the Italian lessons tested above");
       for (const path of ["/vocabulary", "/sign-quiz", "/lessons"]) {
         await page.goto(`${BASE}${path}`);
         await page.locator("[data-testid=italy-pending]").waitFor();

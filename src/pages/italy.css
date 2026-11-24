@@ -1,0 +1,39 @@
+.italy-dashboard{gap:28px}
+.it-welcome{display:grid;gap:8px}
+.it-country{color:var(--primary-deep);font-size:14px;font-weight:800;letter-spacing:.09em;justify-self:start}
+.it-welcome h1{font-size:clamp(26px,4vw,38px)}
+.it-welcome p{color:var(--success-ink);font-size:14px}
+.it-feature{display:grid;grid-template-columns:1fr auto;gap:32px;align-items:center;padding:32px;border-radius:28px;background:var(--ocean);color:white;box-shadow:var(--shadow-card)}
+.it-feature .stack{gap:16px}.it-feature h2{font-size:clamp(23px,3vw,30px)}.it-feature .btn{justify-self:start;align-self:start;background:var(--white);color:var(--ocean);border-color:var(--white)}
+.it-feature .bi .de{color:inherit;opacity:.8}
+.it-eyebrow{font-size:14px;color:#b8dfed}
+.it-progress{display:grid;justify-items:center;text-align:center;gap:10px;font-size:14px}
+.it-ring{width:140px;height:140px;border-radius:50%;padding:9px;display:grid;place-items:center}
+.it-ring strong{background:var(--ocean);border-radius:50%;width:122px;height:122px;display:grid;place-items:center;font-size:32px;color:white}
+.it-actions{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:16px}
+.it-action{display:flex;flex-direction:column;align-items:flex-start;gap:12px;text-decoration:none;color:var(--ink);padding:22px;transition:transform .18s,box-shadow .18s}
+.it-action:hover{transform:translateY(-3px);box-shadow:var(--shadow-btn)}
+.it-action-symbol{display:grid;place-items:center;width:46px;height:46px;background:var(--primary-soft);color:var(--primary-deep);font-size:28px;border-radius:15px}
+.it-action:nth-child(2) .it-action-symbol{background:var(--danger-bg);color:var(--danger-ink)}
+.it-action:nth-child(3) .it-action-symbol{background:var(--success-bg);color:var(--success-ink)}
+.it-action .muted{font-size:14px}.it-count{font-size:24px;font-weight:800}
+.it-metrics{display:grid;grid-template-columns:repeat(3,1fr);padding:24px 12px;background:var(--primary-soft);border-radius:22px;text-align:center;gap:16px}
+.it-metrics strong{font-size:28px;color:var(--primary-deep)}.it-metrics .bi{font-size:14px}
+.it-chapter-heading{display:flex;justify-content:space-between;gap:16px;align-items:center;flex-wrap:wrap}
+.it-chapter-heading input{max-width:100%;width:280px;min-height:48px}
+.it-chapters{list-style:none;padding:0;margin:0;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
+.it-chapter{display:flex;gap:16px;align-items:flex-start;height:100%;padding:22px}
+.it-chapter-number{background:var(--primary-soft);color:var(--primary-deep);border-radius:12px;padding:8px;font-weight:800;font-size:16px}
+.it-chapter-body{flex:1;min-width:0;display:grid;gap:12px}
+.it-chapter progress{width:100%;height:6px;accent-color:var(--success)}
+.it-notice{display:grid;gap:12px}
+@media(max-width:700px){.it-actions{grid-template-columns:repeat(2,minmax(0,1fr))}.it-feature{padding:24px;gap:20px}.it-ring{width:100px;height:100px}.it-ring strong{width:82px;height:82px;font-size:24px}.it-chapters{grid-template-columns:1fr}.it-action{padding:18px}.it-metrics{gap:8px}}
+@media(max-width:420px){.it-feature{grid-template-columns:1fr}.it-progress{grid-template-columns:auto 1fr;align-items:center;text-align:start}.it-progress>span{grid-column:2}.it-ring{grid-row:span 2}.it-chapter-heading input{width:100%}}
+@media(prefers-reduced-motion:reduce){.it-action{transition:none}.it-action:hover{transform:none}}
+/* Compact navigation labels: source text remains visible, invisible source placeholders do not consume space. */
+.italy-dashboard .bi>.de.ghost{display:none}
+.it-chapter-heading input{border:1px solid var(--border);border-radius:16px;padding:12px 16px;background:var(--white);color:var(--ink);font:inherit;box-shadow:var(--shadow-card)}
+.it-chapter progress{appearance:none;border:0;border-radius:8px;overflow:hidden;background:var(--track)}
+.it-chapter progress::-webkit-progress-bar{background:var(--track);border-radius:8px}
+.it-chapter progress::-webkit-progress-value{background:var(--success-strong);border-radius:8px}
+.it-chapter progress::-moz-progress-bar{background:var(--success-strong);border-radius:8px}

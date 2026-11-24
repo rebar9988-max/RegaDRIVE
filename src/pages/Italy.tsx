@@ -1,3 +1,4 @@
+import "./italy.css";
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "../app/router";
 import { useApp, useNow } from "../app/state";
@@ -13,9 +14,9 @@ import { formatClock, itTimeLeft, pickItExam } from "../lib/itExam";
 import { questionStatus } from "../lib/progress";
 import { isItPracticeMode, itChapterSources, itChapterStats, itOverall, itPracticeSet, type ItPracticeMode } from "../lib/italyStudy";
 import { IT_CONTENT_REGISTRY } from "../content/italy/registry";
-import { itSignById } from "../content/italy/signs";
 import { IT_FREE_FOREVER_LABEL } from "../lib/shared/accessPolicy";
 
+const inChapter = (questions: readonly ItQuestion[], chapter: number) => questions.filter((q) => q.chapter === chapter);
 const newSession = () => `it-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
 
 /** Shown while the approved list is being fetched, and when the fetch failed (fail closed: nothing is shown). */
@@ -32,25 +33,73 @@ export function ItalyHome() {
   const approved = useItApproved();
   const answered = approved.questions.filter((q) => progress.questions[q.id]).length;
   const mastered = approved.questions.filter((q) => questionStatus(progress.questions[q.id], settings.masteryThreshold) === "mastered").length;
+  const [search, setSearch] = useState("");
+  const errors = approved.questions.filter((q) => progress.questions[q.id]?.lastCorrect === false).length;
+  const percent = approved.questions.length ? Math.round(mastered / approved.questions.length * 100) : 0;
+  const chapters = IT_CHAPTERS.filter((c) => label(c.title).toLocaleLowerCase().includes(search.toLocaleLowerCase()) || c.title.it.toLocaleLowerCase().includes(search.toLocaleLowerCase()));
   return (
-    <section className="stack" data-testid="italy-home">
-      <h1><Bi t={T.it.title} /></h1>
-      <p className="card" data-testid="italy-free-forever" lang="it" dir="ltr"><strong>{IT_FREE_FOREVER_LABEL}</strong></p>
-      <p className="card muted small"><Bi t={T.it.reviewNotice} /></p>
-      <p className="card muted small" data-testid="italy-free"><Bi t={T.it.free} /></p>
-      {approved.questions.length === 0 && <Gate loading={approved.loading} failed={approved.failed} />}
-      <div className="grid grid-2 compact-stats">
-        <div className="card stat"><span className="num" dir="ltr">{approved.questions.length}</span><span className="stat-label"><Bi t={T.it.questionsHere} /></span></div>
-        <div className="card stat"><span className="num" dir="ltr">{answered}</span><span className="stat-label"><Bi t={T.answeredL} /></span></div>
-        <div className="card stat"><span className="num" dir="ltr">{mastered}</span><span className="stat-label"><Bi t={T.mastered} /></span></div>
-        <div className="card stat"><span className="num" dir="ltr">{IT_PLANNED_TOTAL}</span><span className="stat-label"><Bi t={T.it.plannedTotal} /></span></div>
+    <section className="stack italy-dashboard" data-testid="italy-home">
+      <header className="it-welcome">
+        <span className="it-country" lang="it" dir="ltr">🇮🇹 ITALIA · PATENTE B</span>
+        <h1><Bi t={T.it.title} /></h1>
+        <p data-testid="italy-free-forever" lang="it" dir="ltr">{IT_FREE_FOREVER_LABEL}</p>
+      </header>
+      <div className="it-feature">
+        <div className="stack">
+          <span className="it-eyebrow"><Bi t={T.nav.practice} /></span>
+          <h2><Bi t={T.it.chapters} /></h2>
+          <p><Bi t={T.it.examRules} /></p>
+          <Link href="/practice" className="btn btn-primary"><Bi t={T.nav.practice} /></Link>
+        </div>
+        <div className="it-progress">
+          <div className="it-ring" style={{ background: `conic-gradient(var(--success) ${percent}%, var(--track) 0)` }}>
+            <strong dir="ltr">{percent}%</strong>
+          </div>
+          <Bi t={T.mastered} />
+          <span dir="ltr">{mastered} / {approved.questions.length}</span>
+        </div>
       </div>
       <nav className="q-actions" aria-label={label(T.it.lessons)} data-testid="italy-quick">
         <Link href="/learn" className="btn btn-primary" data-testid="italy-go-lessons"><Bi t={T.it.lessons} /></Link>
-        <Link href="/practice" className="btn" data-testid="italy-go-practice"><Bi t={T.it.startPractice} /></Link>
         <Link href="/progress" className="btn" data-testid="italy-go-progress"><Bi t={T.nav.progress} /></Link>
-        <Link href="/exam" className="btn" data-testid="italy-go-exam"><Bi t={T.it.exam} /></Link>
       </nav>
+      <div className="it-actions">
+        <Link href="/exam" className="card it-action"><span className="it-action-symbol" aria-hidden="true">◷</span><strong><Bi t={T.it.exam} /></strong><span className="muted"><Bi t={T.it.examRules} /></span></Link>
+        <Link href="/practice?mode=errors" className="card it-action"><span className="it-action-symbol" aria-hidden="true">↺</span><strong><Bi t={T.reviewMistakes} /></strong><span className="it-count" dir="ltr">{errors}</span></Link>
+        <Link href="/signs" className="card it-action"><span className="it-action-symbol" aria-hidden="true">△</span><strong><Bi t={T.nav.signs} /></strong><span className="it-count" dir="ltr">{approved.signs.length}</span></Link>
+        <Link href="/practice?mode=new" className="card it-action"><span className="it-action-symbol" aria-hidden="true">✧</span><strong><Bi t={T.unanswered} /></strong><span className="it-count" dir="ltr">{approved.questions.length - answered}</span></Link>
+      </div>
+      <div className="it-metrics">
+        <div><strong dir="ltr">{approved.questions.length}</strong><Bi t={T.it.questionsHere} /></div>
+        <div><strong dir="ltr">{answered}</strong><Bi t={T.answeredL} /></div>
+        <div><strong dir="ltr">{mastered}</strong><Bi t={T.mastered} /></div>
+      </div>
+      {approved.questions.length === 0 && <Gate loading={approved.loading} failed={approved.failed} />}
+      <div className="it-chapter-heading">
+        <h2><Bi t={T.it.chapters} /></h2>
+        <input type="search" aria-label={label(T.it.chapters)} placeholder={label(T.it.chapters)} value={search} onChange={(e) => setSearch(e.target.value)} />
+      </div>
+      <ul className="it-chapters" data-testid="italy-chapters">
+        {chapters.map((c) => {
+          const questions = inChapter(approved.questions, c.id);
+          const completed = questions.filter((q) => questionStatus(progress.questions[q.id], settings.masteryThreshold) === "mastered").length;
+          return <li key={c.id}>
+            <Link href={`/practice?chapter=${c.id}`} className="card card-link it-chapter" data-testid={`italy-chapter-${c.id}`}>
+              <span className="it-chapter-number" dir="ltr">{String(c.id).padStart(2, "0")}</span>
+              <div className="it-chapter-body"><strong><Bi t={c.title} /></strong>
+                <progress value={completed} max={questions.length || 1} aria-label={label(c.title)} />
+                <span className="small muted"><Bi t={T.mastered} inline /> <bdi>{completed} / {questions.length}</bdi></span>
+              </div>
+            </Link>
+          </li>;
+        })}
+      </ul>
+      {chapters.length === 0 && <p role="status"><Bi t={T.it.noQuestionsYet} /></p>}
+      <aside className="card it-notice">
+        <p className="muted small"><Bi t={T.it.reviewNotice} /></p>
+        <p className="muted small" data-testid="italy-free"><Bi t={T.it.free} /></p>
+        <p className="muted small"><Bi t={T.it.plannedTotal} inline /> <bdi>{IT_PLANNED_TOTAL}</bdi></p>
+      </aside>
     </section>
   );
 }
@@ -66,19 +115,19 @@ export function ItalyPractice() {
     const n = raw === null ? NaN : Number(raw);
     const ch = Number.isInteger(n) && IT_CHAPTERS.some((c) => c.id === n) ? n : null;
     const asked = params.get("mode");
-    const m: ItPracticeMode = isItPracticeMode(asked) ? asked : ch !== null ? "chapter" : "all";
+    const m: ItPracticeMode = asked === "errors" ? "wrong" : isItPracticeMode(asked) ? asked : ch !== null ? "chapter" : "all";
     return { chapter: ch, mode: m };
   }, []);
-  const [session, setSession] = useState(newSession);
+  const [run, setRun] = useState(() => ({ session: newSession(), progress }));
+  const session = run.session;
   const [pos, setPos] = useState(0);
   const [done, setDone] = useState<Record<string, boolean>>({});
-  // Snapshot the list once per run, so answering never reshuffles the current set.
+  // Keep progress fixed for the current run, including when the approved bank loads asynchronously.
   const list = useMemo(
-    () => itPracticeSet(approved.questions, progress, mode, chapter, settings.masteryThreshold),
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- a run keeps the set it started with; only a new run or a new bank changes it
-    [chapter, mode, session, approved.questions],
+    () => itPracticeSet(approved.questions, run.progress, mode, chapter, settings.masteryThreshold),
+    [approved.questions, run.progress, mode, chapter, settings.masteryThreshold],
   );
-  const restart = () => { setSession(newSession()); setPos(0); setDone({}); };
+  const restart = () => { setRun({ session: newSession(), progress }); setPos(0); setDone({}); };
   const title = mode === "wrong" ? { title: T.it.reviewWrong }
     : mode === "bookmarks" ? { title: T.it.reviewBookmarks }
     : chapter === null ? null : IT_CHAPTERS.find((c) => c.id === chapter) ?? null;
@@ -277,9 +326,8 @@ export function ItalyLessons() {
 
   const stat = stats.find((s) => s.chapter.id === chapter)!;
   const sources = itChapterSources(chapter, approved.questions, (id) => IT_CONTENT_REGISTRY.get(id)?.provenance.sourceRefs ?? []);
-  const signs = [...new Set(approved.questions.filter((q) => q.chapter === chapter).map((q) => q.signId))]
-    .flatMap((id) => (id ? [itSignById(id)] : []))
-    .flatMap((s) => (s ? [s] : []));
+  const signIds = new Set(inChapter(approved.questions, chapter).map((q) => q.signId));
+  const signs = approved.signs.filter((sign) => signIds.has(sign.id));
   return (
     <section className="stack" data-testid="italy-lesson">
       <h1><Bi t={stat.chapter.title} /></h1>
@@ -314,6 +362,7 @@ export function ItalyLessons() {
 /** Italy's progress: what the learner has done, per chapter, with the two review runs. */
 export function ItalyProgress() {
   const { progress, settings } = useApp();
+  const label = useBiText();
   const approved = useItApproved();
   const all = itOverall(progress, approved.questions, settings.masteryThreshold);
   const stats = itChapterStats(progress, approved.questions, settings.masteryThreshold);
@@ -341,7 +390,7 @@ export function ItalyProgress() {
               <span className="spacer" />
               <span className="small muted" dir="ltr">{s.mastered}/{s.total}</span>
             </div>
-            <div className="progressbar" role="progressbar" aria-valuemin={0} aria-valuemax={s.total} aria-valuenow={s.mastered}>
+            <div className="progressbar" role="progressbar" aria-label={label(s.chapter.title)} aria-valuemin={0} aria-valuemax={s.total || 1} aria-valuenow={s.mastered}>
               <span style={{ width: `${s.total === 0 ? 0 : (s.mastered / s.total) * 100}%` }} />
             </div>
           </li>

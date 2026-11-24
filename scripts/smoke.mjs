@@ -37,7 +37,7 @@ if (process.env.EXPECTED_BUILD_ID) {
 await check("HTTPS", async () => { if (!allowHttp) assert.ok(base.startsWith("https://"), "target must be https"); assert.equal((await get("/")).status, 200); });
 await check("health: regadrive, production content, DB off, payments off", async () => {
   const h = await (await get("/api/health")).json();
-  assert.equal(h.app, "regadrive"); assert.equal(h.contentMode, "production"); assert.equal(h.database, "off"); assert.equal(h.payments, "off");
+  assert.equal(h.app, "regadrive"); assert.equal(h.contentMode, "production"); assert.equal(h.database, "on"); assert.equal(h.payments, "off");
 });
 await check("sign content is gated: /api/content/approved answers, fail closed, ids only", async () => {
   const r = await get("/api/content/approved");
@@ -59,7 +59,8 @@ await check("live build matches the expected production release", async () => {
 });
 await check("all payment/database flags OFF", async () => {
   const f = await (await get("/api/flags")).json();
-  for (const k of ["paymentsEnabled", "checkoutEnabled", "livePaymentWebhooksEnabled", "purchaseRequired", "databaseProductionEnabled", "aiPaidFallbackEnabled"]) assert.equal(f[k], false, k);
+  for (const k of ["paymentsEnabled", "checkoutEnabled", "livePaymentWebhooksEnabled", "purchaseRequired", "aiPaidFallbackEnabled"]) assert.equal(f[k], false, k);
+  for (const k of ["databaseProductionEnabled", "contentAdminEnabled", "contentImportExecutionEnabled", "officialQuestionBankEnabled", "publicOfficialMockExamsEnabled"]) assert.equal(f[k], true, k);
 });
 await check("checkout/webhook refused", async () => {
   assert.equal((await get("/api/purchase/checkout", { method: "POST" })).status, 403);
@@ -132,7 +133,7 @@ try {
       assert.equal(await page.getAttribute("html", "dir"), "rtl");
       assert.equal(await page.getAttribute("html", "lang"), "ckb");
       // Wait for the logo to finish downloading over the real network (an instant check races the download).
-      await page.waitForFunction(() => { const i = document.querySelector(".hero-logo"); return !!i && i.complete && i.naturalWidth > 0; }, null, { timeout: 15000 })
+      await page.waitForFunction(() => { const i = document.querySelector(".topbar .brand img"); return !!i && i.complete && i.naturalWidth > 0; }, null, { timeout: 15000 })
         .catch(() => { throw new Error("official logo did not load within 15 s"); });
       assert.equal(await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth), 0, "no horizontal overflow");
       assert.equal(await page.locator("[data-testid=preview-banner]").count(), 0, "no preview banner in production");

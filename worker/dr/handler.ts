@@ -323,8 +323,17 @@ export async function handleDr(req: Request, env: DrEnv, deps: DrDeps = {}): Pro
     const storageActive = !!env.CONTENT_DB && !!flags?.databaseProductionEnabled && !!flags?.contentImportExecutionEnabled;
     let progress: ContentProgress | null = null;
     if (storageActive && env.CONTENT_DB) { try { progress = await contentProgress(env.CONTENT_DB); } catch { missing.push("content database is not readable (migrations not applied?)"); } }
+    let italy: { country: "IT"; counts: Record<string, number>; questions: { id: string; chapter: number; prompt: string }[] } | null = null;
+    if (storageActive && env.CONTENT_DB) {
+      try {
+        const counts = await env.CONTENT_DB.prepare("SELECT kind, COUNT(*) AS total FROM italy_content WHERE country = 'IT' GROUP BY kind").all<{ kind: string; total: number }>();
+        const questions = await env.CONTENT_DB.prepare("SELECT id, chapter, json_extract(payload, '$.prompt.it') AS prompt FROM italy_content WHERE country = 'IT' AND kind = 'question' ORDER BY chapter, id").all<{ id: string; chapter: number; prompt: string }>();
+        italy = { country: "IT", counts: Object.fromEntries(counts.results.map(r => [r.kind, r.total])), questions: questions.results };
+      } catch { missing.push("Italian inventory is not available; apply content migration 0004"); }
+    }
     return reply({
       storage: { active: storageActive && progress !== null, missing },
+      italy,
       officialContent: { shown: !!flags?.officialQuestionBankEnabled, publicExams: !!flags?.publicOfficialMockExamsEnabled },
       bundled: deps.context?.().content ?? null,
       progress,

@@ -55,7 +55,6 @@ export function Home() {
             <h1 id="home-title"><Bi t={T.greeting} /></h1>
             <p className="muted small"><Bi t={{ ckb: "فێربوونی تیۆری شۆفێری – کلاسی B", de: "Dein Weg zur sicheren Theorie", kmr: "Teoriya ajotinê – pola B", ar: "نظرية القيادة – الفئة B" }} /></p>
           </div>
-          <img className="hero-logo" src="/brand/regadrive-logo.webp" width={120} height={120} alt="RegaDRIVE" fetchPriority="high" />
         </section>
 
         <Link href="/progress" className="card card-link overview-card">

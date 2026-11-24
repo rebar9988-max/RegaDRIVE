@@ -57,13 +57,13 @@ export function Shell({ children }: { children: ReactNode }) {
     <div className="app">
       <a className="skip-link" href="#main">{label({ ckb: "بازدان بۆ ناوەڕۆک", de: "Zum Inhalt springen", kmr: "Here naverokê", ar: "انتقل إلى المحتوى" })}</a>
       <header className="topbar">
+        <Link href="/" className="brand" aria-label="RegaDRIVE">
+          <img src="/brand/regadrive-logo.webp" width={2172} height={724} alt="" />
+        </Link>
         <div className="header-tools">
           <Link href="/account" className="icon-button" aria-label={label(T.nav.account)}><Icon name="user" /></Link>
           <Link href="/more" className="icon-button" aria-label={label(T.nav.more)}><Icon name="more" /></Link>
         </div>
-        <Link href="/" className="brand" aria-label="RegaDRIVE">
-          <img src="/brand/regadrive-logo.webp" width={58} height={58} alt="" />
-        </Link>
         <div className="header-tools">
           <LanguageMenu />
           {!online && <span className="offline-pill" role="status" data-testid="offline-pill">{label(T.offline)}</span>}

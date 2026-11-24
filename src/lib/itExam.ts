@@ -7,8 +7,8 @@ import type { ItQuestion } from "../content/italy/types";
  * and inventing one would misrepresent the real test.
  */
 export function pickItExam(pool: readonly ItQuestion[], rules: ItExamRules = PATENTE_B_RULES_IT, random: () => number = Math.random): ItQuestion[] | null {
-  if (pool.length < rules.questionCount) return null;
-  const rest = [...pool];
+  const rest = [...new Map(pool.map((question) => [question.id, question])).values()];
+  if (rest.length < rules.questionCount) return null;
   const out: ItQuestion[] = [];
   while (out.length < rules.questionCount && rest.length > 0) {
     const i = Math.min(rest.length - 1, Math.floor(random() * rest.length));

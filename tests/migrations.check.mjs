@@ -202,7 +202,7 @@ assert.equal(Object.values(sdb.prepare("PRAGMA integrity_check").get())[0], "ok"
 // Its schema is the content part of ./migrations, copied statement by statement: the same rules protect it.
 const stmts = (sql) => sql.split("\n").map((l) => l.replace(/\s*--.*$/, "")).join("\n").split(/;\s*(?:\n|$)/).map((x) => x.replace(/\s+/g, " ").trim()).filter(Boolean);
 const cfiles = readdirSync("migrations-content").filter((f) => f.endsWith(".sql")).sort();
-assert.deepEqual(cfiles, ["0001_content_base.sql", "0002_content_import.sql", "0003_license_rights_media_provenance.sql"], "content migrations: fixed, ordered set");
+assert.deepEqual(cfiles, ["0001_content_base.sql", "0002_content_import.sql", "0003_license_rights_media_provenance.sql", "0004_italy_inventory.sql"], "content migrations: fixed, ordered set");
 const orig = (f) => stmts(readFileSync(`migrations/${f}`, "utf8"));
 const base = new Set(orig("0001_init.sql"));
 for (const st of stmts(readFileSync("migrations-content/0001_content_base.sql", "utf8"))) assert.ok(base.has(st), `content 0001 statement not copied verbatim from migrations/0001_init.sql: ${st.slice(0, 80)}`);
@@ -244,3 +244,17 @@ console.log(`migrations OK: ${tables.length} tables, constraints verified; stude
   assert.equal(db.prepare("SELECT COUNT(*) AS n FROM dr_content_reviews").get().n, 1, "re-applying 0006 keeps rows");
   assert.equal(db.prepare("SELECT COUNT(*) AS n FROM dr_it_content_reviews").get().n, 2, "re-applying 0007 keeps rows");
 }
+
+// Italian inventory is complete for the material actually supplied, isolated and repeatable.
+assert.equal(cdb.prepare("SELECT COUNT(*) AS n FROM italy_content WHERE kind='question'").get().n, 12);
+assert.equal(cdb.prepare("SELECT COUNT(*) AS n FROM italy_content WHERE kind='sign'").get().n, 8);
+assert.equal(cdb.prepare("SELECT COUNT(*) AS n FROM italy_content WHERE kind='chapter'").get().n, 16);
+for (const row of cdb.prepare("SELECT payload FROM italy_content WHERE kind='question'").all()) {
+  const q = JSON.parse(row.payload);
+  assert.ok(q.prompt.it && q.prompt.ckb && q.explanation.it);
+  assert.equal(q.reviewStatus, "pending");
+  assert.equal(typeof q.answer, "boolean");
+}
+assert.throws(() => cdb.exec("UPDATE italy_content SET country='DE'"));
+cdb.exec(readFileSync("migrations-content/0004_italy_inventory.sql", "utf8"));
+assert.equal(cdb.prepare("SELECT COUNT(*) AS n FROM italy_content").get().n, 36);
