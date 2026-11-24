@@ -81,8 +81,8 @@ describe("/dr Content Review & Approval", () => {
     const r = await t.call("/api/dr/reviews");
     expect(r.status).toBe(200);
     const items = r.body.items as Item[];
-    // 40 German signs + 89 German sign-quiz questions + 8 Italian signs + 12 Italian questions.
-    expect(items.length).toBe(149);
+    // 40 German signs + 89 German sign-quiz questions + 8 Italian signs; obsolete Italian questions removed.
+    expect(items.length).toBe(137);
     expect(items.every((i) => !i.publishable && i.status === "AWAITING_REVIEW")).toBe(true);
     expect((r.body.counts as { published: number }).published).toBe(0);
   });

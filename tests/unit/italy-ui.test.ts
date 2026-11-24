@@ -80,7 +80,7 @@ describe("Italian publication gate", () => {
   });
   it("names the Italian exam rules, never the German ones", () => {
     expect(IT_RULES_VERSION).toContain("it");
-    expect(itPublicationGate(IT_QUESTIONS[0]!.id).reasons.join(" ")).toContain(IT_RULES_VERSION);
+    expect(itPublicationGate("removed-italian-question").publishable).toBe(false);
   });
   it("refuses an unknown id", () => {
     expect(itPublicationGate("nope").publishable).toBe(false);
@@ -115,8 +115,8 @@ describe("Italian content access", () => {
 describe("Italian true/false answers", () => {
   it("has exactly one right answer per question, and both answers occur in the bank", () => {
     for (const q of IT_QUESTIONS) expect(typeof q.answer).toBe("boolean");
-    expect(IT_QUESTIONS.some((q) => q.answer)).toBe(true);
-    expect(IT_QUESTIONS.some((q) => !q.answer)).toBe(true);
+    expect(IT_QUESTIONS).toEqual([]);
+    expect(IT_QUESTIONS).toHaveLength(0);
   });
   it("carries no option ids or points, so it can never enter a German exam", () => {
     for (const q of IT_QUESTIONS) {

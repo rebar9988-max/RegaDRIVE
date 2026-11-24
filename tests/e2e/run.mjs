@@ -1139,8 +1139,8 @@ try {
     await ctx.close();
   });
   // Italy, end to end for a student: entry choice → registration at no cost → back to the Italian
-  // section → practice with explanations and signs → progress recorded → the exam state is honest.
-  await test("italy student journey: free registration, practice, progress, exam state, no German leftovers", async () => {
+  // section → chapter, signs and exam availability while the replacement question bank is pending.
+  await test("italy student journey: free registration, empty practice bank, signs, exam and Italian navigation", async () => {
     const flags = await (await fetch(`${BASE}/api/flags`)).json();
     assert.equal(flags.purchaseRequired, false, "no purchase may be required");
     assert.equal(flags.checkoutEnabled, false, "checkout stays off");
@@ -1165,29 +1165,29 @@ try {
       assert.equal(await page.locator(".it-actions a").count(), 4);
 
 
-      // Practice: answer, see the answer key, the explanation and the sign, and move on.
-      await page.goto(`${BASE}/practice?chapter=1`);
-      await page.locator("[data-testid=it-question-card]").waitFor();
-      assert.equal(await page.locator("[data-testid=it-sign] img").count(), 1, "the sign illustration is shown");
-      assert.equal(await page.locator("[data-testid=question-card]").count(), 0, "no German question card under Italy");
-      await page.locator("[data-testid=it-option-vero] input").click();
-      await page.locator("[data-testid=it-feedback]").waitFor();
-      assert.equal(await page.locator("[data-testid=it-tag-correct]").count(), 1, "the answer key appears after answering");
-      const italian = page.locator("[data-testid=it-question-card] .de[lang=it]").first();
-      assert.equal(await italian.getAttribute("dir"), "ltr", "the Italian original keeps its own direction");
-      assert.equal(await page.getAttribute("[data-testid=it-question-card] .pri", "dir"), "rtl", "Sorani is right to left");
+      // Open a chapter from the home page and check the real empty state.
+      await page.locator("[data-testid=italy-chapter-1]").click();
+      const practice = page.locator("[data-testid=italy-practice-empty]");
+      await practice.locator("[data-testid=italy-in-review]").waitFor();
+      assert.equal(new URL(page.url()).searchParams.get("chapter"), "1");
+      assert.equal(await page.locator("[data-testid=it-question-card], [data-testid=question-card]").count(), 0);
       await page.screenshot({ path: `${OUT}/italy-practice-${viewport.width}.png`, fullPage: true });
       await axe(page, `italy practice ${viewport.width}`);
+      await practice.locator("a[href='/']").click();
+      await page.locator("[data-testid=italy-home]").waitFor();
 
-      // Progress is recorded for the Italian question, under Italy's own storage key.
-      const answered = await page.evaluate(() => new Promise((res) => { const r = indexedDB.open("regadrive"); r.onsuccess = () => { try { const db = r.result; const store = db.objectStoreNames[0]; const g = db.transaction(store, "readonly").objectStore(store).get("progress:IT"); g.onsuccess = () => res(Object.keys(g.result?.questions ?? {}).length); g.onerror = () => res(-1); } catch { res(-1); } }; r.onerror = () => res(-1); }));
-      assert.ok(answered > 0, "the answer is stored under Italy's own progress key");
+      // Signs are independent of the question bank.
+      await page.goto(`${BASE}/signs`);
+      const signs = page.locator("[data-testid=italy-signs]");
+      await signs.locator('img[src^="/signs/it/"]').first().waitFor();
+      const sign = signs.locator('img[src^="/signs/it/"]').first();
+      await sign.evaluate((img) => img.decode());
+      await axe(page, `italy signs ${viewport.width}`);
 
 
-      const answeredId = await page.locator("[data-testid=it-question-card]").getAttribute("data-qid");
       await page.goto(`${BASE}/practice?mode=new`);
-      await page.locator("[data-testid=it-question-card]").waitFor();
-      assert.notEqual(await page.locator("[data-testid=it-question-card]").getAttribute("data-qid"), answeredId, "unseen practice excludes answered questions");
+      await practice.locator("[data-testid=italy-in-review]").waitFor();
+      assert.equal(await page.locator("[data-testid=it-question-card], [data-testid=question-card]").count(), 0, "unseen practice waits for replacement questions");
 
       // The mock exam states the real Italian rules and refuses to invent a short paper.
       await page.goto(`${BASE}/exam`);
