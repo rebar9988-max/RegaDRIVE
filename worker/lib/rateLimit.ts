@@ -5,7 +5,15 @@ export class RateLimiter {
   allow(key: string, now: number): boolean {
     const h = this.hits.get(key);
     if (!h || now - h.start >= this.windowMs) {
-      if (this.hits.size > 10_000) this.hits.clear();
+      // Evict only expired counters. Clearing the entire map lets a flood of
+      // distinct identities reset limits for clients that are already blocked.
+      if (!h && this.hits.size >= 10_000) {
+        for (const [client, hit] of this.hits) {
+          if (now - hit.start >= this.windowMs) this.hits.delete(client);
+        }
+        // Fail closed for new identities while all bounded slots are active.
+        if (this.hits.size >= 10_000) return false;
+      }
       this.hits.set(key, { start: now, n: 1 });
       return true;
     }

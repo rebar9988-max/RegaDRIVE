@@ -37,8 +37,8 @@ jobs:
         run: node scripts/chromium-ready.mjs || { timeout 360 npx playwright install-deps chromium && node scripts/chromium-ready.mjs; }
       - name: Verification pipeline (lint, types, tests, migrations, builds, E2E + axe + offline, worker, preflight)
         run: node scripts/pipeline.mjs
-      - name: Dependency audit (production deps)
-        run: npm audit --omit=dev --audit-level=high
+      - name: Dependency audit (runtime and build dependencies)
+        run: npm audit --audit-level=high
       - name: Upload pipeline report and screenshots
         if: always()
         uses: actions/upload-artifact@v4

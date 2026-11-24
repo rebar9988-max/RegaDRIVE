@@ -1157,6 +1157,13 @@ try {
       assert.equal(await page.locator("[data-testid=italy-chapters] > li").count(), 16, "16 Italian chapters");
       assert.equal(await page.locator("[data-testid=italy-free]").count(), 1, "the Italian section states it is free");
       await axe(page, `italy home ${viewport.width}`);
+      const search = page.locator(".it-chapter-heading input");
+      await search.fill("zzzz-no-chapter");
+      assert.equal(await page.locator("[data-testid=italy-chapters] > li").count(), 0);
+      await search.fill("");
+      assert.equal(await page.locator("[data-testid=italy-chapters] > li").count(), 16);
+      assert.equal(await page.locator(".it-actions a").count(), 4);
+
 
       // Open a chapter from the home page and check the real empty state.
       await page.locator("[data-testid=italy-chapter-1]").click();
@@ -1176,6 +1183,11 @@ try {
       const sign = signs.locator('img[src^="/signs/it/"]').first();
       await sign.evaluate((img) => img.decode());
       await axe(page, `italy signs ${viewport.width}`);
+
+
+      await page.goto(`${BASE}/practice?mode=new`);
+      await practice.locator("[data-testid=italy-in-review]").waitFor();
+      assert.equal(await page.locator("[data-testid=it-question-card], [data-testid=question-card]").count(), 0, "unseen practice waits for replacement questions");
 
       // The mock exam states the real Italian rules and refuses to invent a short paper.
       await page.goto(`${BASE}/exam`);

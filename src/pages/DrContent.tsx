@@ -12,6 +12,7 @@ import "./dr.css";
  * publishes content. Storing needs the owner-activated content database (docs/OWNER_ACTIVATION.md).
  */
 interface Status {
+  italy?: null | { country: "IT"; counts: Record<string, number>; questions: { id: string; chapter: number; prompt: string }[] };
   storage: { active: boolean; missing: string[] };
   officialContent: { shown: boolean; publicExams: boolean };
   progress: null | {
@@ -53,6 +54,17 @@ export function DrContent() {
         <div className="dr-scroll"><table className="dr-table"><thead><tr><th>Topic</th><th>Category</th><th>Valid / quota</th><th>Ready</th><th>Missing</th><th>Media</th></tr></thead><tbody>
           {plan.topics.map((x) => <tr key={x.topicId}><td>{x.topicId}</td><td>{x.category}</td><td>{x.valid} / {x.quota}</td><td>{x.ready}</td><td>{x.missing}</td><td>{x.mediaHave} / {x.withMedia}</td></tr>)}
         </tbody></table></div>
+      </section>
+
+      <section className="card stack" data-testid="italy-storage">
+        <h2 className="section-title">🇮🇹 ئیتالیا — بانکی ناوەڕۆک</h2>
+        {status?.italy ? <>
+          <p>Italy · Stored questions: <strong>{status.italy.counts.question ?? 0}</strong> · Signs: <strong>{status.italy.counts.sign ?? 0}</strong> · Chapters: <strong>{status.italy.counts.chapter ?? 0}</strong></p>
+          <p className="small">Stored in the Italian inventory. Learner publication requires the separate translation, educational and owner reviews.</p>
+          <div className="dr-scroll"><table className="dr-table"><thead><tr><th>ID</th><th>Chapter</th><th>Italian question</th></tr></thead><tbody>
+            {status.italy.questions.map(q => <tr key={q.id}><td>{q.id}</td><td>{q.chapter}</td><td lang="it">{q.prompt}</td></tr>)}
+          </tbody></table></div>
+        </> : <p className="small muted">{status ? "Italian database inventory is not available." : "Loading Italian database inventory…"}</p>}
       </section>
 
       <section className="card stack" data-testid="content-storage">
