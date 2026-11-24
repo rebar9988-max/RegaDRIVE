@@ -1204,18 +1204,30 @@ try {
       assert.equal(await page.evaluate(() => document.documentElement.dir), "rtl");
       assert.equal(await page.evaluate(() => document.documentElement.classList.contains("text-ltr")), false, "Badini is not Latin-script");
 
-      // Lessons: the syllabus as structure, with the legal basis and the signs of the chapter.
+      // Lessons keep all 16 chapters available, including while the question bank is empty.
       await page.goto(BASE);
       await page.locator("[data-testid=italy-go-lessons]").click();
-      await page.locator("[data-testid=italy-lessons]").waitFor();
-      assert.equal(await page.locator("[data-testid=italy-lessons] .grid > li").count(), 16, "16 Italian chapters");
+      const lessons = page.locator("[data-testid=italy-lessons]");
+      await lessons.waitFor();
+      assert.equal(await lessons.locator(".grid > li").count(), 16, "16 Italian chapters");
+      const bankIsEmpty = await lessons.locator("[data-testid=italy-in-review]").isVisible();
       await page.locator("[data-testid=italy-lesson-1]").click();
-      await page.locator("[data-testid=italy-lesson]").waitFor();
-      assert.equal(await page.locator("[data-testid=italy-lesson-sources] li").count() > 0, true, "the chapter shows its legal basis");
-      assert.equal(await page.locator("[data-testid=italy-lesson-signs] img").count() > 0, true, "the chapter shows its signs");
+      const lesson = page.locator("[data-testid=italy-lesson]");
+      await lesson.waitFor();
       await axe(page, `italy lesson ${viewport.width}`);
-      await page.locator("[data-testid=italy-lesson-practice]").click();
-      await page.locator("[data-testid=it-question-card]").waitFor();
+      const sources = lesson.locator("[data-testid=italy-lesson-sources] li");
+      const illustrations = lesson.locator("[data-testid=italy-lesson-signs] img");
+      const practiceLink = lesson.locator("[data-testid=italy-lesson-practice]");
+      if (bankIsEmpty) {
+        assert.equal(await sources.count(), 0, "an empty bank supplies no lesson references");
+        assert.equal(await illustrations.count(), 0, "an empty bank supplies no question-linked signs");
+        assert.equal(await practiceLink.count(), 0, "an empty chapter has no practice link");
+      } else {
+        assert.ok(await sources.count(), "the chapter shows its legal basis");
+        assert.ok(await illustrations.count(), "the chapter shows its signs");
+        await practiceLink.click();
+        await page.locator("[data-testid=it-question-card]").waitFor();
+      }
 
       // Progress and the two review runs.
       await page.goto(`${BASE}/progress`);

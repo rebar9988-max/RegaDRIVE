@@ -1,11 +1,24 @@
 import { describe, expect, it } from "vitest";
 import { emptyProgress, recordAnswer, toggleBookmark, MASTERY_THRESHOLD_DEFAULT, type ProgressState } from "../../src/lib/progress";
 import { isItPracticeMode, itChapterSources, itChapterStats, itOverall, itPracticeSet } from "../../src/lib/italyStudy";
-import { IT_QUESTIONS } from "../../src/content/italy/questions";
-import { IT_CONTENT_REGISTRY } from "../../src/content/italy/registry";
+import type { ItQuestion } from "../../src/content/italy/types";
 
 const TH = MASTERY_THRESHOLD_DEFAULT;
-const q = (i: number) => IT_QUESTIONS[i]!;
+const testText = { ckb: "تێست", it: "Test" };
+const bank: ItQuestion[] = [1, 1, 2, 16].map((chapter, index) => ({
+  id: `it-study-test-${index}`,
+  chapter,
+  prompt: testText,
+  answer: true,
+  explanation: testText,
+  questionCode: null,
+  licenseClasses: ["B"],
+  sourceType: "original",
+  contentVersion: "test",
+  reviewStatus: "draft",
+  publicationStatus: "hidden",
+}));
+const q = (index: number) => bank[index]!;
 const answer = (p: ProgressState, id: string, correct: boolean, times = 1): ProgressState => {
   let out = p;
   const previousAttempts = p.questions[id]?.attempts ?? 0;
@@ -18,7 +31,7 @@ const answer = (p: ProgressState, id: string, correct: boolean, times = 1): Prog
 
 describe("Italian chapter statistics", () => {
   it("covers all 16 chapters even when a chapter has no approved question", () => {
-    const stats = itChapterStats(emptyProgress(), IT_QUESTIONS, TH);
+    const stats = itChapterStats(emptyProgress(), bank, TH);
     expect(stats.length).toBe(16);
     expect(stats.map((s) => s.chapter.id)).toEqual(Array.from({ length: 16 }, (_, i) => i + 1));
     expect(stats.find((s) => s.chapter.id === 6)?.total).toBe(0);
@@ -27,7 +40,7 @@ describe("Italian chapter statistics", () => {
   it("counts an answered question, a wrong one and a mastered one", () => {
     let p = answer(emptyProgress(), q(0).id, false);
     p = answer(p, q(2).id, true, TH);
-    const stats = itChapterStats(p, IT_QUESTIONS, TH);
+    const stats = itChapterStats(p, bank, TH);
     const ch1 = stats.find((s) => s.chapter.id === q(0).chapter)!;
     expect(ch1.answered).toBeGreaterThanOrEqual(1);
     expect(ch1.wrong).toBe(1);
@@ -40,7 +53,7 @@ describe("Italian chapter statistics", () => {
   it("counts only bookmarks on questions of the approved bank", () => {
     let p = toggleBookmark(emptyProgress(), q(1).id);
     p = toggleBookmark(p, "rd-g-001");
-    expect(itOverall(p, IT_QUESTIONS, TH).bookmarked).toBe(1);
+    expect(itOverall(p, bank, TH).bookmarked).toBe(1);
   });
 });
 
@@ -48,19 +61,19 @@ describe("Italian practice sets", () => {
   it("serves a chapter, the whole bank, the wrong answers or the bookmarks", () => {
     let p = answer(emptyProgress(), q(0).id, false);
     p = toggleBookmark(p, q(3).id);
-    expect(itPracticeSet(IT_QUESTIONS, p, "chapter", 1, TH).every((x) => x.chapter === 1)).toBe(true);
-    expect(itPracticeSet(IT_QUESTIONS, p, "all", null, TH).length).toBe(IT_QUESTIONS.length);
-    expect(itPracticeSet(IT_QUESTIONS, p, "wrong", null, TH).map((x) => x.id)).toEqual([q(0).id]);
-    expect(itPracticeSet(IT_QUESTIONS, p, "bookmarks", null, TH).map((x) => x.id)).toEqual([q(3).id]);
+    expect(itPracticeSet(bank, p, "chapter", 1, TH).every((x) => x.chapter === 1)).toBe(true);
+    expect(itPracticeSet(bank, p, "all", null, TH).length).toBe(bank.length);
+    expect(itPracticeSet(bank, p, "wrong", null, TH).map((x) => x.id)).toEqual([q(0).id]);
+    expect(itPracticeSet(bank, p, "bookmarks", null, TH).map((x) => x.id)).toEqual([q(3).id]);
   });
   it("drops a question from the review run once it is answered correctly again", () => {
     let p = answer(emptyProgress(), q(0).id, false);
-    expect(itPracticeSet(IT_QUESTIONS, p, "wrong", null, TH).length).toBe(1);
+    expect(itPracticeSet(bank, p, "wrong", null, TH).length).toBe(1);
     p = answer(p, q(0).id, true);
-    expect(itPracticeSet(IT_QUESTIONS, p, "wrong", null, TH).length).toBe(0);
+    expect(itPracticeSet(bank, p, "wrong", null, TH).length).toBe(0);
   });
   it("serves the whole bank when a chapter mode has no chapter", () => {
-    expect(itPracticeSet(IT_QUESTIONS, emptyProgress(), "chapter", null, TH).length).toBe(IT_QUESTIONS.length);
+    expect(itPracticeSet(bank, emptyProgress(), "chapter", null, TH).length).toBe(bank.length);
   });
   it("never serves a question outside the approved bank", () => {
     const one = [q(0)];
@@ -77,19 +90,21 @@ describe("Italian practice sets", () => {
 });
 
 describe("Italian lesson sources", () => {
-  const refs = (id: string) => IT_CONTENT_REGISTRY.get(id)?.provenance.sourceRefs ?? [];
+  const references = new Map([
+    [q(0).id, ["CdS, art. 2", "CdS, art. 3"]],
+    [q(1).id, ["CdS, art. 2"]],
+    [q(3).id, ["CdS, art. 189"]],
+  ]);
+  const refs = (id: string) => references.get(id) ?? [];
   it("lists the legal references of a chapter, without repeating one", () => {
-    const got = itChapterSources(1, IT_QUESTIONS, refs);
-    expect(got.length).toBeGreaterThan(0);
-    expect(new Set(got).size).toBe(got.length);
-    expect(got.join(" ")).toContain("CdS");
+    const got = itChapterSources(1, bank, refs);
+    expect(got).toEqual(["CdS, art. 2", "CdS, art. 3"]);
   });
   it("is empty for a chapter without questions", () => {
-    expect(itChapterSources(6, IT_QUESTIONS, refs)).toEqual([]);
+    expect(itChapterSources(6, bank, refs)).toEqual([]);
   });
   it("never shows a reference from another chapter", () => {
-    const ch16 = itChapterSources(16, IT_QUESTIONS, refs);
-    expect(ch16.some((r) => r.includes("art. 189"))).toBe(true);
-    expect(ch16.some((r) => r.includes("art. 2 "))).toBe(false);
+    const ch16 = itChapterSources(16, bank, refs);
+    expect(ch16).toEqual(["CdS, art. 189"]);
   });
 });
