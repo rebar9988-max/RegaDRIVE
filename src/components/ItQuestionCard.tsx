@@ -5,6 +5,7 @@ import { T } from "../app/strings";
 import { recordAnswer, toggleBookmark } from "../lib/progress";
 import { itSignById } from "../content/italy/signs";
 import type { ItQuestion } from "../content/italy/types";
+import { AiExplain } from "./AiExplain";
 import { Bi, useBiText } from "./Bi";
 import { Icon } from "./Icon";
 import { ItSignImage } from "./ItSignImage";
@@ -99,6 +100,7 @@ export function ItQuestionCard({ question: q, mode = "practice", sessionId, inde
           <div className="feedback-title"><Bi t={correct ? T.it.yourAnswerRight : T.it.yourAnswerWrong} inline /></div>
           <div className="explanation-heading"><Icon name="info" /><Bi t={T.it.explanation} /></div>
           <Bi t={q.explanation} />
+          <AiExplain questionId={q.id} />
         </div>
       )}
 

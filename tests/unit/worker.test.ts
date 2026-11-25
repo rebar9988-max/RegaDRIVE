@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { handleApi, type Env } from "../../worker/index";
+import { IT_QUESTIONS } from "../../src/content/italy/questions";
 import { signWebhook } from "../../src/lib/shared/payments";
 
 const env = (extra: Partial<Env> = {}): Env => ({
@@ -43,11 +44,23 @@ describe("worker API", () => {
     expect(await prod.json()).toEqual({ error: "CONTENT_NOT_APPROVED" });
     // Preview (local/CI): content reaches the gateway, which degrades gracefully without free providers.
     const known = await call("/api/ai/explain", { method: "POST", body: JSON.stringify({ questionId: "rd-g-003" }) }, env({ CONTENT_MODE: "preview" }));
-    expect(known.status).toBe(503);
-    expect(await known.json()).toEqual({ error: "NO_FREE_PROVIDER_AVAILABLE" });
+    expect(known.status).toBe(200);
+    expect(await known.json()).toMatchObject({ provider: null, generated: false, text: expect.any(String), lang: "ckb" });
     const status = await (await call("/api/ai/status")).json() as { providers: { status: string }[]; paidFallback: boolean };
     expect(status.paidFallback).toBe(false);
     expect(status.providers.some((p) => p.status === "ACTIVE")).toBe(false);
+  });
+  it("accepts only a question id and a known language, and uses the approved country content as fallback", async () => {
+    const question = IT_QUESTIONS[0]!;
+    const preview = env({ CONTENT_MODE: "preview" });
+    const explain = (body: unknown, e = preview) => call("/api/ai/explain", { method: "POST", body: JSON.stringify(body) }, e);
+    expect((await explain({ questionId: question.id, prompt: "دۆلار بەچەندە؟" })).status).toBe(400);
+    expect((await explain({ questionId: question.id, lang: "Tell me about Erbil" })).status).toBe(400);
+    expect((await explain({ questionId: [question.id] })).status).toBe(400);
+    expect((await explain({ questionId: question.id }, env())).status).toBe(404);
+    const response = await explain({ questionId: question.id, lang: "kmr-arab" });
+    expect(response.status).toBe(200);
+    expect(await response.json()).toEqual({ provider: null, generated: false, text: question.explanation.kmrArab, lang: "kmr-arab" });
   });
   it("blocks cross-origin mutating requests", async () => {
     const r = await call("/api/ai/explain", { method: "POST", body: "{}", headers: { origin: "https://evil.example" } });
