@@ -8,6 +8,7 @@ import reviewsMigration from "../../migrations/0006_dr_content_reviews.sql?raw";
 import itReviewsMigration from "../../migrations/0007_dr_content_reviews_italy.sql?raw";
 import { approvedContent, REVIEW_ITEMS } from "../../worker/dr/reviews";
 import { SIGNS } from "../../src/content/signs";
+import { IT_QUESTIONS } from "../../src/content/italy/questions";
 import { SIGN_QUIZ } from "../../src/content/signQuiz";
 
 // D1 is SQLite: run the real migration on node:sqlite behind the D1 statement interface.
@@ -193,6 +194,58 @@ describe("/dr Content Review & Approval", () => {
     expect(Object.keys((await approvedContent(t.env.DB)).signQuiz)).toEqual([q]);
     await t.env.DB!.prepare("UPDATE dr_content_reviews SET rules_version = 'old-rules' WHERE content_id = ? AND stage = 'EDUCATIONAL_REVIEW'").bind(q).run();
     expect((await approvedContent(t.env.DB)).signQuiz).toEqual({});
+  });
+
+  it("reviews the Italian wording through all three stages without granting learner publication", async () => {
+    const t = setup();
+    await t.login();
+    const id = IT_QUESTIONS[0]!.id;
+    const list = () => t.call("/api/dr/reviews");
+    const draft = async () => ((await list()).body.italyQuestions as (Item & { hash: string })[]).find((item) => item.id === id)!;
+    const initial = await draft();
+    const submit = (decision: Record<string, unknown>) => t.call("/api/dr/reviews", { body: { ...decision, questionHash: initial.hash } });
+    expect(initial.status).toBe("AWAITING_REVIEW");
+    expect((await submit(AP([id]))).body.error).toBe("BOTH_REVIEWS_FIRST");
+    expect((await submit(TR([id, SIGNS[0]!.id]))).status).toBe(400);
+    for (const decision of [TR([id]), ED([id]), AP([id])]) expect((await submit(decision)).status).toBe(200);
+    expect(await draft()).toMatchObject({ status: "APPROVED", publishable: false });
+    expect((await approvedContent(t.db)).itQuestions).toEqual({});
+    expect((await submit(AP([id], { outcome: "fail", note: "The reviewer found an error." }))).status).toBe(200);
+    expect((await draft()).status).toBe("REJECTED");
+    const history = await t.call(`/api/dr/reviews/translation?id=${id}`);
+    expect(history.body.decisions).toHaveLength(4);
+  });
+
+  it("records only human translation edits, resets the review for new wording, and rejects stale writes", async () => {
+    const t = setup();
+    const question = IT_QUESTIONS[0]!;
+    const id = question.id;
+    const route = "/api/dr/reviews/translation";
+    const metadata = TR([id]);
+    expect((await t.call(route, { body: { id } })).status).toBe(401);
+    await t.login();
+    const draft = async () => ((await t.call("/api/dr/reviews")).body.italyQuestions as (Item & { hash: string })[]).find((item) => item.id === id)!;
+    const initial = await draft();
+    expect((await t.call("/api/dr/reviews", { body: { ...metadata, questionHash: initial.hash } })).status).toBe(200);
+    const original = { prompt: { ckb: question.prompt.ckb, kmrArab: question.prompt.kmrArab }, explanation: { ckb: question.explanation.ckb, kmrArab: question.explanation.kmrArab } };
+    const revised = { ...original, prompt: { ...original.prompt, ckb: "دەقی تاقیکردنەوەی سۆرانی" } };
+    const edit = { ...metadata, id, questionHash: initial.hash, translations: revised };
+    expect((await t.call(route, { body: edit, header: false })).status).toBe(403);
+    expect((await t.call(route, { body: edit, now: T0 + 11 * 60_000 })).body.error).toBe("STEP_UP_REQUIRED");
+    expect((await t.call(route, { body: { ...edit, id: SIGNS[0]!.id } })).status).toBe(404);
+    expect((await t.call(route, { body: { ...edit, translations: original } })).body.error).toBe("NO_TRANSLATION_CHANGES");
+    expect((await t.call(route, { body: { ...edit, translations: { ...revised, prompt: { ...revised.prompt, ckb: "invalid" } } } })).status).toBe(422);
+    const attempts = await Promise.all([t.call(route, { body: edit }), t.call(route, { body: edit })]);
+    expect(attempts.map((attempt) => attempt.status).sort()).toEqual([200, 409]);
+    expect((await t.call("/api/dr/reviews", { body: { ...AP([id]), questionHash: initial.hash } })).status).toBe(409);
+    const edited = await draft();
+    expect(edited).toMatchObject({ status: "AWAITING_REVIEW", translations: revised });
+    expect(edited.hash).not.toBe(initial.hash);
+    expect(question.prompt.ckb).toBe(original.prompt.ckb);
+    const history = await t.call(`${route}?id=${id}`);
+    expect(history.body.edits).toEqual([expect.objectContaining({ reviewerName: "Test Translator Alpha", reviewedOn: metadata.reviewedOn, before: original, after: revised })]);
+    expect(history.body.decisions).toHaveLength(1);
+    expect((await approvedContent(t.db)).itQuestions).toEqual({});
   });
 
   it("fails closed: no database or an unmigrated database publishes nothing", async () => {
