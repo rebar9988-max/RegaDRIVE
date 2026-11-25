@@ -6,7 +6,8 @@
  * cookie; only their hash is stored. Sessions end after 30 min idle or 8 h. Critical changes need a fresh code
  * (step-up, valid 10 min). Every decision is written to dr_audit_log.
  */
-import { evaluateAll, loadRowsWithState, parseSubmission, checkSubmission, recordReview, ALL_REVIEW_ITEMS, REVIEW_ITEM_BY_ID, REVIEW_TABLE, ROLE_FOR_STAGE, rulesVersionFor, sourceFor } from "./reviews";
+import { evaluateAll, loadRowsWithState, parseSubmission, checkSubmission, checkReviewMetadata, recordReview, ALL_REVIEW_ITEMS, REVIEW_ITEM_BY_ID, REVIEW_TABLE, ROLE_FOR_STAGE, rulesVersionFor, sourceFor } from "./reviews";
+import { IT_QUESTION_BY_ID, italyQuestionRows, italyQuestionsForReview, italyTranslationHistory, loadItalyQuestionDraft, parseTranslations, recordItalyQuestionReview, saveItalyQuestionEdit } from "./italyQuestionReview";
 import { KLASSE_B_RULES_2026 } from "../../src/lib/shared/exam";
 import type { D1Like } from "./db";
 import { invalidateOverrides, loadOverrides } from "./db";
@@ -401,7 +402,41 @@ export async function handleDr(req: Request, env: DrEnv, deps: DrDeps = {}): Pro
     return reply({ ok: true, restored: valid.length, safetyBackup: safety });
   }
 
-  // ── Content Review & Approval (Verkehrszeichen release) ──────────────────
+  // ── Content Review & Approval ──────────────────────────────────────────
+  const reviewToday = new Date(now).toISOString().slice(0, 10);
+  if (path === "/api/dr/reviews/translation" && (req.method === "GET" || req.method === "POST")) {
+    if (req.method === "GET") {
+      const id = url.searchParams.get("id") ?? "";
+      if (!IT_QUESTION_BY_ID.has(id)) return reply({ error: "UNKNOWN_ITEM" }, 404);
+      const { rows, ready } = await loadRowsWithState(db);
+      if (!ready.it) return reply({ error: "REVIEW_TABLE_MISSING" }, 503);
+      return reply({
+        decisions: rows.filter((row) => row.source === "it" && row.content_kind === "itQuestion" && row.content_id === id).reverse(),
+        edits: await italyTranslationHistory(db, id),
+      });
+    }
+
+    const action = "review.itQuestion.translation.edit";
+    if (!steppedUp) return needStepUp(action);
+    let value: unknown;
+    try { value = await req.json(); } catch { return reply({ error: "BAD_REQUEST" }, 400); }
+    const body = (value ?? {}) as Record<string, unknown>;
+    const question = typeof body.id === "string" ? IT_QUESTION_BY_ID.get(body.id) : undefined;
+    if (!question) return reply({ error: "UNKNOWN_ITEM" }, 404);
+    const translations = parseTranslations(body.translations);
+    if (!translations) return reply({ error: "INVALID_TRANSLATIONS" }, 422);
+    const read = (key: string) => typeof body[key] === "string" ? body[key].trim() : "";
+    const metadata = { reviewerName: read("reviewerName"), reviewedOn: read("reviewedOn"), evidenceRef: read("evidenceRef"), note: read("note") };
+    const invalid = checkReviewMetadata(metadata, reviewToday);
+    if (invalid) return reply({ error: invalid }, 422);
+    const { ready } = await loadRowsWithState(db);
+    if (!ready.it) return reply({ error: "REVIEW_TABLE_MISSING" }, 503);
+    const draft = await loadItalyQuestionDraft(db, question);
+    if (body.questionHash !== draft.item.hash) return reply({ error: "STALE_TRANSLATION" }, 409);
+    const problem = await saveItalyQuestionEdit(db, draft, translations, metadata, actor, now, ip);
+    return problem ? reply({ error: problem }, problem === "STALE_TRANSLATION" ? 409 : 422) : reply({ ok: true });
+  }
+
   if (path === "/api/dr/reviews" && req.method === "GET") {
     const { rows, ready: tablesReady } = await loadRowsWithState(db);
     const states = new Map(evaluateAll(rows).map((x) => [x.id, x]));
@@ -418,7 +453,8 @@ export async function handleDr(req: Request, env: DrEnv, deps: DrDeps = {}): Pro
       else counts.inReview++;
     }
     const history = rows.slice(-300).reverse();
-    return reply({ items, counts, history, tablesReady, rulesVersion: KLASSE_B_RULES_2026.version, rulesVersionIt: rulesVersionFor("itQuestion"), roles: ROLE_FOR_STAGE, steppedUp });
+    const italyQuestions = tablesReady.it ? await italyQuestionsForReview(db, rows) : [];
+    return reply({ items, counts, history, italyQuestions, tablesReady, rulesVersion: KLASSE_B_RULES_2026.version, rulesVersionIt: rulesVersionFor("itQuestion"), roles: ROLE_FOR_STAGE, steppedUp });
   }
 
   if (path === "/api/dr/reviews" && req.method === "POST") {
@@ -429,14 +465,29 @@ export async function handleDr(req: Request, env: DrEnv, deps: DrDeps = {}): Pro
     const action = `review.${sub.stage}.${sub.outcome}`;
     if (!steppedUp) return needStepUp(action);
     const { rows, ready: tablesReady } = await loadRowsWithState(db);
+    const italyId = sub.ids.find((id) => IT_QUESTION_BY_ID.has(id));
+    if (italyId) {
+      if (!tablesReady.it) return reply({ error: "REVIEW_TABLE_MISSING" }, 503);
+      if (sub.ids.length !== 1) return reply({ error: "ITALY_REVIEW_SINGLE_QUESTION" }, 400);
+      const draft = await loadItalyQuestionDraft(db, IT_QUESTION_BY_ID.get(italyId)!);
+      const questionHash = (body as { questionHash?: unknown }).questionHash;
+      if (questionHash !== draft.item.hash) return reply({ error: "STALE_TRANSLATION" }, 409);
+      const invalid = checkSubmission(sub, draft.item, italyQuestionRows(draft, rows), reviewToday);
+      if (invalid) {
+        await audit(actor, action, "denied", { id: italyId, reason: invalid });
+        return reply({ error: invalid }, 422);
+      }
+      if (!await recordItalyQuestionReview(db, draft, sub, actor, now)) return reply({ error: "STALE_TRANSLATION" }, 409);
+      await audit(actor, action, "allowed", { ids: [italyId], reviewer: sub.reviewerName, questionHash });
+      return reply({ ok: true, recorded: 1 });
+    }
     const needed = [...new Set(sub.ids.map((id) => REVIEW_ITEM_BY_ID.get(id)).filter((i) => i !== undefined).map((i) => sourceFor(i.kind)))];
     if (needed.some((src) => !tablesReady[src])) {
       await audit(actor, action, "denied", { reason: "migration missing", tablesReady });
       return reply({ error: "REVIEW_TABLE_MISSING", tablesReady }, 503);
     }
-    const today = new Date(now).toISOString().slice(0, 10);
     const errors: { id: string; error: string }[] = [];
-    for (const id of sub.ids) { const e = checkSubmission(sub, REVIEW_ITEM_BY_ID.get(id), rows, today); if (e) errors.push({ id, error: e }); }
+    for (const id of sub.ids) { const e = checkSubmission(sub, REVIEW_ITEM_BY_ID.get(id), rows, reviewToday); if (e) errors.push({ id, error: e }); }
     if (errors.length) {
       await audit(actor, action, "denied", { reason: "validation", first: errors.slice(0, 5), count: errors.length });
       return reply({ error: "REJECTED", errors: errors.slice(0, 20), rejectedCount: errors.length }, 422);

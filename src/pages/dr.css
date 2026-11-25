@@ -87,3 +87,9 @@
 .rv-stage.pass { background: var(--success-bg); border-color: var(--success-ink); }
 .rv-stage.fail { background: var(--danger-bg); border-color: var(--danger-ink); }
 .rv-revoked { opacity: .55; text-decoration: line-through; }
+
+.rv-italy-item { overflow-wrap: anywhere; }
+.rv-italy-item .rv-text { text-align: start; }
+.rv-italy-item .rv-italy-fields { border: 0; margin: 0; padding: 0; min-inline-size: 0; grid-template-columns: repeat(auto-fit, minmax(min(100%, 190px), 1fr)); }
+.rv-italy-item .rv-italy-fields textarea { width: 100%; box-sizing: border-box; border: 1px solid var(--border); border-radius: 10px; padding: 6px 10px; font: inherit; resize: vertical; }
+.rv-italy-item .rv-stages { grid-template-columns: repeat(auto-fit, minmax(min(100%, 180px), 1fr)); }

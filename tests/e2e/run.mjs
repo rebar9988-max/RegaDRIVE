@@ -1025,13 +1025,29 @@ try {
       item("s108", "sign", "TRANSLATION_REVIEW_DONE", false, { ...pending, TRANSLATION_REVIEW: done("Test Person") }),
       item("rd-sq-s102-m", "signQuiz", "PUBLISHED", true, { TRANSLATION_REVIEW: done("A Person"), EDUCATIONAL_REVIEW: done("B Person"), APPROVED: done("C Person") }),
     ];
+    const italy = {
+      ...item("it-b-001", "itQuestion", "AWAITING_REVIEW", false, pending),
+      hash: "review:fixture:0",
+      translations: {
+        prompt: { ckb: "دەقی سۆرانی", kmrArab: "دەقێ بادینی" },
+        explanation: { ckb: "ڕوونکردنەوەی سۆرانی", kmrArab: "ڕوونکرنا بادینی" },
+      },
+    };
     const posts = [];
+    const edits = [];
     await ctx.route("**/api/dr/**", async (r) => {
       const u = new URL(r.request().url());
       const json = (status, body) => r.fulfill({ status, contentType: "application/json", body: JSON.stringify(body) });
       if (u.pathname === "/api/dr/session") return json(200, { authenticated: true, email: "re•••@gmail.com", expiresAt: Date.now() + 3600000, stepUpUntil: Date.now() + 600000 });
       if (u.pathname === "/api/dr/overview") return json(200, { now: Date.now(), owner: "re•••@gmail.com", system: { app: "regadrive", version: "t", contentMode: "production", colo: null }, database: { ok: true, latencyMs: 1, name: "regadrive-db", studentData: "off", activeSessions: 1, auditEntries: 0, logins24h: 0, denied24h: 0, codesSent24h: 0, mailFailures24h: 0, backups: 0 }, features: [], ai: [], content: {}, email: { owner: "x", from: "x", provider: "Resend", configured: true }, payments: null, security: { sessions: [], steppedUp: true, stepUpUntil: Date.now() + 600000, sessionExpiresAt: Date.now() + 3600000 }, backups: [] });
-      if (u.pathname === "/api/dr/reviews" && r.request().method() === "GET") return json(200, { items, counts: { total: 3, published: 1, awaiting: 1, inReview: 1, rejected: 0, signs: { total: 2, published: 0 }, signQuiz: { total: 1, published: 1 } }, history: [], rulesVersion: "test-rules", roles: {}, steppedUp: true });
+      if (u.pathname === "/api/dr/reviews" && r.request().method() === "GET") return json(200, { items, italyQuestions: [italy], tablesReady: { de: true, it: true }, counts: { total: 3, published: 1, awaiting: 1, inReview: 1, rejected: 0, signs: { total: 2, published: 0 }, signQuiz: { total: 1, published: 1 } }, history: [], rulesVersion: "test-rules", roles: {}, steppedUp: true });
+      if (u.pathname === "/api/dr/reviews/translation") {
+        if (r.request().method() === "GET") return json(200, { decisions: [], edits: [] });
+        edits.push(JSON.parse(r.request().postData() ?? "{}"));
+        italy.translations = edits.at(-1).translations;
+        italy.hash = "review:fixture:1";
+        return json(200, { ok: true });
+      }
       if (u.pathname === "/api/dr/reviews") {
         posts.push(JSON.parse(r.request().postData() ?? "{}"));
         return posts.length === 1 ? json(422, { error: "REJECTED", errors: [{ id: "s102", error: "TRANSLATION_REVIEW_FIRST" }], rejectedCount: 1 }) : json(200, { ok: true, recorded: 1 });
@@ -1064,6 +1080,34 @@ try {
     assert.equal(posts.length, 2);
     assert.deepEqual({ stage: posts[0].stage, outcome: posts[0].outcome, ids: posts[0].ids, reviewerName: posts[0].reviewerName, confirm: posts[0].confirm }, { stage: "TRANSLATION_REVIEW", outcome: "pass", ids: ["s102"], reviewerName: "Test Person", confirm: true });
     await page.screenshot({ path: `${OUT}/dr-content-review-iphone.png`, fullPage: false });
+    await page.getByTestId("rv-kind-itQuestion").click();
+    const panel = page.getByTestId("rv-italy-questions");
+    const italyCard = panel.getByTestId("review-item");
+    assert.equal(await italyCard.locator('[lang=it][dir=ltr]').first().textContent(), "L'autostrada è una strada a carreggiate indipendenti o separate da spartitraffico invalicabile, priva di intersezioni a raso.");
+    assert.equal(await italyCard.locator('[lang="kmr-Arab"][dir=rtl]').first().count(), 1);
+    assert.equal(await italyCard.locator('img').count(), 1);
+    assert.equal(await italyCard.getByText("VERO", { exact: true }).count(), 1);
+    assert.equal(await italyCard.getByRole("button", { name: "پەسەندکردن", exact: true }).count(), 1);
+    assert.equal(await italyCard.getByRole("button", { name: "ڕەتکردنەوە", exact: true }).count(), 1);
+    await panel.getByRole("searchbox").fill("autostrada");
+    assert.equal(await italyCard.count(), 1);
+    await panel.getByRole("searchbox").fill("دەقێ بادینی");
+    assert.equal(await italyCard.count(), 1);
+    await panel.getByRole("combobox").selectOption("approved");
+    assert.equal(await italyCard.count(), 0);
+    await panel.getByRole("combobox").selectOption("pending");
+    await italyCard.getByRole("button", { name: "دەستکاریکردنی وەرگێڕان" }).click();
+    await italyCard.getByLabel("پرسیار بە سۆرانی").fill("دەقی دەستکاریکراوی سۆرانی");
+    await italyCard.getByLabel("ناوی تەواوی پشکنەر").fill("Test Reviewer");
+    await italyCard.getByLabel("بەڵگە", { exact: true }).fill("signed-review.pdf");
+    assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth), false, "Italy edit form fits iPhone");
+    await axe(page, "/dr Italian question review");
+    await italyCard.getByRole("button", { name: "پاشەکەوتکردن" }).click();
+    await italyCard.getByText("دەقی دەستکاریکراوی سۆرانی").waitFor();
+    assert.equal(edits.length, 1);
+    assert.equal(edits[0].questionHash, "review:fixture:0");
+    await italyCard.getByText("مێژووی پشکنین و گۆڕانکارییەکان").click();
+    await italyCard.getByText("هێشتا مێژوویەک تۆمار نەکراوە.").waitFor();
     assert.deepEqual(errors, []);
     await ctx.close();
   });
