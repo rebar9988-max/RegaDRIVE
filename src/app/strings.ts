@@ -38,7 +38,6 @@ export const T = {
   originalQ: b("پرسیاری ڕەسەنی RegaDRIVE", "Eigene RegaDRIVE-Frage", "Pirsa xweser a RegaDRIVE", "سؤال أصلي من RegaDRIVE"),
   pendingReview: b("لە چاوەڕوانی پێداچوونەوەی پسپۆڕدا", "Fachliche Prüfung ausstehend", "Li benda kontrola pisporan", "بانتظار مراجعة المختصين"),
   explainAi: b("ڕوونکردنەوەی سادەتر (AI)", "Einfacher erklären (KI)", "Hêsantir şirove bike (AI)", "اشرح بشكل أبسط (ذكاء اصطناعي)"),
-  aiUnavailable: b("یاریدەدەری AI لە ئێستادا بەردەست نییە. ڕوونکردنەوەی پێداچوونەوەکراو لە سەرەوەیە.", "Der KI-Helfer ist derzeit nicht verfügbar. Die geprüfte Erklärung steht oben.", "Alîkarê AI niha ne berdest e. Şiroveya kontrolkirî li jor e.", "المساعد الذكي غير متاح حاليًا. الشرح المراجَع موجود في الأعلى."),
   aiNote: b("ئەم ڕوونکردنەوەیە بە AI دروستکراوە؛ سەرچاوەی سەرەکی ڕوونکردنەوەی پێداچوونەوەکراوە.", "KI-generierte Erklärung; maßgeblich ist die geprüfte Erklärung.", "Ev şirove bi AI hatiye çêkirin; çavkaniya bingehîn şiroveya kontrolkirî ye.", "شرح مُولَّد بالذكاء الاصطناعي؛ المرجع المعتمد هو الشرح المراجَع."),
   copyright: b("ئەم ناوەڕۆکە مافی پارێزراوی RegaDRIVE ـە. کۆپیکردنەوە و بڵاوکردنەوەی بێ مۆڵەت ڕێگەپێدراو نییە.", "Diese Inhalte sind urheberrechtlich geschützt. Das unerlaubte Kopieren und Weiterverbreiten ist untersagt.", "Ev naverok di bin parastina mafê nivîskariyê ya RegaDRIVE de ye. Kopîkirin û belavkirina bê destûr qedexe ye.", "هذا المحتوى محمي بحقوق النشر لـ RegaDRIVE. يُمنع النسخ وإعادة النشر دون إذن."),
   offline: b("بێ ئینتەرنێت", "Offline", "Bê înternet", "بدون إنترنت"),

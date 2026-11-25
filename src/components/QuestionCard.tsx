@@ -8,7 +8,7 @@ import { QuestionMedia } from "./QuestionMedia";
 import type { PlayCounts } from "../lib/mediaPlays";
 import { recordAnswer, toggleBookmark } from "../lib/progress";
 import { useApp } from "../app/state";
-import { langDir } from "../app/i18n";
+import { AiExplain } from "./AiExplain";
 import { T } from "../app/strings";
 import { Bi, useBiText } from "./Bi";
 import { SignIcon } from "./SignIcon";
@@ -136,29 +136,5 @@ export function QuestionCard({ question: q, mode, sessionId, index, total, selec
       </div>
       <p className="copyright muted"><Bi t={T.copyright} /></p>
     </article>
-  );
-}
-
-function AiExplain({ questionId }: { questionId: string }) {
-  const { online, settings } = useApp();
-  const label = useBiText();
-  const [state, setState] = useState<"idle" | "loading" | "done" | "unavailable">("idle");
-  const [text, setText] = useState("");
-  if (!online) return null;
-  const run = async () => {
-    setState("loading");
-    try {
-      const r = await fetch("/api/ai/explain", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ questionId, lang: settings.lang }) });
-      const j = (await r.json()) as { text?: string };
-      if (r.ok && j.text) { setText(j.text); setState("done"); } else setState("unavailable");
-    } catch { setState("unavailable"); }
-  };
-  return (
-    <div style={{ marginTop: 12 }}>
-      {state === "idle" && <button type="button" className="btn btn-secondary btn-sm" onClick={run}><Icon name="sparkle" />{label(T.explainAi)}</button>}
-      {state === "loading" && <button type="button" className="btn btn-secondary btn-sm" aria-busy="true" disabled>{label(T.explainAi)}</button>}
-      {state === "unavailable" && <p className="small muted" role="status"><Bi t={T.aiUnavailable} /></p>}
-      {state === "done" && <div className="notice small" role="status"><p style={{ whiteSpace: "pre-wrap" }} lang={settings.lang} dir={langDir(settings.lang)}>{text}</p><p className="muted" style={{ marginTop: 8 }}><Bi t={T.aiNote} /></p></div>}
-    </div>
   );
 }

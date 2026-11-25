@@ -1,6 +1,6 @@
 import type { D1Like } from "../dr/db";
 /**
- * RegaDRIVE AI gateway — four free-only provider adapters behind one fail-closed router.
+ * RegaDRIVE AI gateway — free-only provider adapters behind one fail-closed router.
  * A provider is eligible only when: AI is enabled, its own RegaDRIVE secret is set, a model is
  * configured, and its zero-cost eligibility is confirmed (or, for OpenRouter, the model id ends in ":free").
  * There is never a paid fallback. Prompts are built server-side from reviewed content only.
@@ -87,6 +87,7 @@ async function postJson(f: Fetch, url: string, headers: Record<string, string>, 
   return (await res.json()) as Record<string, unknown>;
 }
 class RateLimited extends Error {}
+class ProviderTimeout extends Error {}
 
 const openAiText = (j: Record<string, unknown>): string => {
   const choices = j.choices as { message?: { content?: string } }[] | undefined;
@@ -181,11 +182,11 @@ interface Health { day: string; used: number; failures: number; openUntil: numbe
 /** Isolate-scoped health/quota tracking (best effort; resets when the isolate is recycled). */
 export class AiGateway {
   private health = new Map<ProviderId, Health>();
-  constructor(private env: AiEnv, private f: Fetch = fetch, private now: () => number = Date.now, private timeoutMs = 8000) {}
+  constructor(private env: AiEnv, private f: Fetch = fetch, private now: () => number = Date.now, private timeoutMs = 3000) {}
 
   order(): ProviderId[] {
     const ids = (this.env.AI_PROVIDER_ORDER ?? "gemini,groq,openrouter,workers-ai").split(",").map((s) => s.trim());
-    return ids.filter((id): id is ProviderId => id in ADAPTERS);
+    return [...new Set(ids.filter((id): id is ProviderId => Object.hasOwn(ADAPTERS, id)))];
   }
 
   private h(id: ProviderId): Health {
@@ -252,19 +253,36 @@ export class AiGateway {
 
   async complete(req: ChatRequest): Promise<{ provider: ProviderId; text: string } | { provider: null; error: string }> {
     if (!globalCostGuard(this.env).ok) return { provider: null, error: "AI_DISABLED" };
-    const retries = Math.min(Math.max(Number(this.env.AI_MAX_RETRIES_PER_PROVIDER ?? "1") || 0, 0), 2);
+    const retries = Math.min(Math.max(Number(this.env.AI_MAX_RETRIES_PER_PROVIDER ?? "0") || 0, 0), 2);
+    const deadline = this.now() + 15_000;
     for (const id of this.order()) {
       const adapter = ADAPTERS[id];
       const h = this.h(id);
       for (let attempt = 0; attempt <= retries; attempt++) {
         if (!this.costGuard(id).ok) break; // fail closed before EVERY request
-        if (id === "freemodel" && !(await this.reserveFreeModel())) break;
-        h.used += 1;
+        const remaining = deadline - this.now();
+        if (remaining <= 0) return { provider: null, error: "NO_FREE_PROVIDER_AVAILABLE" };
         const capped = { ...req, maxTokens: Math.min(req.maxTokens, FREE_TIER_POLICY[id].maxOutputTokens) };
         const ctrl = new AbortController();
-        const timer = setTimeout(() => ctrl.abort(), this.timeoutMs);
+        let timer: ReturnType<typeof setTimeout> | undefined;
+        const timeout = new Promise<never>((_, reject) => {
+          timer = setTimeout(() => {
+            reject(new ProviderTimeout());
+            ctrl.abort();
+          }, Math.min(this.timeoutMs, remaining));
+        });
+        const call = async () => {
+          if (id === "freemodel") {
+            if (!(await this.reserveFreeModel()) || ctrl.signal.aborted || !this.costGuard(id).ok) return null;
+          }
+          h.used += 1;
+          return adapter.call(this.env, capped, this.f, ctrl.signal);
+        };
         try {
-          const text = (await adapter.call(this.env, capped, this.f, ctrl.signal)).trim();
+          // Some bindings cannot be aborted. The deadline still lets the next provider run.
+          const output = await Promise.race([call(), timeout]);
+          if (output === null) break;
+          const text = output.trim();
           if (!text) throw new Error("EMPTY");
           h.failures = 0;
           h.lastOk = true;
@@ -273,9 +291,10 @@ export class AiGateway {
           h.lastOk = false;
           if (err instanceof RateLimited) { h.rateLimitedUntil = this.now() + 60_000; break; }
           h.failures += 1;
+          if (err instanceof ProviderTimeout) { h.openUntil = this.now() + 60_000; break; }
           if (h.failures >= 3) h.openUntil = this.now() + 60_000;
         } finally {
-          clearTimeout(timer);
+          if (timer !== undefined) clearTimeout(timer);
         }
       }
     }
@@ -284,8 +303,8 @@ export class AiGateway {
 }
 
 export const SYSTEM_PROMPT =
-  "You are the RegaDRIVE study helper for German driving theory (Klasse B). " +
-  "Explain ONLY the reviewed learning content given to you, in the answer language named in the request (default: simple Kurdish Sorani), followed by the key terms in simple German. " +
+  "You are the RegaDRIVE study helper for driving theory. " +
+  "Explain ONLY the reviewed learning content given to you, in the answer language named in the request. " +
   "Do not add new traffic rules, fines, numbers, official question codes, licensing or exam claims that are not in the content. " +
-  "If the content does not answer something, say that the learner should check the official StVO or their driving school. " +
+  "If the content does not answer something, say that the learner should refer to the reviewed explanation or their driving school. " +
   "Refuse any request outside driving-theory learning.";

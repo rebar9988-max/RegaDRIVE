@@ -6,9 +6,8 @@ import { readFlags, type FlagEnv } from "../src/lib/shared/flags";
 import { verifyWebhookSignature } from "../src/lib/shared/payments";
 import { ACCESS_POLICY, checkoutAllowedFor, parseCountry, purchaseRequiredFor } from "../src/lib/shared/accessPolicy";
 import type { Country } from "../src/lib/shared/license";
-import { AiGateway, SYSTEM_PROMPT, type AiEnv } from "./ai/gateway";
-import { questionById } from "../src/content/questions";
-import { isQuestionVisible } from "../src/content/access";
+import { AiGateway, type AiEnv } from "./ai/gateway";
+import { explanationFor, parseExplanationRequest } from "./ai/explanation";
 import { RateLimiter } from "./lib/rateLimit";
 import { handleAdmin } from "./lib/admin";
 import type { AdminEnv } from "./lib/adminAuth";
@@ -137,26 +136,13 @@ export async function handleApi(req: Request, env: Env, now = Date.now()): Promi
     if (!limiter.allow(client, now)) return json({ error: "RATE_LIMITED" }, 429);
     let body: unknown;
     try { body = await req.json(); } catch { return json({ error: "BAD_REQUEST" }, 400); }
-    const id = typeof body === "object" && body && "questionId" in body ? String((body as { questionId: unknown }).questionId).slice(0, 40) : "";
-    const reqLang = typeof body === "object" && body && "lang" in body ? (body as { lang: unknown }).lang : "ckb";
-    const lang = reqLang === "kmr" || reqLang === "ar" || reqLang === "de" ? reqLang : "ckb";
-    const q = questionById(id);
-    // Domain restriction: only reviewed RegaDRIVE content can be explained; free-text prompts are not accepted.
-    if (!q) return json({ error: "UNKNOWN_CONTENT" }, 404);
-    // Only content that passed the publication gate may be explained in production.
-    if (!isQuestionVisible(q.id, env.CONTENT_MODE === "preview" ? "preview" : "production")) return json({ error: "CONTENT_NOT_APPROVED" }, 404);
-    const correct = q.options.filter((o) => q.correct.includes(o.id));
-    const user = [
-      `Question (DE): ${q.prompt.de}`, `Question (CKB): ${q.prompt.ckb}`,
-      `Correct answer(s) (DE): ${correct.map((o) => o.text.de).join(" | ")}`,
-      `Reviewed explanation (DE): ${q.explanation.de}`, `Reviewed explanation (CKB): ${q.explanation.ckb}`,
-      ...((lang === "kmr" || lang === "ar") && q.explanation[lang] ? [`Reviewed explanation (${lang.toUpperCase()}): ${q.explanation[lang]}`] : []),
-      `Answer language: ${AI_LANG_NAMES[lang]}.`,
-      "Explain this more simply in at most 5 short sentences.",
-    ].join("\n");
-    const r = await getGateway(aiEnv).complete({ system: SYSTEM_PROMPT, user, maxTokens: 350 });
-    if (r.provider === null) return json({ error: r.error }, 503);
-    return json({ provider: r.provider, text: r.text, generated: true });
+    const request = parseExplanationRequest(body);
+    if (!request) return json({ error: "BAD_REQUEST" }, 400);
+    const content = await explanationFor(request, env.CONTENT_MODE === "preview" ? "preview" : "production", env.DB);
+    if ("error" in content) return json({ error: content.error }, 404);
+    const result = await getGateway(aiEnv).complete(content.chat);
+    if (result.provider === null) return json({ provider: null, generated: false, ...content.fallback });
+    return json({ provider: result.provider, text: result.text, lang: content.fallback.lang, generated: true });
   }
 
   return json({ error: "NOT_FOUND" }, 404);
@@ -180,8 +166,6 @@ function envForOrder(env: Env, order: string): Env {
   if (!orderCache || orderCache.base !== env || orderCache.order !== order) orderCache = { base: env, order, env: { ...env, AI_PROVIDER_ORDER: order } };
   return orderCache.env;
 }
-
-const AI_LANG_NAMES = { ckb: "Kurdish Sorani (Arabic script)", kmr: "Kurdish Kurmanji (Latin script)", ar: "Arabic", de: "German" } as const;
 
 function contentSummary() {
   const prod = contentFor("production");

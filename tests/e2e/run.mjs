@@ -92,7 +92,10 @@ try {
     assert.equal((await fetch(`${BASE}/api/purchase/checkout`, { method: "POST" })).status, 403);
     assert.equal((await fetch(`${BASE}/api/payments/webhook`, { method: "POST", body: "{}" })).status, 403);
     const ai = await fetch(`${BASE}/api/ai/explain`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ questionId: "rd-g-003" }) });
-    assert.equal(ai.status, 503, "AI must degrade gracefully with no configured free provider");
+    assert.equal(ai.status, 200, "reviewed explanation is available with no configured free provider");
+    const fallback = await ai.json();
+    assert.equal(fallback.generated, false);
+    assert.ok(fallback.text);
   });
 
   for (const [name, opts] of [

@@ -80,6 +80,34 @@ describe("provider routing", () => {
     expect(await g.complete(req)).toEqual({ provider: "groq", text: "Erklärung" });
     expect(statusOf(g)).toMatchObject({ gemini: { status: "RATE_LIMITED" }, groq: { status: "ACTIVE" } });
   });
+  it("moves past a hung Workers AI binding even when it cannot be aborted", async () => {
+    const run = vi.fn(() => new Promise(() => {}));
+    const env: AiEnv = {
+      ...base, ...groq, AI_PROVIDER_ORDER: "workers-ai,workers-ai,toString,groq",
+      AI: { run }, AI_WORKERS_AI_MODEL: "test-model", AI_WORKERS_AI_VERIFIED_ON: FRESH,
+    };
+    const f = vi.fn(async () => ok({ choices: [{ message: { content: "backup" } }] }));
+    const gateway = new AiGateway(env, f, () => NOW, 5);
+    expect(gateway.order()).toEqual(["workers-ai", "groq"]);
+    expect(await gateway.complete(req)).toEqual({ provider: "groq", text: "backup" });
+    expect(await gateway.complete(req)).toEqual({ provider: "groq", text: "backup" });
+    expect(run).toHaveBeenCalledTimes(1);
+    expect(f).toHaveBeenCalledTimes(2);
+  });
+
+  it("continues across configured providers when one fails and another returns an empty response", async () => {
+    const env: AiEnv = {
+      ...base, ...groq, AI_MAX_RETRIES_PER_PROVIDER: "0",
+      REGADRIVE_GEMINI_API_KEY: "g", AI_GEMINI_MODEL: "gm", AI_GEMINI_VERIFIED_ON: FRESH,
+      REGADRIVE_OPENROUTER_API_KEY: "o", AI_OPENROUTER_MODEL: "test:free", AI_OPENROUTER_VERIFIED_ON: FRESH,
+    };
+    const f = vi.fn().mockResolvedValueOnce(new Response("{}", { status: 503 }))
+      .mockResolvedValueOnce(ok({ choices: [{ message: { content: " " } }] }))
+      .mockResolvedValueOnce(ok({ choices: [{ message: { content: "third provider" } }] }));
+    expect(await gw(env, f).complete(req)).toEqual({ provider: "openrouter", text: "third provider" });
+    expect(f).toHaveBeenCalledTimes(3);
+  });
+
   it("caps output tokens to the free-tier policy", async () => {
     const f = vi.fn(async () => ok({ choices: [{ message: { content: "ok" } }] }));
     await gw({ ...base, ...groq }, f).complete(req);
