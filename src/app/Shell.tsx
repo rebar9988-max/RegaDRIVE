@@ -4,8 +4,9 @@ import { useApp } from "./state";
 import { T } from "./strings";
 import { CONTENT_MODE } from "./content";
 import { Bi, useBiText } from "../components/Bi";
+import { SiteHeader } from "../components/SiteHeader";
+import { SiteBanner } from "../components/SiteBanner";
 import { Icon, type IconName } from "../components/Icon";
-import { LanguageMenu } from "../components/LanguageMenu";
 import type { Bilingual } from "../content/types";
 import type { CountryId } from "./settings";
 
@@ -48,7 +49,7 @@ const isActive = (path: string, href: string) => (href === "/" ? path === "/" : 
 
 export function Shell({ children }: { children: ReactNode }) {
   const path = usePath();
-  const { online, saveError, settings } = useApp();
+  const { saveError, settings } = useApp();
   const tabs = tabsFor(settings.country);
   const moreLinks = moreLinksFor(settings.country);
   const label = useBiText();
@@ -56,23 +57,8 @@ export function Shell({ children }: { children: ReactNode }) {
   return (
     <div className="app">
       <a className="skip-link" href="#main">{label({ ckb: "بازدان بۆ ناوەڕۆک", de: "Zum Inhalt springen", kmr: "Here naverokê", ar: "انتقل إلى المحتوى" })}</a>
-      <header className="topbar">
-        <Link href="/" className="brand" aria-label="RegaDRIVE">
-          <img src="/brand/regadrive-logo.webp" width={2172} height={724} alt="" />
-        </Link>
-        <div className="header-tools">
-          <Link href="/account" className="icon-button" aria-label={label(T.nav.account)}><Icon name="user" /></Link>
-          <Link href="/more" className="icon-button" aria-label={label(T.nav.more)}><Icon name="more" /></Link>
-        </div>
-        <div className="header-tools">
-          <LanguageMenu />
-          {!online && <span className="offline-pill" role="status" data-testid="offline-pill">{label(T.offline)}</span>}
-          <details className="notification-menu">
-            <summary className="icon-button" aria-label={label({ ckb: "ئاگادارییەکان", de: "Hinweise", kmr: "Agahdarî", ar: "تنبيهات" })}><Icon name="bell" /></summary>
-            <div className="notification-panel"><Bi t={{ ckb: "فێربوون لە هەنگاوێکی بچووکەوە دەست پێ دەکات. ئامانجی ڕۆژانەت لە پەڕەی سەرەکی ببینە.", de: "Lernen beginnt mit einem kleinen Schritt. Dein Tagesziel findest du auf der Startseite.", kmr: "Fêrbûn bi gaveke biçûk dest pê dike. Armanca xwe ya rojane li rûpela destpêkê bibîne.", ar: "يبدأ التعلّم بخطوة صغيرة. ستجد هدفك اليومي في الصفحة الرئيسية." }} /><Link href="/">{label(T.nav.home)}</Link></div>
-          </details>
-        </div>
-      </header>
+      <SiteHeader />
+      <SiteBanner />
       <div className="layout">
         <nav className="sidenav" aria-label={label({ ckb: "ڕێنیشاندەری سەرەکی", de: "Hauptnavigation", kmr: "Navîgasyona sereke", ar: "التنقل الرئيسي" })}>
           {[...tabs.filter((t) => t.href !== "/more"), ...moreLinks].map((l) => (
