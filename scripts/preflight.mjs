@@ -58,6 +58,7 @@ gate(!v.AI_OPENROUTER_MODEL || v.AI_OPENROUTER_MODEL.endsWith(":free"), "OpenRou
 // 4. Build integrity and content licensing gate
 const info = existsSync("dist/build-info.json") ? JSON.parse(readFileSync("dist/build-info.json", "utf8")) : null;
 gate(info !== null && existsSync("dist/index.html") && existsSync("dist/brand/regadrive-logo.webp"), "production build with official logo present");
+gate(existsSync("dist/brand/regadrive-banner.webp") && existsSync("dist/brand/regadrive-banner-1200.webp"), "banner artwork present in both sizes");
 gate(info?.contentMode === "production", "build is a production content build (no unapproved preview content)");
 gate(v.CONTENT_MODE === "production", "Worker CONTENT_MODE=production");
 // Owner instruction 2026-11-12: the import / licence / media preview is part of the /dr owner workbench. It must
