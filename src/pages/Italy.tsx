@@ -2,6 +2,7 @@ import "./italy.css";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "../app/router";
 import { useApp, useNow } from "../app/state";
+import { countryKey } from "../app/settings";
 import { T } from "../app/strings";
 import { Bi, useBiText } from "../components/Bi";
 import { ItQuestionCard } from "../components/ItQuestionCard";
@@ -10,8 +11,9 @@ import { useItApproved } from "../app/approved";
 import { IT_CHAPTERS, IT_PLANNED_TOTAL } from "../content/italy/chapters";
 import type { ItQuestion, ItText } from "../content/italy/types";
 import { PATENTE_B_RULES_IT, scoreItExam } from "../lib/shared/examIt";
-import { formatClock, itClockState, itExamCells, itExamNextOpen, itExamReview, itExamUnanswered, itTimeLeft, pickItExam } from "../lib/itExam";
-import { questionStatus } from "../lib/progress";
+import { IT_EXAM_SESSION_KEY, formatClock, itClockState, itExamCells, itExamNextOpen, itExamReview, itExamUnanswered, itTimeLeft, pickItExam, restoreItExamSession, type ItExamSession } from "../lib/itExam";
+import { questionStatus, recordAnswer } from "../lib/progress";
+import { kv } from "../lib/storage";
 import { isItIncrocioSolved, isItLessonDone, isItPracticeMode, itChapterSources, itChapterStats, itIncrociSolved, itLessonNeighbours, itLessonsDone, itNextIncrocio, itNextStep, itOverall, itPracticeSet, itReadiness, itStats, itStrongChapters, itWeakChapters, markItIncrocioSolved, toggleItLessonDone, type ItNextStep, type ItPracticeMode, type ItReadinessLevel } from "../lib/italyStudy";
 import { IT_INCROCI, IT_INCROCI_GROUPS, itIncrocioById, itIncrocioNeighbours, itIncrociOf, type ItIncrocio } from "../content/italy/incroci";
 import { ItIncrocioScene } from "../components/ItIncrocioScene";
@@ -290,7 +292,7 @@ export function ItalyExam() {
   const rules = PATENTE_B_RULES_IT;
   const approved = useItApproved();
   const label = useBiText();
-  const { progress, update } = useApp();
+  const { progress, update, settings } = useApp();
   const [paper, setPaper] = useState<ItQuestion[] | null>(null);
   const [startedAt, setStartedAt] = useState(0);
   const [answers, setAnswers] = useState<Record<string, boolean>>({});
@@ -301,18 +303,50 @@ export function ItalyExam() {
   const [session, setSession] = useState(newSession);
   const [onlyErrors, setOnlyErrors] = useState(false);
   const recorded = useRef(0);
+  // undefined: the stored paper has not been read yet. null: there is none to offer.
+  const [paused, setPaused] = useState<{ session: ItExamSession; paper: ItQuestion[] } | null | undefined>(undefined);
+  const sessionKey = countryKey(IT_EXAM_SESSION_KEY, settings.country);
   const now = useNowTicking(paper !== null && !handedInByLearner);
   const left = paper === null ? rules.minutes * 60 : itTimeLeft(startedAt, now, rules);
   // Time over ends the exam on its own: derived from the clock, never written into state.
   const handedIn = handedInByLearner || (paper !== null && left === 0);
   const history = progress.examHistory;
 
+  // An unfinished paper is offered again after a reload or a closed tab. Read once, when the approved
+  // catalogue is in: a paper can only be rebuilt from the statements that are published now.
+  useEffect(() => {
+    if (approved.loading) return;
+    let alive = true;
+    kv.get<unknown>(sessionKey)
+      .then((raw) => { if (alive) setPaused(restoreItExamSession(raw, rules.version, approved.questions, Date.now(), rules)); })
+      .catch(() => { if (alive) setPaused(null); });
+    return () => { alive = false; };
+  }, [sessionKey, approved.loading, approved.questions, rules]);
+
+  // Every answer, mark and move is saved at once. A failed write must never interrupt the exam.
+  useEffect(() => {
+    if (paper === null || handedIn) return;
+    const open: ItExamSession = { version: 1, rulesVersion: rules.version, startedAt, questionIds: paper.map((q) => q.id), answers, flagged: Object.keys(flags).filter((id) => flags[id]), pos };
+    kv.set(sessionKey, open).catch(() => undefined);
+  }, [paper, handedIn, rules.version, startedAt, answers, flags, pos, sessionKey]);
+
+  const begin = (picked: ItQuestion[], at: number, prev?: { answers: Record<string, boolean>; flagged: string[]; pos: number }) => {
+    setPaper(picked); setStartedAt(at);
+    setAnswers(prev?.answers ?? {});
+    setFlags(Object.fromEntries((prev?.flagged ?? []).map((id) => [id, true])));
+    setPos(prev?.pos ?? 0);
+    setHandedIn(false); setAsking(false); setOnlyErrors(false); recorded.current = 0; setSession(newSession());
+    setPaused(null);
+  };
+
   const start = () => {
     const picked = pickItExam(approved.questions, rules);
     if (!picked) return;
-    setPaper(picked); setStartedAt(Date.now()); setAnswers({}); setFlags({}); setPos(0);
-    setHandedIn(false); setAsking(false); setOnlyErrors(false); recorded.current = 0; setSession(newSession());
+    kv.del(sessionKey).catch(() => undefined);
+    begin(picked, Date.now());
   };
+
+  const discard = () => { setPaused(null); kv.del(sessionKey).catch(() => undefined); };
 
   const result = paper === null ? null : scoreItExam(paper.map((q) => ({ questionId: q.id, correct: answers[q.id] === q.answer })), rules);
 
@@ -324,9 +358,18 @@ export function ItalyExam() {
   useEffect(() => {
     if (!handedIn || paper === null || result === null || recorded.current === startedAt) return;
     recorded.current = startedAt;
-    const attempt = { at: Date.now(), passed: result.passed, errorPoints: result.errors, totalPoints: paper.length, rulesVersion: result.rulesVersion };
-    update((p) => ({ ...p, examHistory: [...p.examHistory, attempt].slice(-50) }));
-  }, [handedIn, paper, result, startedAt, update]);
+    const at = Date.now();
+    const attempt = { at, passed: result.passed, errorPoints: result.errors, totalPoints: paper.length, rulesVersion: result.rulesVersion };
+    const sat = paper;
+    // The statements were really answered, so they count towards progress — which is what makes
+    // "Ripassa gli errori" find the mistakes of this exam. Scored once, under this paper's own key.
+    update((p) => {
+      let next = p;
+      for (const q of sat) next = recordAnswer(next, `it-exam-${startedAt}`, q.id, answers[q.id] === q.answer, at);
+      return { ...next, examHistory: [...next.examHistory, attempt].slice(-50) };
+    });
+    kv.del(sessionKey).catch(() => undefined);
+  }, [handedIn, paper, result, startedAt, answers, update, sessionKey]);
 
   if (paper === null) {
     const enough = approved.questions.length >= rules.questionCount;
@@ -339,6 +382,22 @@ export function ItalyExam() {
           <div className="card stat"><span className="num" dir="ltr">{approved.questions.length}</span><span className="stat-label"><Bi t={T.it.examApproved} /></span></div>
           <div className="card stat"><span className="num" dir="ltr">{rules.questionCount}</span><span className="stat-label"><Bi t={T.it.examNeeded} /></span></div>
         </div>
+        {paused && (
+          <section className="card it-resume" aria-labelledby="it-resume-title" data-testid="italy-exam-resume">
+            <strong id="it-resume-title"><Bi t={ITU.exam.resumeHeading} inline /></strong>
+            <Bi t={ITU.exam.resumeNote} className="small" />
+            <p className="small muted">
+              <Bi t={T.answeredL} inline /> <bdi dir="ltr">{Object.keys(paused.session.answers).length} / {paused.paper.length}</bdi>
+              {" · "}<Bi t={T.it.examTimeLeft} inline /> <bdi dir="ltr">{formatClock(itTimeLeft(paused.session.startedAt, now, rules))}</bdi>
+            </p>
+            <div className="q-actions">
+              <button type="button" className="btn btn-primary" onClick={() => begin(paused.paper, paused.session.startedAt, paused.session)} data-testid="italy-exam-resume-go">
+                <Bi t={ITU.exam.resume} />
+              </button>
+              <button type="button" className="btn" onClick={discard} data-testid="italy-exam-resume-discard"><Bi t={ITU.exam.discard} /></button>
+            </div>
+          </section>
+        )}
         {enough
           ? <button type="button" className="btn btn-primary" onClick={start} data-testid="italy-exam-start"><Bi t={T.it.examStart} /></button>
           : <p className="card" role="status" data-testid="italy-exam-blocked"><Bi t={T.it.examNeedsMore} /></p>}
@@ -373,6 +432,7 @@ export function ItalyExam() {
         </div>
         <div className="q-actions">
           <button type="button" className="btn btn-primary" onClick={() => setPaper(null)} data-testid="italy-exam-again"><Bi t={T.it.again} /></button>
+          {result.errors > 0 && <Link href="/practice?mode=wrong" className="btn" data-testid="italy-exam-practice-wrong"><Bi t={ITU.tiles.mistakes} /></Link>}
           <Link href="/" className="btn"><Bi t={T.it.backToChapters} /></Link>
         </div>
         <div className="it-chapter-heading">

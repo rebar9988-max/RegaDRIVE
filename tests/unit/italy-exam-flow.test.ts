@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { itClockState, itExamCells, itExamNextOpen, itExamReview, itExamUnanswered, pickItExam } from "../../src/lib/itExam";
+import { itClockState, itExamCells, itExamNextOpen, itExamReview, itExamUnanswered, newItExamSession, pickItExam, restoreItExamSession } from "../../src/lib/itExam";
 import { PATENTE_B_RULES_IT, scoreItExam } from "../../src/lib/shared/examIt";
 import type { ItQuestion } from "../../src/content/italy/types";
 
@@ -80,5 +80,60 @@ describe("a handed-in paper is scored by the ministerial rules", () => {
   it("draws exactly the paper the rules ask for, or nothing at all", () => {
     expect(pickItExam(full)).toHaveLength(PATENTE_B_RULES_IT.questionCount);
     expect(pickItExam(full.slice(0, 29))).toBeNull();
+  });
+});
+
+describe("a paper left in the middle", () => {
+  const full = Array.from({ length: PATENTE_B_RULES_IT.questionCount }, (_, i) => q(i + 1, i % 2 === 0));
+  const started = 1_000_000;
+  const soon = started + 60_000; // a minute in, well inside the 20
+  const open = () => {
+    const s = newItExamSession(full, PATENTE_B_RULES_IT.version, started);
+    return { ...s, answers: { q1: true, q2: false }, flagged: ["q3"], pos: 4 };
+  };
+  const restore = (raw: unknown, now = soon, pool = full) =>
+    restoreItExamSession(raw, PATENTE_B_RULES_IT.version, pool, now, PATENTE_B_RULES_IT);
+
+  it("stores the paper by id, in the order it was drawn", () => {
+    const s = newItExamSession(full, PATENTE_B_RULES_IT.version, started);
+    expect(s.questionIds).toEqual(full.map((item) => item.id));
+    expect(s).toMatchObject({ version: 1, startedAt: started, answers: {}, flagged: [], pos: 0 });
+  });
+
+  it("comes back with the same statements, answers, marks and position", () => {
+    const back = restore(open());
+    expect(back?.paper.map((item) => item.id)).toEqual(full.map((item) => item.id));
+    expect(back?.session.answers).toEqual({ q1: true, q2: false });
+    expect(back?.session.flagged).toEqual(["q3"]);
+    expect(back?.session.pos).toBe(4);
+  });
+
+  it("is dropped when its 20 minutes are already over, so yesterday's paper is never a failed exam", () => {
+    expect(restore(open(), started + PATENTE_B_RULES_IT.minutes * 60_000 + 1)).toBeNull();
+  });
+
+  it("is dropped when a statement is no longer published: a paper it cannot rebuild is not this paper", () => {
+    expect(restore(open(), soon, full.slice(1))).toBeNull();
+  });
+
+  it("is dropped when the exam rules have changed", () => {
+    expect(restoreItExamSession(open(), "other-rules", full, soon, PATENTE_B_RULES_IT)).toBeNull();
+  });
+
+  it("refuses anything malformed instead of resuming a half-read paper", () => {
+    expect(restore(null)).toBeNull();
+    expect(restore({})).toBeNull();
+    expect(restore({ ...open(), version: 2 })).toBeNull();
+    expect(restore({ ...open(), questionIds: full.slice(0, 5).map((item) => item.id) })).toBeNull();
+    expect(restore({ ...open(), answers: "no" })).toBeNull();
+    expect(restore({ ...open(), flagged: [1, 2] })).toBeNull();
+    expect(restore({ ...open(), startedAt: "soon" })).toBeNull();
+  });
+
+  it("drops answers, marks and a position that no longer fit the paper", () => {
+    const back = restore({ ...open(), answers: { q1: true, ghost: true, q2: "yes" }, flagged: ["q3", "ghost"], pos: 999 });
+    expect(back?.session.answers).toEqual({ q1: true });
+    expect(back?.session.flagged).toEqual(["q3"]);
+    expect(back?.session.pos).toBe(PATENTE_B_RULES_IT.questionCount - 1);
   });
 });
