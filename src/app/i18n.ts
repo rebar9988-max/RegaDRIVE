@@ -8,8 +8,12 @@ import type { Bilingual } from "../content/types";
  *
  * "kmr-arab" is Duhok Badini: Kurmanji written in Arabic script, right to left. It is a reading
  * language of its own and never replaces Latin-script Kurmanji. Only the Italian content carries
- * Badini wording of its own (src/content/italy); for German content and for interface strings a
- * Badini reader falls back to Sorani, the nearest script and language, not to German.
+ * Badini wording of its own (src/content/italy); for German content a Badini reader falls back to
+ * Sorani, the nearest script and language, not to German.
+ *
+ * Italian and Badini interface strings are complete for every control of the Italian section, so an
+ * Italian or Badini reader never sees another language there. The `ckb` arms below are a last-resort
+ * net only; tests/unit/italy-language-purity.test.ts fails if any string would reach them.
  *
  * The page layout is always the same right-to-left RegaDRIVE layout: switching the language changes
  * only the words and their text direction, never the position of the navigation, cards or buttons.
