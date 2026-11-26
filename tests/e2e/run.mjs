@@ -1387,10 +1387,15 @@ try {
       await page.goto(BASE);
       await page.locator(".country-card:has([lang=it])").click();
       await page.locator("[data-testid=italy-home]").waitFor();
+      // Let the service worker take control before the network goes away, the way a returning
+      // student's browser already has it.
+      await page.evaluate(() => navigator.serviceWorker.ready);
+      await page.reload();
+      await page.locator("[data-testid=italy-home]").waitFor();
       await page.goto(`${BASE}/learn?chapter=1`);
       await page.locator("[data-testid=italy-lesson]").waitFor();
       await ctx.setOffline(true);
-      await page.reload();
+      await page.goto(`${BASE}/learn?chapter=1`);
       await page.locator("[data-testid=italy-lesson]").waitFor();
       assert.ok(await page.locator("[data-testid=italy-lesson-points] > li").count() >= 3, "the lesson is readable offline");
       assert.ok(await page.locator("[data-testid=it-lesson-check]").count() >= 2, "the self-checks work offline");
