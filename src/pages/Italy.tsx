@@ -12,10 +12,15 @@ import type { ItQuestion } from "../content/italy/types";
 import { PATENTE_B_RULES_IT, scoreItExam } from "../lib/shared/examIt";
 import { formatClock, itTimeLeft, pickItExam } from "../lib/itExam";
 import { questionStatus } from "../lib/progress";
+import { isItLessonDone, isItPracticeMode, itChapterSources, itChapterStats, itLessonNeighbours, itLessonsDone, itOverall, itPracticeSet, toggleItLessonDone, type ItPracticeMode } from "../lib/italyStudy";
+import { itLessonFor } from "../content/italy/lessons";
+import { ItLessonCheck } from "../components/ItLessonCheck";
+import { itSignById } from "../content/italy/signs";
+import { IT_CONTENT_REGISTRY } from "../content/italy/registry";
 import { IT_FREE_FOREVER_LABEL } from "../lib/shared/accessPolicy";
 
+const inChapter = (questions: readonly ItQuestion[], chapter: number) => questions.filter((q) => q.chapter === chapter);
 const newSession = () => `it-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
-const inChapter = (qs: readonly ItQuestion[], chapter: number) => qs.filter((q) => q.chapter === chapter);
 
 /** Shown while the approved list is being fetched, and when the fetch failed (fail closed: nothing is shown). */
 function Gate({ loading, failed }: { loading: boolean; failed: boolean }) {
@@ -27,10 +32,10 @@ function Gate({ loading, failed }: { loading: boolean; failed: boolean }) {
 /** Italy's start screen: the 16 chapters of the syllabus with what is approved in each. */
 export function ItalyHome() {
   const { progress, settings } = useApp();
+  const label = useBiText();
   const approved = useItApproved();
   const answered = approved.questions.filter((q) => progress.questions[q.id]).length;
   const mastered = approved.questions.filter((q) => questionStatus(progress.questions[q.id], settings.masteryThreshold) === "mastered").length;
-  const label = useBiText();
   const [search, setSearch] = useState("");
   const errors = approved.questions.filter((q) => progress.questions[q.id]?.lastCorrect === false).length;
   const percent = approved.questions.length ? Math.round(mastered / approved.questions.length * 100) : 0;
@@ -57,9 +62,13 @@ export function ItalyHome() {
           <span dir="ltr">{mastered} / {approved.questions.length}</span>
         </div>
       </div>
+      <nav className="q-actions" aria-label={label(T.it.lessons)} data-testid="italy-quick">
+        <Link href="/learn" className="btn btn-primary" data-testid="italy-go-lessons"><Bi t={T.it.lessons} /></Link>
+        <Link href="/progress" className="btn" data-testid="italy-go-progress"><Bi t={T.nav.progress} /></Link>
+      </nav>
       <div className="it-actions">
         <Link href="/exam" className="card it-action"><span className="it-action-symbol" aria-hidden="true">◷</span><strong><Bi t={T.it.exam} /></strong><span className="muted"><Bi t={T.it.examRules} /></span></Link>
-        <Link href="/practice?mode=errors" className="card it-action"><span className="it-action-symbol" aria-hidden="true">↺</span><strong><Bi t={T.reviewMistakes} /></strong><span className="it-count" dir="ltr">{errors}</span></Link>
+        <Link href="/practice?mode=wrong" className="card it-action"><span className="it-action-symbol" aria-hidden="true">↺</span><strong><Bi t={T.reviewMistakes} /></strong><span className="it-count" dir="ltr">{errors}</span></Link>
         <Link href="/signs" className="card it-action"><span className="it-action-symbol" aria-hidden="true">△</span><strong><Bi t={T.nav.signs} /></strong><span className="it-count" dir="ltr">{approved.signs.length}</span></Link>
         <Link href="/practice?mode=new" className="card it-action"><span className="it-action-symbol" aria-hidden="true">✧</span><strong><Bi t={T.unanswered} /></strong><span className="it-count" dir="ltr">{approved.questions.length - answered}</span></Link>
       </div>
@@ -67,6 +76,7 @@ export function ItalyHome() {
         <div><strong dir="ltr">{approved.questions.length}</strong><Bi t={T.it.questionsHere} /></div>
         <div><strong dir="ltr">{answered}</strong><Bi t={T.answeredL} /></div>
         <div><strong dir="ltr">{mastered}</strong><Bi t={T.mastered} /></div>
+        <div><strong dir="ltr">{itLessonsDone(progress)}/{IT_CHAPTERS.length}</strong><Bi t={T.it.lessonsDone} /></div>
       </div>
       {approved.questions.length === 0 && <Gate loading={approved.loading} failed={approved.failed} />}
       <div className="it-chapter-heading">
@@ -101,33 +111,39 @@ export function ItalyHome() {
 /** Italy's practice run: the true/false questions of one chapter, or of every chapter. */
 export function ItalyPractice() {
   const label = useBiText();
-  const { progress } = useApp();
-  const [initialProgress] = useState(progress);
-  const mode = new URLSearchParams(location.search).get("mode");
   const approved = useItApproved();
-  const chapter = useMemo(() => {
-    const raw = new URLSearchParams(location.search).get("chapter");
+  const { progress, settings } = useApp();
+  const { chapter, mode } = useMemo(() => {
+    const params = new URLSearchParams(location.search);
+    const raw = params.get("chapter");
     const n = raw === null ? NaN : Number(raw);
-    return Number.isInteger(n) && IT_CHAPTERS.some((c) => c.id === n) ? n : null;
+    const ch = Number.isInteger(n) && IT_CHAPTERS.some((c) => c.id === n) ? n : null;
+    const asked = params.get("mode");
+    const m: ItPracticeMode = asked === "errors" ? "wrong" : isItPracticeMode(asked) ? asked : ch !== null ? "chapter" : "all";
+    return { chapter: ch, mode: m };
   }, []);
-  const [session, setSession] = useState(newSession);
+  const [run, setRun] = useState(() => ({ session: newSession(), progress }));
+  const session = run.session;
   const [pos, setPos] = useState(0);
   const [done, setDone] = useState<Record<string, boolean>>({});
-  // Snapshot the list once per run, so answering never reshuffles the current set.
+  // Keep progress fixed for the current run, including when the approved bank loads asynchronously.
   const list = useMemo(
-    () => (chapter === null ? approved.questions : inChapter(approved.questions, chapter)).filter((q) => mode === "errors" ? initialProgress.questions[q.id]?.lastCorrect === false : mode === "new" ? !initialProgress.questions[q.id] : true),
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- intentionally recomputed only on chapter/session/bank change
-    [chapter, session, approved.questions, mode, initialProgress],
+    () => itPracticeSet(approved.questions, run.progress, mode, chapter, settings.masteryThreshold),
+    [approved.questions, run.progress, mode, chapter, settings.masteryThreshold],
   );
-  const restart = () => { setSession(newSession()); setPos(0); setDone({}); };
-  const title = chapter === null ? null : IT_CHAPTERS.find((c) => c.id === chapter);
+  const restart = () => { setRun({ session: newSession(), progress }); setPos(0); setDone({}); };
+  const title = mode === "wrong" ? { title: T.it.reviewWrong }
+    : mode === "bookmarks" ? { title: T.it.reviewBookmarks }
+    : chapter === null ? null : IT_CHAPTERS.find((c) => c.id === chapter) ?? null;
   const q = list[pos];
 
   if (list.length === 0) {
     return (
       <section className="stack" data-testid="italy-practice-empty">
         <h1><Bi t={title?.title ?? T.it.title} /></h1>
-        {approved.questions.length === 0 ? <Gate loading={approved.loading} failed={approved.failed} /> : <p className="card"><Bi t={T.it.noQuestionsYet} /></p>}
+        {approved.questions.length === 0
+          ? <Gate loading={approved.loading} failed={approved.failed} />
+          : <p className="card" role="status"><Bi t={mode === "wrong" || mode === "bookmarks" ? T.it.noneToReview : T.it.noQuestionsYet} /></p>}
         <Link href="/" className="btn"><Bi t={T.it.backToChapters} /></Link>
       </section>
     );
@@ -274,4 +290,171 @@ function useNowTicking(active: boolean): number {
   }, [active]);
   // The per-second value can be one tick behind a freshly started exam, so the minute clock is the floor.
   return active ? Math.max(tick, minute) : minute;
+}
+
+/**
+ * Italy's lessons: the syllabus itself as the structure. Each chapter page shows the legal basis of its
+ * own questions (Codice della Strada references recorded with the content), the signs that belong to
+ * them and the learner's progress — nothing is written here that a reviewer has not seen.
+ */
+export function ItalyLessons() {
+  const { progress, settings, update } = useApp();
+  const approved = useItApproved();
+  const chapter = useMemo(() => {
+    const raw = new URLSearchParams(location.search).get("chapter");
+    const n = raw === null ? NaN : Number(raw);
+    return Number.isInteger(n) && IT_CHAPTERS.some((c) => c.id === n) ? n : null;
+  }, []);
+  const stats = itChapterStats(progress, approved.questions, settings.masteryThreshold);
+
+  if (chapter === null) {
+    return (
+      <section className="stack" data-testid="italy-lessons">
+        <h1><Bi t={T.it.lessons} /></h1>
+        <p className="card muted small"><Bi t={T.it.lessonIntro} /></p>
+        <div className="grid grid-2 compact-stats">
+          <div className="card stat"><span className="num" dir="ltr">{itLessonsDone(progress)}</span><span className="stat-label"><Bi t={T.it.lessonsDone} /></span></div>
+          <div className="card stat"><span className="num" dir="ltr">{IT_CHAPTERS.length}</span><span className="stat-label"><Bi t={T.it.lessons} /></span></div>
+        </div>
+        <ul className="grid grid-tiles">
+          {stats.map((s) => (
+            <li key={s.chapter.id}>
+              <Link href={`/learn?chapter=${s.chapter.id}`} className="card card-link tile" data-testid={`italy-lesson-${s.chapter.id}`}>
+                <span className="badge" dir="ltr">{s.chapter.id}</span>
+                <strong><Bi t={s.chapter.title} /></strong>
+                {isItLessonDone(progress, s.chapter.id)
+                  ? <span className="badge"><Bi t={T.it.markedDone} inline /></span>
+                  : <span className="small muted" dir="ltr">{s.mastered} / {s.total}</span>}
+              </Link>
+            </li>
+          ))}
+        </ul>
+      </section>
+    );
+  }
+
+  const stat = stats.find((s) => s.chapter.id === chapter)!;
+  const lesson = itLessonFor(chapter);
+  const { prev, next } = itLessonNeighbours(chapter);
+  const done = isItLessonDone(progress, chapter);
+  const sources = lesson
+    ? lesson.sources
+    : itChapterSources(chapter, approved.questions, (id) => IT_CONTENT_REGISTRY.get(id)?.provenance.sourceRefs ?? []);
+  const signs = (lesson?.signIds ?? [...new Set(approved.questions.filter((q) => q.chapter === chapter).map((q) => q.signId))].flatMap((id) => (id ? [id] : [])))
+    .flatMap((id) => { const found = itSignById(id); return found ? [found] : []; });
+
+  return (
+    <section className="stack it-lesson" data-testid="italy-lesson">
+      <p className="it-lesson-kicker">
+        <Bi t={T.it.lessonOf} inline /> <span dir="ltr">{chapter} / {IT_CHAPTERS.length}</span>
+        {done && <span className="badge" data-testid="italy-lesson-done-badge"><Bi t={T.it.markedDone} inline /></span>}
+      </p>
+      <h1><Bi t={stat.chapter.title} /></h1>
+
+      {lesson ? (
+        <>
+          <div className="card"><Bi t={lesson.intro} /></div>
+
+          <div className="card">
+            <h2><Bi t={T.it.legalBasis} /></h2>
+            <ul className="it-points" data-testid="italy-lesson-points">
+              {lesson.points.map((pt, i) => (
+                <li key={i}>
+                  <Bi t={pt.text} />
+                  {pt.ref && <span className="it-point-ref" lang="it" dir="ltr">{pt.ref}</span>}
+                </li>
+              ))}
+            </ul>
+          </div>
+
+          <div className="card" data-testid="italy-lesson-example">
+            <h2><Bi t={T.it.example} /></h2>
+            <Bi t={lesson.example} />
+          </div>
+
+          {signs.length > 0 && (
+            <div className="card" data-testid="italy-lesson-signs">
+              <h2><Bi t={T.it.signsOfChapter} /></h2>
+              <ul className="it-lesson-signs">
+                {signs.map((sign) => (
+                  <li key={sign.id}>
+                    <ItSignImage sign={sign} labelled={false} />
+                    <span className="it-sign-name"><Bi t={sign.name} /></span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+
+          <h2><Bi t={T.it.selfCheck} /></h2>
+          {lesson.checks.map((check, i) => <ItLessonCheck key={check.id} check={check} index={i} />)}
+        </>
+      ) : (
+        <p className="card" role="status"><Bi t={T.contentInReview} /></p>
+      )}
+
+      {sources.length > 0 && (
+        <div className="card">
+          <h2><Bi t={T.it.legalBasis} /></h2>
+          <ul className="stack" data-testid="italy-lesson-sources">
+            {sources.map((ref) => <li key={ref} className="small" lang="it" dir="ltr">{ref}</li>)}
+          </ul>
+        </div>
+      )}
+
+      <div className="it-lesson-nav">
+        <button type="button" className={`btn ${done ? "" : "btn-primary"}`} aria-pressed={done}
+          onClick={() => update((prog) => toggleItLessonDone(prog, chapter))} data-testid="italy-lesson-done">
+          <Bi t={done ? T.it.markedDone : T.it.markDone} inline />
+        </button>
+        {stat.total > 0 && <Link href={`/practice?chapter=${chapter}`} className="btn" data-testid="italy-lesson-practice"><Bi t={T.it.startPractice} /></Link>}
+      </div>
+      <div className="it-lesson-nav">
+        {prev !== null && <Link href={`/learn?chapter=${prev}`} className="btn" data-testid="italy-lesson-prev"><Bi t={T.it.prevLesson} /></Link>}
+        {next !== null && <Link href={`/learn?chapter=${next}`} className="btn" data-testid="italy-lesson-next"><Bi t={T.it.nextLesson} /></Link>}
+        <Link href="/learn" className="btn"><Bi t={T.it.lessons} /></Link>
+      </div>
+    </section>
+  );
+}
+
+/** Italy's progress: what the learner has done, per chapter, with the two review runs. */
+export function ItalyProgress() {
+  const { progress, settings } = useApp();
+  const label = useBiText();
+  const approved = useItApproved();
+  const all = itOverall(progress, approved.questions, settings.masteryThreshold);
+  const stats = itChapterStats(progress, approved.questions, settings.masteryThreshold);
+  return (
+    <section className="stack" data-testid="italy-progress">
+      <h1><Bi t={T.nav.progress} /></h1>
+      {approved.questions.length === 0 && <Gate loading={approved.loading} failed={approved.failed} />}
+      <div className="grid grid-2 compact-stats">
+        <div className="card stat"><span className="num" dir="ltr">{all.answered}</span><span className="stat-label"><Bi t={T.answeredL} /></span></div>
+        <div className="card stat"><span className="num" dir="ltr">{all.mastered}</span><span className="stat-label"><Bi t={T.it.masteredCount} /></span></div>
+        <div className="card stat"><span className="num" dir="ltr">{all.wrong}</span><span className="stat-label"><Bi t={T.it.wrongCount} /></span></div>
+        <div className="card stat"><span className="num" dir="ltr">{all.bookmarked}</span><span className="stat-label"><Bi t={T.it.reviewBookmarks} /></span></div>
+      </div>
+      <div className="q-actions">
+        <Link href="/practice?mode=wrong" className="btn btn-primary" data-testid="italy-review-wrong"><Bi t={T.it.reviewWrong} /></Link>
+        <Link href="/practice?mode=bookmarks" className="btn" data-testid="italy-review-bookmarks"><Bi t={T.it.reviewBookmarks} /></Link>
+      </div>
+      <h2 className="section-title"><Bi t={T.it.chapterProgress} /></h2>
+      <ul className="stack" data-testid="italy-progress-chapters">
+        {stats.map((s) => (
+          <li key={s.chapter.id} className="card">
+            <div className="q-meta">
+              <span className="badge" dir="ltr">{s.chapter.id}</span>
+              <strong><Bi t={s.chapter.title} /></strong>
+              <span className="spacer" />
+              <span className="small muted" dir="ltr">{s.mastered}/{s.total}</span>
+            </div>
+            <div className="progressbar" role="progressbar" aria-label={label(s.chapter.title)} aria-valuemin={0} aria-valuemax={s.total || 1} aria-valuenow={s.mastered}>
+              <span style={{ width: `${s.total === 0 ? 0 : (s.mastered / s.total) * 100}%` }} />
+            </div>
+          </li>
+        ))}
+      </ul>
+    </section>
+  );
 }

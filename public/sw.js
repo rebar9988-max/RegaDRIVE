@@ -41,7 +41,7 @@ self.addEventListener("fetch", (event) => {
   // Hashed build assets and static files: cache first, then network (and remember it).
   event.respondWith(
     caches.match(req).then((hit) => hit || fetch(req).then((res) => {
-      if (res.ok && (url.pathname.startsWith("/assets/") || url.pathname.startsWith("/brand/") || url.pathname.startsWith("/icons/") || url.pathname.startsWith("/fonts/") || url.pathname.startsWith("/flags/"))) {
+      if (res.ok && (url.pathname.startsWith("/assets/") || url.pathname.startsWith("/brand/") || url.pathname.startsWith("/icons/") || url.pathname.startsWith("/fonts/") || url.pathname.startsWith("/flags/") || url.pathname.startsWith("/signs/it/"))) {
         const copy = res.clone();
         caches.open(CACHE).then((c) => c.put(req, copy));
       }

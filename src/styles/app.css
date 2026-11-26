@@ -519,3 +519,4 @@ textarea.input { min-height: 120px; }
 .auth-danger { color: var(--danger-ink); border-color: var(--danger); }
 .auth-danger-solid { background: var(--danger-ink); border-color: var(--danger-ink); }
 .auth-name { font-weight: 800; }
+

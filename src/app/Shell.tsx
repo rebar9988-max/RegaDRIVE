@@ -17,12 +17,15 @@ const TABS: { href: string; icon: IconName; t: Bilingual }[] = [
   { href: "/exam", icon: "exam", t: T.nav.exam },
   { href: "/more", icon: "more", t: T.nav.more },
 ];
-/** Italy's tabs: its own start screen, its own practice, its signs. Nothing German is linked here. */
+/**
+ * Italy's tabs, the same shape as Germany's: start, lessons, practice, exam, more. They point at
+ * Italy's own screens; nothing German is linked here. Signs and progress live under "More".
+ */
 const IT_TABS: { href: string; icon: IconName; t: Bilingual }[] = [
   { href: "/", icon: "home", t: T.nav.home },
+  { href: "/learn", icon: "book", t: T.nav.learn },
   { href: "/practice", icon: "check", t: T.nav.practice },
   { href: "/exam", icon: "exam", t: T.nav.exam },
-  { href: "/signs", icon: "sign", t: T.nav.signs },
   { href: "/more", icon: "more", t: T.nav.more },
 ];
 export const MORE_LINKS: { href: string; icon: IconName; t: Bilingual }[] = [
@@ -36,8 +39,8 @@ export const MORE_LINKS: { href: string; icon: IconName; t: Bilingual }[] = [
   { href: "/about", icon: "info", t: T.nav.about },
 ];
 
-/** Links under "More" that exist for a country. German lessons, vocabulary and progress are not part of the Italian section yet. */
-const IT_MORE_HREFS = new Set(["/account", "/settings", "/services", "/access", "/about"]);
+/** Links under "More" that exist for a country. German vocabulary is not part of the Italian section. */
+const IT_MORE_HREFS = new Set(["/account", "/progress", "/settings", "/signs", "/services", "/access", "/about"]);
 export const moreLinksFor = (country: CountryId | null) => (country === "IT" ? MORE_LINKS.filter((l) => IT_MORE_HREFS.has(l.href)) : MORE_LINKS);
 export const tabsFor = (country: CountryId | null) => (country === "IT" ? IT_TABS : TABS);
 

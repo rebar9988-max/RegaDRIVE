@@ -1251,9 +1251,74 @@ try {
       assert.equal(await page.evaluate(() => document.documentElement.dir), "rtl");
       assert.equal(await page.evaluate(() => document.documentElement.classList.contains("text-ltr")), false, "Badini is not Latin-script");
 
+      // Lessons keep all 16 chapters available, including while the question bank is empty.
+      await page.goto(BASE);
+      await page.locator("[data-testid=italy-go-lessons]").click();
+      const lessons = page.locator("[data-testid=italy-lessons]");
+      await lessons.waitFor();
+      assert.equal(await lessons.locator(".grid > li").count(), 16, "16 Italian chapters");
+      const bankIsEmpty = await lessons.locator("[data-testid=italy-in-review]").isVisible();
+      await page.locator("[data-testid=italy-lesson-1]").click();
+      const lesson = page.locator("[data-testid=italy-lesson]");
+      await lesson.waitFor();
+      // A lesson is teaching material of its own: it carries text, references and signs whether or not
+      // any examination question has been approved yet.
+      assert.ok(await lesson.locator("[data-testid=italy-lesson-points] > li").count() >= 3, "the lesson has several points");
+      assert.equal(await lesson.locator("[data-testid=italy-lesson-example]").count(), 1, "the lesson has a practical example");
+      assert.ok(await lesson.locator("[data-testid=italy-lesson-sources] li").count(), "the lesson shows its legal basis");
+      assert.ok(await lesson.locator("[data-testid=italy-lesson-signs] img").count(), "the lesson shows its signs");
+      const body = (await lesson.textContent()) ?? "";
+      assert.ok(body.length > 900, `the lesson page carries real text, not whitespace (${body.length} chars)`);
+      // A heading that does not dwarf the text it introduces.
+      const headingSize = await lesson.locator("h1").first().evaluate((el) => parseFloat(getComputedStyle(el).fontSize));
+      assert.ok(headingSize <= 24, `lesson heading is ${headingSize}px, too large for a phone`);
+      // Self-check: answer, then see why.
+      assert.ok(await lesson.locator("[data-testid=it-lesson-check]").count() >= 2, "the lesson has self-checks");
+      await lesson.locator("[data-testid=it-lesson-check]").first().locator("[data-testid=it-check-vero]").click();
+      await lesson.locator("[data-testid=it-check-why]").first().waitFor();
+      await axe(page, `italy lesson ${viewport.width}`);
+      // Mark as completed, walk to the next lesson and back, and find it still completed.
+      await lesson.locator("[data-testid=italy-lesson-done]").click();
+      await lesson.locator("[data-testid=italy-lesson-done-badge]").waitFor();
+      await lesson.locator("[data-testid=italy-lesson-next]").click();
+      await lesson.waitFor();
+      assert.equal(await lesson.locator("[data-testid=italy-lesson-prev]").count(), 1, "the second lesson links back");
+      await page.goto(`${BASE}/learn?chapter=1`);
+      await lesson.locator("[data-testid=italy-lesson-done-badge]").waitFor();
+      const practiceLink = lesson.locator("[data-testid=italy-lesson-practice]");
+      if (bankIsEmpty) {
+        assert.equal(await practiceLink.count(), 0, "an empty chapter has no practice link");
+      } else {
+        await practiceLink.click();
+        await page.locator("[data-testid=it-question-card]").waitFor();
+      }
+
+      // Progress and the two review runs.
+      await page.goto(`${BASE}/progress`);
+      await page.locator("[data-testid=italy-progress]").waitFor();
+      assert.equal(await page.locator("[data-testid=italy-progress-chapters] > li").count(), 16, "progress per chapter");
+      await axe(page, `italy progress ${viewport.width}`);
+      await page.locator("[data-testid=italy-review-wrong]").click();
+      // The learner answered correctly above, so there is nothing to review and the page says so.
+      await page.locator("[data-testid=italy-practice-empty], [data-testid=it-question-card]").first().waitFor();
+      await page.goto(`${BASE}/practice?mode=bookmarks`);
+      await page.locator("[data-testid=italy-practice-empty], [data-testid=it-question-card]").first().waitFor();
+
+      // Only three languages in the Italian section: Sorani, Badini, Italian.
+      await page.goto(BASE);
+      await page.locator("[data-testid=italy-home]").waitFor();
+      await page.locator("[data-testid=header-lang-trigger]").click();
+      assert.deepEqual(await page.locator(".lang-option-code").allTextContents(), ["CKB", "BAD", "IT"], "Italy offers exactly Sorani, Badini and Italian");
+      await page.locator("[data-testid=header-lang-it]").click();
+      assert.equal(await page.evaluate(() => document.documentElement.lang), "it");
+      assert.equal(await page.evaluate(() => document.documentElement.dir), "rtl", "the layout never mirrors");
+      const nav = await page.textContent(".tabbar");
+      assert.equal(/Lernen|Üben|Prüfung|Mehr/.test(nav ?? ""), false, `no German left in the Italian navigation: ${nav}`);
+      assert.ok(/Esercitati|Esame|Altro/.test(nav ?? ""), `Italian navigation: ${nav}`);
+
       // Nothing German is reachable or linked in the Italian section.
-      assert.equal(await page.locator(".tabbar a[href='/learn']").count(), 0, "no German lessons tab under Italy");
-      for (const path of ["/learn", "/vocabulary", "/sign-quiz", "/progress"]) {
+      assert.equal(await page.locator(".tabbar a[href='/learn']").count(), 1, "the Italian lessons tab opens the Italian lessons tested above");
+      for (const path of ["/vocabulary", "/sign-quiz", "/lessons"]) {
         await page.goto(`${BASE}${path}`);
         await page.locator("[data-testid=italy-pending]").waitFor();
         assert.equal(await page.locator("[data-testid=question-card], [data-testid=readiness]").count(), 0, `${path} shows no German content under Italy`);
