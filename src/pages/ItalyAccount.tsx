@@ -417,7 +417,7 @@ export function ItalyAccount() {
           <p className="ita-hint"><Bi t={A.verifyBody} /></p>
           {codeField()}
           {status("form")}
-          <button type="submit" className="btn btn-primary ita-wide" disabled={working}><Bi t={A.confirm} inline /></button>
+          <button type="submit" className="btn btn-primary ita-wide" disabled={working} data-testid="italy-account-verify-submit"><Bi t={A.confirm} inline /></button>
           <div className="ita-actions">
             <button type="button" className="ita-link" disabled={working} onClick={doResend}><Bi t={A.resend} inline /></button>
             <button type="button" className="ita-link" onClick={() => go("signin")}><Bi t={A.back} inline /></button>
