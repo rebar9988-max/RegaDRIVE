@@ -12,7 +12,10 @@ import type { ItQuestion } from "../content/italy/types";
 import { PATENTE_B_RULES_IT, scoreItExam } from "../lib/shared/examIt";
 import { formatClock, itTimeLeft, pickItExam } from "../lib/itExam";
 import { questionStatus } from "../lib/progress";
-import { isItPracticeMode, itChapterSources, itChapterStats, itOverall, itPracticeSet, type ItPracticeMode } from "../lib/italyStudy";
+import { isItLessonDone, isItPracticeMode, itChapterSources, itChapterStats, itLessonNeighbours, itLessonsDone, itOverall, itPracticeSet, toggleItLessonDone, type ItPracticeMode } from "../lib/italyStudy";
+import { itLessonFor } from "../content/italy/lessons";
+import { ItLessonCheck } from "../components/ItLessonCheck";
+import { itSignById } from "../content/italy/signs";
 import { IT_CONTENT_REGISTRY } from "../content/italy/registry";
 import { IT_FREE_FOREVER_LABEL } from "../lib/shared/accessPolicy";
 
@@ -65,7 +68,7 @@ export function ItalyHome() {
       </nav>
       <div className="it-actions">
         <Link href="/exam" className="card it-action"><span className="it-action-symbol" aria-hidden="true">◷</span><strong><Bi t={T.it.exam} /></strong><span className="muted"><Bi t={T.it.examRules} /></span></Link>
-        <Link href="/practice?mode=errors" className="card it-action"><span className="it-action-symbol" aria-hidden="true">↺</span><strong><Bi t={T.reviewMistakes} /></strong><span className="it-count" dir="ltr">{errors}</span></Link>
+        <Link href="/practice?mode=wrong" className="card it-action"><span className="it-action-symbol" aria-hidden="true">↺</span><strong><Bi t={T.reviewMistakes} /></strong><span className="it-count" dir="ltr">{errors}</span></Link>
         <Link href="/signs" className="card it-action"><span className="it-action-symbol" aria-hidden="true">△</span><strong><Bi t={T.nav.signs} /></strong><span className="it-count" dir="ltr">{approved.signs.length}</span></Link>
         <Link href="/practice?mode=new" className="card it-action"><span className="it-action-symbol" aria-hidden="true">✧</span><strong><Bi t={T.unanswered} /></strong><span className="it-count" dir="ltr">{approved.questions.length - answered}</span></Link>
       </div>
@@ -73,6 +76,7 @@ export function ItalyHome() {
         <div><strong dir="ltr">{approved.questions.length}</strong><Bi t={T.it.questionsHere} /></div>
         <div><strong dir="ltr">{answered}</strong><Bi t={T.answeredL} /></div>
         <div><strong dir="ltr">{mastered}</strong><Bi t={T.mastered} /></div>
+        <div><strong dir="ltr">{itLessonsDone(progress)}/{IT_CHAPTERS.length}</strong><Bi t={T.it.lessonsDone} /></div>
       </div>
       {approved.questions.length === 0 && <Gate loading={approved.loading} failed={approved.failed} />}
       <div className="it-chapter-heading">
@@ -294,7 +298,7 @@ function useNowTicking(active: boolean): number {
  * them and the learner's progress — nothing is written here that a reviewer has not seen.
  */
 export function ItalyLessons() {
-  const { progress, settings } = useApp();
+  const { progress, settings, update } = useApp();
   const approved = useItApproved();
   const chapter = useMemo(() => {
     const raw = new URLSearchParams(location.search).get("chapter");
@@ -308,14 +312,19 @@ export function ItalyLessons() {
       <section className="stack" data-testid="italy-lessons">
         <h1><Bi t={T.it.lessons} /></h1>
         <p className="card muted small"><Bi t={T.it.lessonIntro} /></p>
-        {approved.questions.length === 0 && <Gate loading={approved.loading} failed={approved.failed} />}
+        <div className="grid grid-2 compact-stats">
+          <div className="card stat"><span className="num" dir="ltr">{itLessonsDone(progress)}</span><span className="stat-label"><Bi t={T.it.lessonsDone} /></span></div>
+          <div className="card stat"><span className="num" dir="ltr">{IT_CHAPTERS.length}</span><span className="stat-label"><Bi t={T.it.lessons} /></span></div>
+        </div>
         <ul className="grid grid-tiles">
           {stats.map((s) => (
             <li key={s.chapter.id}>
               <Link href={`/learn?chapter=${s.chapter.id}`} className="card card-link tile" data-testid={`italy-lesson-${s.chapter.id}`}>
                 <span className="badge" dir="ltr">{s.chapter.id}</span>
                 <strong><Bi t={s.chapter.title} /></strong>
-                <span className="small muted" dir="ltr">{s.mastered} / {s.total}</span>
+                {isItLessonDone(progress, s.chapter.id)
+                  ? <span className="badge"><Bi t={T.it.markedDone} inline /></span>
+                  : <span className="small muted" dir="ltr">{s.mastered} / {s.total}</span>}
               </Link>
             </li>
           ))}
@@ -325,34 +334,84 @@ export function ItalyLessons() {
   }
 
   const stat = stats.find((s) => s.chapter.id === chapter)!;
-  const sources = itChapterSources(chapter, approved.questions, (id) => IT_CONTENT_REGISTRY.get(id)?.provenance.sourceRefs ?? []);
-  const signIds = new Set(inChapter(approved.questions, chapter).map((q) => q.signId));
-  const signs = approved.signs.filter((sign) => signIds.has(sign.id));
+  const lesson = itLessonFor(chapter);
+  const { prev, next } = itLessonNeighbours(chapter);
+  const done = isItLessonDone(progress, chapter);
+  const sources = lesson
+    ? lesson.sources
+    : itChapterSources(chapter, approved.questions, (id) => IT_CONTENT_REGISTRY.get(id)?.provenance.sourceRefs ?? []);
+  const signs = (lesson?.signIds ?? [...new Set(approved.questions.filter((q) => q.chapter === chapter).map((q) => q.signId))].flatMap((id) => (id ? [id] : [])))
+    .flatMap((id) => { const found = itSignById(id); return found ? [found] : []; });
+
   return (
-    <section className="stack" data-testid="italy-lesson">
+    <section className="stack it-lesson" data-testid="italy-lesson">
+      <p className="it-lesson-kicker">
+        <Bi t={T.it.lessonOf} inline /> <span dir="ltr">{chapter} / {IT_CHAPTERS.length}</span>
+        {done && <span className="badge" data-testid="italy-lesson-done-badge"><Bi t={T.it.markedDone} inline /></span>}
+      </p>
       <h1><Bi t={stat.chapter.title} /></h1>
-      <div className="grid grid-2 compact-stats">
-        <div className="card stat"><span className="num" dir="ltr">{stat.total}</span><span className="stat-label"><Bi t={T.it.questionsHere} /></span></div>
-        <div className="card stat"><span className="num" dir="ltr">{stat.mastered}</span><span className="stat-label"><Bi t={T.it.masteredCount} /></span></div>
-      </div>
-      {sources.length > 0 && (
-        <div className="card stack" data-testid="italy-lesson-sources">
-          <h2 className="section-title"><Bi t={T.it.legalBasis} /></h2>
-          <ul className="stack">{sources.map((ref) => <li key={ref} className="small" lang="it" dir="ltr">{ref}</li>)}</ul>
-        </div>
+
+      {lesson ? (
+        <>
+          <div className="card"><Bi t={lesson.intro} /></div>
+
+          <div className="card">
+            <h2><Bi t={T.it.legalBasis} /></h2>
+            <ul className="it-points" data-testid="italy-lesson-points">
+              {lesson.points.map((pt, i) => (
+                <li key={i}>
+                  <Bi t={pt.text} />
+                  {pt.ref && <span className="it-point-ref" lang="it" dir="ltr">{pt.ref}</span>}
+                </li>
+              ))}
+            </ul>
+          </div>
+
+          <div className="card" data-testid="italy-lesson-example">
+            <h2><Bi t={T.it.example} /></h2>
+            <Bi t={lesson.example} />
+          </div>
+
+          {signs.length > 0 && (
+            <div className="card" data-testid="italy-lesson-signs">
+              <h2><Bi t={T.it.signsOfChapter} /></h2>
+              <ul className="it-lesson-signs">
+                {signs.map((sign) => (
+                  <li key={sign.id}>
+                    <ItSignImage sign={sign} labelled={false} />
+                    <span className="it-sign-name"><Bi t={sign.name} /></span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+
+          <h2><Bi t={T.it.selfCheck} /></h2>
+          {lesson.checks.map((check, i) => <ItLessonCheck key={check.id} check={check} index={i} />)}
+        </>
+      ) : (
+        <p className="card" role="status"><Bi t={T.contentInReview} /></p>
       )}
-      {signs.length > 0 && (
-        <div className="stack" data-testid="italy-lesson-signs">
-          <h2 className="section-title"><Bi t={T.it.signsOfChapter} /></h2>
-          <ul className="grid grid-tiles">
-            {signs.map((s) => (
-              <li key={s.id}><div className="card tile"><ItSignImage sign={s} labelled={false} /><strong><Bi t={s.name} /></strong></div></li>
-            ))}
+
+      {sources.length > 0 && (
+        <div className="card">
+          <h2><Bi t={T.it.legalBasis} /></h2>
+          <ul className="stack" data-testid="italy-lesson-sources">
+            {sources.map((ref) => <li key={ref} className="small" lang="it" dir="ltr">{ref}</li>)}
           </ul>
         </div>
       )}
-      <div className="q-actions">
-        {stat.total > 0 && <Link href={`/practice?chapter=${chapter}`} className="btn btn-primary" data-testid="italy-lesson-practice"><Bi t={T.it.startPractice} /></Link>}
+
+      <div className="it-lesson-nav">
+        <button type="button" className={`btn ${done ? "" : "btn-primary"}`} aria-pressed={done}
+          onClick={() => update((prog) => toggleItLessonDone(prog, chapter))} data-testid="italy-lesson-done">
+          <Bi t={done ? T.it.markedDone : T.it.markDone} inline />
+        </button>
+        {stat.total > 0 && <Link href={`/practice?chapter=${chapter}`} className="btn" data-testid="italy-lesson-practice"><Bi t={T.it.startPractice} /></Link>}
+      </div>
+      <div className="it-lesson-nav">
+        {prev !== null && <Link href={`/learn?chapter=${prev}`} className="btn" data-testid="italy-lesson-prev"><Bi t={T.it.prevLesson} /></Link>}
+        {next !== null && <Link href={`/learn?chapter=${next}`} className="btn" data-testid="italy-lesson-next"><Bi t={T.it.nextLesson} /></Link>}
         <Link href="/learn" className="btn"><Bi t={T.it.lessons} /></Link>
       </div>
     </section>

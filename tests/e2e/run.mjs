@@ -1214,17 +1214,34 @@ try {
       await page.locator("[data-testid=italy-lesson-1]").click();
       const lesson = page.locator("[data-testid=italy-lesson]");
       await lesson.waitFor();
+      // A lesson is teaching material of its own: it carries text, references and signs whether or not
+      // any examination question has been approved yet.
+      assert.ok(await lesson.locator("[data-testid=italy-lesson-points] > li").count() >= 3, "the lesson has several points");
+      assert.equal(await lesson.locator("[data-testid=italy-lesson-example]").count(), 1, "the lesson has a practical example");
+      assert.ok(await lesson.locator("[data-testid=italy-lesson-sources] li").count(), "the lesson shows its legal basis");
+      assert.ok(await lesson.locator("[data-testid=italy-lesson-signs] img").count(), "the lesson shows its signs");
+      const body = (await lesson.textContent()) ?? "";
+      assert.ok(body.length > 900, `the lesson page carries real text, not whitespace (${body.length} chars)`);
+      // A heading that does not dwarf the text it introduces.
+      const headingSize = await lesson.locator("h1").first().evaluate((el) => parseFloat(getComputedStyle(el).fontSize));
+      assert.ok(headingSize <= 24, `lesson heading is ${headingSize}px, too large for a phone`);
+      // Self-check: answer, then see why.
+      assert.ok(await lesson.locator("[data-testid=it-lesson-check]").count() >= 2, "the lesson has self-checks");
+      await lesson.locator("[data-testid=it-lesson-check]").first().locator("[data-testid=it-check-vero]").click();
+      await lesson.locator("[data-testid=it-check-why]").first().waitFor();
       await axe(page, `italy lesson ${viewport.width}`);
-      const sources = lesson.locator("[data-testid=italy-lesson-sources] li");
-      const illustrations = lesson.locator("[data-testid=italy-lesson-signs] img");
+      // Mark as completed, walk to the next lesson and back, and find it still completed.
+      await lesson.locator("[data-testid=italy-lesson-done]").click();
+      await lesson.locator("[data-testid=italy-lesson-done-badge]").waitFor();
+      await lesson.locator("[data-testid=italy-lesson-next]").click();
+      await lesson.waitFor();
+      assert.equal(await lesson.locator("[data-testid=italy-lesson-prev]").count(), 1, "the second lesson links back");
+      await page.goto(`${BASE}/learn?chapter=1`);
+      await lesson.locator("[data-testid=italy-lesson-done-badge]").waitFor();
       const practiceLink = lesson.locator("[data-testid=italy-lesson-practice]");
       if (bankIsEmpty) {
-        assert.equal(await sources.count(), 0, "an empty bank supplies no lesson references");
-        assert.equal(await illustrations.count(), 0, "an empty bank supplies no question-linked signs");
         assert.equal(await practiceLink.count(), 0, "an empty chapter has no practice link");
       } else {
-        assert.ok(await sources.count(), "the chapter shows its legal basis");
-        assert.ok(await illustrations.count(), "the chapter shows its signs");
         await practiceLink.click();
         await page.locator("[data-testid=it-question-card]").waitFor();
       }

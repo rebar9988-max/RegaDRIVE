@@ -74,3 +74,28 @@ export function itChapterSources(chapter: number, questions: readonly ItQuestion
   for (const q of questions) if (q.chapter === chapter) for (const ref of sourcesById(q.id)) out.add(ref);
   return [...out].sort((a, b) => a.localeCompare(b, "it"));
 }
+
+/** The id a finished Italian lesson is stored under, in Italy's own progress record. */
+export const itLessonId = (chapter: number): string => `it-lesson-${chapter}`;
+
+export const isItLessonDone = (progress: ProgressState, chapter: number): boolean =>
+  progress.completedLessons.includes(itLessonId(chapter));
+
+/** Mark a lesson finished, or undo it. Nothing else in the progress record changes. */
+export function toggleItLessonDone(progress: ProgressState, chapter: number): ProgressState {
+  const id = itLessonId(chapter);
+  const done = progress.completedLessons.includes(id);
+  return { ...progress, completedLessons: done ? progress.completedLessons.filter((x) => x !== id) : [...progress.completedLessons, id] };
+}
+
+/** How many of the 16 lessons are finished. */
+export const itLessonsDone = (progress: ProgressState): number =>
+  IT_CHAPTERS.filter((c) => isItLessonDone(progress, c.id)).length;
+
+/** The chapter before and after this one, for the lesson's own navigation. */
+export function itLessonNeighbours(chapter: number): { prev: number | null; next: number | null } {
+  const ids = IT_CHAPTERS.map((c) => c.id);
+  const i = ids.indexOf(chapter);
+  if (i < 0) return { prev: null, next: null };
+  return { prev: i > 0 ? ids[i - 1]! : null, next: i < ids.length - 1 ? ids[i + 1]! : null };
+}
