@@ -181,6 +181,16 @@ export function ItalyHome() {
         <Link href="/progress" className="btn" data-testid="italy-go-progress"><Bi t={T.nav.progress} /></Link>
       </nav>
 
+      {/* The free account, offered where the learner already is. Studying never requires it. */}
+      <Link href="/account" className="it-account-cta" data-testid="italy-account-cta">
+        <span className="it-account-cta-icon" aria-hidden="true"><Icon name="user" /></span>
+        <span className="it-account-cta-copy">
+          <strong><Bi t={ITU.account.title} inline /></strong>
+          <span><Bi t={ITU.account.free} inline /></span>
+        </span>
+        <span className="it-account-cta-go" aria-hidden="true"><Icon name="arrow" /></span>
+      </Link>
+
       <aside className="card it-notice">
         <p className="muted small"><Bi t={T.it.reviewNotice} /></p>
         <p className="muted small"><Bi t={T.it.plannedTotal} inline /> <bdi>{IT_PLANNED_TOTAL}</bdi></p>

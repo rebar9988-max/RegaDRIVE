@@ -241,3 +241,145 @@
 /* A paper the learner left in the middle, offered again on the exam screen. */
 .it-resume { display: grid; gap: 8px; border-color: var(--primary); }
 .it-resume p { margin: 0; }
+
+/* ── Account: free sign-up, sign-in and profile (Italian section only) ──────────────────
+   Premium Light soft-green, mobile first. Only src/pages/ItalyAccount.tsx uses these classes, so no
+   German screen and no shared component is affected. Contrast, measured (WCAG 2.2 AA needs 4.5:1):
+   #123326 on #fff 13.8:1 and on #ecf8f1 12.6:1; #37544a on #fff 8.3:1, on #ecf8f1 7.6:1 and on
+   #f4fbf7 7.9:1; #fff on #087f4f 5.1:1, on #065f46 7.7:1 and on #b3262e 6.5:1; white at 92% on
+   #065f46 6.8:1; #0b6b45 on #e3f7ea 5.9:1, on #ecf8f1 6.0:1 and on #f1faf5 6.2:1; #7a4e00 on
+   #fdf2d9 6.5:1; #8e1f26 on #fdeaec 7.7:1; #065f46 on #fff 7.7:1. */
+
+.italy-account { gap: 16px; }
+.ita-h1 { font-size: clamp(1.3rem, 5vw, 1.75rem); line-height: 1.25; margin: 0; }
+.ita-h1:focus-visible { outline: 3px solid var(--primary); outline-offset: 4px; border-radius: 8px; }
+.ita-h2 { font-size: 1rem; margin: 0; }
+.ita-hint { font-size: .86rem; color: var(--muted); line-height: 1.5; margin: 0; }
+
+/* ── Welcome, signed out ───────────────────────────────────────────── */
+.ita-hero {
+  display: grid; gap: 12px; padding: 22px; border-radius: var(--radius-card);
+  background: radial-gradient(circle at 14% 12%, #e7f7ee, transparent 60%), linear-gradient(180deg, #fff, #f4fbf7);
+  border: 1px solid var(--border); box-shadow: var(--shadow-card);
+}
+.ita-badge {
+  justify-self: start; display: inline-flex; align-items: center; gap: 7px; margin: 0;
+  padding: 7px 13px; border-radius: 999px; background: var(--rd-mint); border: 1px solid #a9d0bb;
+  color: #0b6b45; font-size: .78rem; font-weight: 800;
+}
+.ita-badge svg { width: 15px; height: 15px; }
+.ita-lead { margin: 0; font-size: .95rem; line-height: 1.55; color: var(--ink); }
+.ita-points { list-style: none; margin: 4px 0 0; padding: 0; display: grid; gap: 9px; }
+.ita-points > li { display: flex; gap: 10px; align-items: flex-start; font-size: .88rem; color: #37544a; line-height: 1.5; }
+.ita-tick { flex: none; width: 21px; height: 21px; border-radius: 50%; display: grid; place-items: center; background: var(--rd-mint); color: var(--primary-deep); margin-block-start: 1px; }
+.ita-tick svg { width: 13px; height: 13px; }
+
+/* ── Sign in / create account switch ───────────────────────────────── */
+.ita-switch { display: flex; gap: 6px; padding: 5px; border-radius: 999px; background: var(--rd-mint); border: 1px solid var(--border); }
+.ita-tab {
+  flex: 1; min-height: 46px; border: 0; border-radius: 999px; background: transparent; cursor: pointer;
+  color: #37544a; font: inherit; font-weight: 700; font-size: .92rem; padding: 8px 10px;
+  transition: background var(--ease-press), color var(--ease-press);
+}
+.ita-tab.is-on { background: var(--white); color: var(--primary-deep); box-shadow: 0 1px 3px rgb(6 95 70 / 12%); }
+.ita-tab:focus-visible { outline: 3px solid var(--primary); outline-offset: 2px; }
+
+/* ── Cards and forms ───────────────────────────────────────────────── */
+.ita-card { display: grid; gap: 14px; padding: 18px; }
+.ita-form { gap: 16px; }
+.ita-field { display: grid; gap: 6px; }
+.ita-label { font-size: .85rem; font-weight: 700; color: var(--ink); }
+.ita-input {
+  width: 100%; min-height: 50px; padding: 11px 14px; font: inherit; color: var(--ink);
+  background: var(--white); border: 1px solid #c9ddd1; border-radius: 14px;
+  box-shadow: inset 0 1px 2px rgb(6 95 70 / 6%);
+}
+.ita-input:focus-visible { border-color: var(--primary); box-shadow: 0 0 0 3px rgb(8 127 79 / 18%); outline: none; }
+.ita-show { display: inline-flex; align-items: center; gap: 8px; font-size: .84rem; color: #37544a; cursor: pointer; min-height: 40px; }
+.ita-show input { width: 20px; height: 20px; accent-color: var(--primary); flex: none; }
+.ita-wide { width: 100%; justify-content: center; }
+.ita-actions { display: flex; flex-wrap: wrap; gap: 10px; }
+.ita-actions > .btn { flex: 1 1 150px; justify-content: center; }
+.ita-link {
+  justify-self: center; border: 0; background: none; padding: 10px 6px; min-height: 44px;
+  color: var(--primary-deep); font: inherit; font-weight: 700; font-size: .88rem;
+  text-decoration: underline; text-underline-offset: 3px; cursor: pointer;
+}
+.ita-link:focus-visible { outline: 3px solid var(--primary); outline-offset: 2px; border-radius: 8px; }
+.ita-link:disabled { color: var(--muted); cursor: default; text-decoration: none; }
+.ita-status:empty { display: none; }
+.ita-ok { background: var(--success-bg); border: 1px solid #b7e4c9; color: #0b6b45; }
+.ita-error { background: #fdeaec; border: 1px solid #f2c7cb; color: #8e1f26; }
+.ita-ok, .ita-error { display: flex; gap: 9px; align-items: flex-start; padding: 12px 14px; border-radius: 14px; margin: 0; font-size: .88rem; }
+.ita-ok svg, .ita-error svg { flex: none; width: 18px; height: 18px; margin-block-start: 2px; }
+
+/* ── Profile, signed in ────────────────────────────────────────────── */
+.ita-profile { justify-items: center; text-align: center; gap: 8px; padding: 24px 18px; }
+.ita-avatar {
+  width: 78px; height: 78px; border-radius: 50%; display: grid; place-items: center;
+  font-size: 2rem; font-weight: 800; color: #fff; background: linear-gradient(180deg, #0c9a60, #066a42);
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 35%), 0 8px 18px rgb(6 95 70 / 22%);
+}
+.ita-name { font-size: 1.15rem; line-height: 1.3; }
+.ita-email { font-size: .86rem; color: var(--muted); word-break: break-all; }
+.ita-chip {
+  display: inline-flex; align-items: center; gap: 7px; padding: 6px 12px; border-radius: 999px;
+  background: #fdf2d9; border: 1px solid #e8cf96; color: #7a4e00; font-size: .78rem; font-weight: 700;
+}
+.ita-chip.is-ok { background: var(--success-bg); border-color: #b7e4c9; color: #0b6b45; }
+.ita-chip svg { width: 15px; height: 15px; }
+
+.ita-free {
+  display: flex; gap: 14px; align-items: center; padding: 16px 18px; border-radius: var(--radius-card);
+  background: linear-gradient(135deg, #087f4f, #065f46); color: #fff;
+  box-shadow: 0 10px 24px rgb(6 95 70 / 26%), inset 0 1px 0 rgb(255 255 255 / 22%);
+}
+.ita-free-icon { flex: none; width: 42px; height: 42px; display: grid; place-items: center; border-radius: 14px; background: rgb(255 255 255 / 18%); }
+.ita-free-icon svg { width: 21px; height: 21px; }
+.ita-free-copy { display: grid; gap: 3px; min-width: 0; }
+.ita-free-copy strong { font-size: .98rem; }
+.ita-free-copy p { margin: 0; font-size: .83rem; line-height: 1.45; color: rgb(255 255 255 / 92%); }
+
+/* ── Quick rows ────────────────────────────────────────────────────── */
+.ita-rows { display: grid; gap: 1px; background: var(--border); border: 1px solid var(--border); border-radius: var(--radius-card); overflow: hidden; }
+.ita-row { display: flex; gap: 13px; align-items: center; padding: 15px 16px; background: var(--white); text-decoration: none; color: var(--ink); min-height: 64px; }
+.ita-row:hover { background: #f4fbf7; }
+.ita-row:focus-visible { outline: 3px solid var(--primary); outline-offset: -3px; }
+.ita-row-icon { flex: none; width: 38px; height: 38px; display: grid; place-items: center; border-radius: 12px; background: var(--rd-mint); color: var(--primary-deep); }
+.ita-row-icon svg { width: 19px; height: 19px; }
+.ita-row-copy { flex: 1; min-width: 0; display: grid; gap: 2px; }
+.ita-row-copy strong { font-size: .93rem; }
+.ita-row-value { font-size: .78rem; color: #37544a; }
+.ita-row-go { flex: none; color: var(--muted); }
+.ita-row-go svg { width: 17px; height: 17px; }
+[dir="rtl"] .ita-row-go { transform: scaleX(-1); }
+
+.ita-saved { margin: 0; font-size: .84rem; font-weight: 700; color: var(--primary-deep); font-variant-numeric: tabular-nums; }
+.ita-danger { border-color: #f2c7cb; }
+.ita-btn-danger { background: #b3262e; border-color: #8e1f26; color: #fff; }
+.ita-btn-danger:hover { background: #c22a33; }
+
+@media (min-width: 560px) {
+  .ita-hero { padding: 28px; }
+  .ita-points { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .ita-tab { transition: none; }
+}
+
+/* The free-account invitation on the Italian start screen. */
+.it-account-cta {
+  display: flex; gap: 13px; align-items: center; padding: 15px 17px; border-radius: var(--radius-card);
+  background: linear-gradient(180deg, #fff, #f1faf5); border: 1px solid #a9d0bb;
+  box-shadow: var(--shadow-card); text-decoration: none; color: var(--ink); min-height: 68px;
+}
+.it-account-cta:hover { background: linear-gradient(180deg, #fff, #e9f7f0); }
+.it-account-cta:focus-visible { outline: 3px solid var(--primary); outline-offset: 3px; }
+.it-account-cta-icon { flex: none; width: 40px; height: 40px; display: grid; place-items: center; border-radius: 13px; background: var(--rd-mint); color: var(--primary-deep); }
+.it-account-cta-icon svg { width: 20px; height: 20px; }
+.it-account-cta-copy { flex: 1; min-width: 0; display: grid; gap: 2px; }
+.it-account-cta-copy strong { font-size: .95rem; }
+.it-account-cta-copy > span { font-size: .78rem; color: #0b6b45; font-weight: 700; }
+.it-account-cta-go { flex: none; color: var(--muted); }
+.it-account-cta-go svg { width: 17px; height: 17px; }
+[dir="rtl"] .it-account-cta-go { transform: scaleX(-1); }

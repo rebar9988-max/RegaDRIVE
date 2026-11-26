@@ -1321,6 +1321,26 @@ try {
       await axe(page, `italy incrocio ${viewport.width}`);
       await page.screenshot({ path: `${OUT}/italy-incrocio-${viewport.width}.png`, fullPage: true });
 
+      // The free account: Italy's own screen, in Italy's own languages, offering no purchase at all.
+      await page.goto(`${BASE}/account`);
+      const acct = page.locator("[data-testid=italy-account]");
+      await acct.waitFor();
+      assert.equal(await page.locator("[data-testid=account-signed-in], .acct-section, #auth-heading").count(), 0, "Italy never shows the German account page");
+      assert.equal(await page.locator("[data-testid=italy-account-free-badge]").count(), 1, "the account is stated to be free");
+      assert.equal(await acct.locator(".de[lang=de]").count(), 0, "no German leftovers on the Italian account screen");
+      assert.equal(await page.locator("[data-testid=italy-account-signin]").count(), 1, "sign-in is offered first");
+      await page.locator("[data-testid=italy-account-tab-register]").click();
+      await page.locator("[data-testid=italy-account-register]").waitFor();
+      assert.equal(await page.locator("#ita-name").count(), 1, "creating an account asks for a name");
+      assert.equal(await page.locator("[data-testid=italy-account-submit]").count(), 1);
+      // Nothing on this screen may ask for money.
+      const money = await acct.evaluate((el) => /prezzo|pagament|abbonament|acquist|€/i.test(el.textContent.replace(/nessun pagamento|nessuna carta|nessun abbonamento/gi, "")));
+      assert.equal(money, false, "the Italian account screen never asks for payment");
+      const tiny = await page.$$eval("[data-testid=italy-account] button, [data-testid=italy-account] a", (els) => els.filter((e) => e.offsetParent && (e.getBoundingClientRect().height < 44 || e.getBoundingClientRect().width < 44)).length);
+      assert.equal(tiny, 0, "every control on the account screen is at least 44px");
+      await axe(page, `italy account ${viewport.width}`);
+      await page.screenshot({ path: `${OUT}/italy-account-${viewport.width}.png`, fullPage: true });
+
       // Progress and the two review runs.
       await page.goto(`${BASE}/progress`);
       await page.locator("[data-testid=italy-progress]").waitFor();
