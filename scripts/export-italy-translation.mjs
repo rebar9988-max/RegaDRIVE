@@ -2,6 +2,7 @@ import { createHash } from 'node:crypto'
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { DatabaseSync } from 'node:sqlite'
+import { referencesIllustration } from './lib/italy-image-review.mjs'
 
 const [packagePath, databasePath, outputPath] = process.argv.slice(2)
 if (!packagePath || !databasePath || !outputPath) {
@@ -35,7 +36,7 @@ try {
       source_id: id,
       source_row_sha256: hash(payload),
       image_sha256: bytes ? hash(bytes) : null,
-      needs_image_review: !image && /raffigurat|illustrat|rappresentat|\bfigura\b/iu.test(question.question_it),
+      needs_image_review: !image && referencesIllustration(question.question_it),
       source_record: question,
       translations: { ckb: null, kmrArab: null },
       translation_status: 'pending',

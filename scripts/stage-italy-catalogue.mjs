@@ -2,6 +2,7 @@ import { createHash } from 'node:crypto'
 import { readFileSync, readdirSync } from 'node:fs'
 import { join } from 'node:path'
 import { DatabaseSync } from 'node:sqlite'
+import { referencesIllustration } from './lib/italy-image-review.mjs'
 
 const [directory, databasePath] = process.argv.slice(2)
 if (!directory || !databasePath) {
@@ -51,7 +52,7 @@ const rows = questions.map((question) => {
     imageCount++
     totals.images++
     imageHashes.add(createHash('sha256').update(bytes).digest('hex'))
-  } else if (/raffigurat|illustrat|rappresentat|\bfigura\b/iu.test(question.question_it)) {
+  } else if (referencesIllustration(question.question_it)) {
     possibleMissingImages.push(id)
   }
   return { id, payload: JSON.stringify(question), bytes }
