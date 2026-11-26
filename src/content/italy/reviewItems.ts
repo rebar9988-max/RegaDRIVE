@@ -62,15 +62,18 @@ function signChecks(s: ItSign): ItCheck[] {
 const src = (id: string) => IT_CONTENT_REGISTRY.get(id)?.provenance.sourceRefs ?? [];
 const ver = (id: string) => IT_CONTENT_REGISTRY.get(id)?.contentVersion ?? "";
 
+export function itQuestionReviewItem(q: ItQuestion): ItReviewItem {
+  const sourceRefs = src(q.id);
+  const checks = [...questionChecks(q), { ok: sourceRefs.length > 0, label: "legal source reference recorded (Codice della Strada)" }];
+  return { id: q.id, kind: "itQuestion", hash: itQuestionHash(q), contentVersion: ver(q.id), sourceRefs, checks, valid: checks.every((c) => c.ok) };
+}
+
 export const IT_REVIEW_ITEMS: ItReviewItem[] = [
   ...IT_SIGNS.map((s): ItReviewItem => {
     const checks = [...signChecks(s), { ok: src(s.id).length > 0, label: "source reference recorded" }];
     return { id: s.id, kind: "itSign", hash: itSignHash(s), contentVersion: ver(s.id), sourceRefs: src(s.id), checks, valid: checks.every((c) => c.ok) };
   }),
-  ...IT_QUESTIONS.map((q): ItReviewItem => {
-    const checks = [...questionChecks(q), { ok: src(q.id).length > 0, label: "legal source reference recorded (Codice della Strada)" }];
-    return { id: q.id, kind: "itQuestion", hash: itQuestionHash(q), contentVersion: ver(q.id), sourceRefs: src(q.id), checks, valid: checks.every((c) => c.ok) };
-  }),
+  ...IT_QUESTIONS.map(itQuestionReviewItem),
 ];
 
 export const IT_REVIEW_ITEM_BY_ID: ReadonlyMap<string, ItReviewItem> = new Map(IT_REVIEW_ITEMS.map((i) => [i.id, i]));

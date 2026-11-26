@@ -159,6 +159,8 @@ export const italianInterface: Record<string, string> = {
   "Italienischer Originaltext": "Testo originale italiano",
   "Gemeisterte Fragen": "Domande apprese", "Richtige Antwort": "Risposta corretta",
   "Falsch gewählt": "Risposta errata", "Merken": "Salva", "Gemerkt": "Salvato",
+  "Einfacher erklären (KI)": "Spiega in modo più semplice (IA)",
+  "KI-generierte Erklärung; maßgeblich ist die geprüfte Erklärung.": "Spiegazione generata dall’IA. Fa fede la spiegazione verificata.",
   "Offline": "Offline",
 };
 
@@ -276,6 +278,8 @@ export const badiniInterface: Record<string, string> = {
   "Der Fortschritt ist zu groß für die Sicherung im Konto.": "پێشکەفتن ژ بۆ پاشەکەفتکرن ل هەژمارێ زۆر مەزنە.",
   "Keine Internetverbindung. Dein Fortschritt bleibt auf diesem Gerät gespeichert.": "پەیوەندیا ئینتەرنێتێ نینە. پێشکەفتنا تە ل سەر ڤی ئامێری دەمینیت.",
   "Etwas ist schiefgelaufen. Bitte versuche es erneut.": "ئاریشەیەک پەیدا بوو. تکایە دیسان هەول بدە.",
+  "Einfacher erklären (KI)": "ب شێوەیەکێ ساناهی ڕوون بکە (زیرەکییا دەستکرد)",
+  "KI-generierte Erklärung; maßgeblich ist die geprüfte Erklärung.": "ئەڤ ڕوونکرنە ب زیرەکییا دەستکرد هاتیە دروستکرن. پشت ب ڕوونکرنا پشکنینکری ببەستە.",
   "Deutsch darunter zeigen": "دەقێ ئەلمانی ل بنێ نیشان بدە",
   "Italienischer Text": "دەقێ ئیتالی",
   "Deutscher Text": "دەقێ ئەلمانی",

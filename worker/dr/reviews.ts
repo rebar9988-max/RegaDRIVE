@@ -203,10 +203,8 @@ export function parseSubmission(body: unknown): Submission | string {
 /** Returns an error code, or null when the submission may be recorded for this item. */
 export function checkSubmission(s: Submission, item: AnyReviewItem | undefined, rows: ReviewRow[], today: string): string | null {
   if (!item) return "UNKNOWN_ITEM";
-  if (s.reviewerName.length < 3 || s.reviewerName.length > 80 || NOT_A_HUMAN.test(s.reviewerName)) return "REVIEWER_NAME_INVALID";
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(s.reviewedOn) || s.reviewedOn > today || s.reviewedOn < EARLIEST_REVIEW_DATE) return "REVIEW_DATE_INVALID";
-  if (s.evidenceRef.length < 8 || s.evidenceRef.length > 300) return "EVIDENCE_REQUIRED";
-  if (s.note.length > 500) return "NOTE_TOO_LONG";
+  const metadataError = checkReviewMetadata(s, today);
+  if (metadataError) return metadataError;
   if (s.outcome === "fail") return s.note.length < 5 ? "NOTE_REQUIRED_FOR_FAIL" : null;
   if (!s.confirm) return "CONFIRMATION_REQUIRED";
   if (!item.valid) return "VALIDATION_FAILED";
@@ -217,11 +215,25 @@ export function checkSubmission(s: Submission, item: AnyReviewItem | undefined, 
   return null;
 }
 
+export function checkReviewMetadata(s: Pick<Submission, "reviewerName" | "reviewedOn" | "evidenceRef" | "note">, today: string): string | null {
+  if (s.reviewerName.length < 3 || s.reviewerName.length > 80 || NOT_A_HUMAN.test(s.reviewerName)) return "REVIEWER_NAME_INVALID";
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(s.reviewedOn) || s.reviewedOn > today || s.reviewedOn < EARLIEST_REVIEW_DATE) return "REVIEW_DATE_INVALID";
+  if (s.evidenceRef.length < 8 || s.evidenceRef.length > 300) return "EVIDENCE_REQUIRED";
+  if (s.note.length > 500) return "NOTE_TOO_LONG";
+  return null;
+}
+
+export function reviewInsert(s: Submission, item: AnyReviewItem, actor: string, now: number) {
+  return {
+    sql: `INSERT INTO ${REVIEW_TABLE[sourceFor(item.kind)]} (content_id, content_kind, content_hash, content_version, stage, outcome, reviewer_name, reviewer_role, reviewed_on, evidence_ref, note, rules_version, recorded_by, recorded_at)`,
+    values: [item.id, item.kind, item.hash, item.contentVersion, s.stage, s.outcome, s.reviewerName, ROLE_FOR_STAGE[s.stage], s.reviewedOn, s.evidenceRef, s.note,
+      s.stage === "EDUCATIONAL_REVIEW" && s.outcome === "pass" ? rulesVersionFor(item.kind) : null, actor, now],
+  };
+}
+
 export async function recordReview(db: D1Like, s: Submission, item: AnyReviewItem, actor: string, now: number): Promise<void> {
-  await db.prepare(`INSERT INTO ${REVIEW_TABLE[sourceFor(item.kind)]} (content_id, content_kind, content_hash, content_version, stage, outcome, reviewer_name, reviewer_role, reviewed_on, evidence_ref, note, rules_version, recorded_by, recorded_at)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`)
-    .bind(item.id, item.kind, item.hash, item.contentVersion, s.stage, s.outcome, s.reviewerName, ROLE_FOR_STAGE[s.stage], s.reviewedOn, s.evidenceRef, s.note,
-      s.stage === "EDUCATIONAL_REVIEW" && s.outcome === "pass" ? rulesVersionFor(item.kind) : null, actor, now).run();
+  const { sql, values } = reviewInsert(s, item, actor, now);
+  await db.prepare(`${sql} VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`).bind(...values).run();
 }
 
 export { REVIEW_ITEMS, IT_REVIEW_ITEMS };
