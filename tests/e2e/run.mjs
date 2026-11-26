@@ -1324,11 +1324,11 @@ try {
       // The free account: Italy's own screen, in Italy's own languages, offering no purchase at all.
       await page.goto(`${BASE}/account`);
       const acct = page.locator("[data-testid=italy-account]");
-      await acct.waitFor();
+      // The screen asks the server whether accounts are open before it can offer one: wait for the answer.
+      await page.locator("[data-testid=italy-account-signin]").waitFor();
       assert.equal(await page.locator("[data-testid=account-signed-in], .acct-section, #auth-heading").count(), 0, "Italy never shows the German account page");
       assert.equal(await page.locator("[data-testid=italy-account-free-badge]").count(), 1, "the account is stated to be free");
       assert.equal(await acct.locator(".de[lang=de]").count(), 0, "no German leftovers on the Italian account screen");
-      assert.equal(await page.locator("[data-testid=italy-account-signin]").count(), 1, "sign-in is offered first");
       await page.locator("[data-testid=italy-account-tab-register]").click();
       await page.locator("[data-testid=italy-account-register]").waitFor();
       assert.equal(await page.locator("#ita-name").count(), 1, "creating an account asks for a name");
