@@ -7,7 +7,7 @@ import { Bi, useBiText } from "../components/Bi";
 import { ItQuestionCard } from "../components/ItQuestionCard";
 import { ItSignImage } from "../components/ItSignImage";
 import { useItApproved } from "../app/approved";
-import { IT_CHAPTERS } from "../content/italy/chapters";
+import { IT_CHAPTERS, IT_PLANNED_TOTAL } from "../content/italy/chapters";
 import type { ItQuestion } from "../content/italy/types";
 import { PATENTE_B_RULES_IT, scoreItExam } from "../lib/shared/examIt";
 import { formatClock, itTimeLeft, pickItExam } from "../lib/itExam";
@@ -15,6 +15,7 @@ import { questionStatus } from "../lib/progress";
 import { isItLessonDone, isItPracticeMode, itChapterSources, itChapterStats, itLessonNeighbours, itLessonsDone, itOverall, itPracticeSet, toggleItLessonDone, type ItPracticeMode } from "../lib/italyStudy";
 import { itLessonFor } from "../content/italy/lessons";
 import { ItLessonCheck } from "../components/ItLessonCheck";
+import { itSignById } from "../content/italy/signs";
 import { IT_CONTENT_REGISTRY } from "../content/italy/registry";
 import { IT_FREE_FOREVER_LABEL } from "../lib/shared/accessPolicy";
 

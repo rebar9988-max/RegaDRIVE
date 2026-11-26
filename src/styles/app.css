@@ -520,28 +520,3 @@ textarea.input { min-height: 120px; }
 .auth-danger-solid { background: var(--danger-ink); border-color: var(--danger-ink); }
 .auth-name { font-weight: 800; }
 
-/* Italian lessons. A reading layout: tighter headings and less air than the dashboard cards, so a
-   phone screen carries real teaching text instead of empty space. Only the Italian lesson pages use
-   these classes; no German screen and no shared component is affected. */
-.it-lesson { gap: 12px; }
-.it-lesson > h1 { font-size: 1.15rem; line-height: 1.35; margin: 0; }
-.it-lesson .it-lesson-kicker { display: flex; align-items: center; gap: 8px; font-size: .75rem; color: var(--muted); }
-.it-lesson h2 { font-size: .95rem; margin: 0 0 8px; }
-.it-lesson .card { padding: 12px 14px; }
-.it-lesson p { margin: 0 0 8px; }
-.it-lesson p:last-child { margin-bottom: 0; }
-.it-points { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
-.it-points > li { display: grid; gap: 2px; }
-.it-point-ref { font-size: .7rem; color: var(--muted); font-variant-numeric: tabular-nums; }
-.it-lesson-signs { display: grid; grid-template-columns: repeat(auto-fill, minmax(84px, 1fr)); gap: 8px; margin: 0; padding: 0; list-style: none; }
-.it-lesson-signs .q-media { margin: 0; }
-.it-lesson-signs figcaption, .it-lesson-signs .it-sign-name { font-size: .7rem; text-align: center; }
-.it-check-q { font-weight: 600; }
-.it-check-row { display: flex; gap: 8px; flex-wrap: wrap; }
-.it-check-btn { flex: 1 1 120px; display: inline-flex; align-items: center; justify-content: center; gap: 6px; }
-.it-lesson-nav { display: flex; gap: 8px; flex-wrap: wrap; }
-.it-lesson-nav > * { flex: 1 1 140px; text-align: center; }
-@media (max-width: 420px) {
-  .it-lesson > h1 { font-size: 1.05rem; }
-  .it-lesson .card { padding: 10px 12px; }
-}
