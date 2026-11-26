@@ -4,7 +4,6 @@ import { Link } from "../app/router";
 import { useApp, useNow } from "../app/state";
 import { T } from "../app/strings";
 import { Bi, useBiText } from "../components/Bi";
-import { Icon } from "../components/Icon";
 import { ItQuestionCard } from "../components/ItQuestionCard";
 import { ItSignImage } from "../components/ItSignImage";
 import { useItApproved } from "../app/approved";
