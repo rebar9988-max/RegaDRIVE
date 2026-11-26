@@ -1,4 +1,4 @@
-import { useEffect, useId, useState } from "react";
+import { useEffect, useId } from "react";
 import { Link } from "../app/router";
 import { useApp } from "../app/state";
 import { T } from "../app/strings";
@@ -42,21 +42,19 @@ interface Props {
 export function ItQuestionCard({ question: q, mode = "practice", sessionId, index, total, onNext, onPrev, answered, onAnswered, flagged = false, onToggleFlag }: Props) {
   const { progress, update } = useApp();
   const label = useBiText();
-  const [given, setGiven] = useState<boolean | null>(answered ?? null);
   const legendId = useId();
   const sign = q.signId ? itSignById(q.signId) : undefined;
   const exam = mode === "exam";
+  // The answer lives with the run, not in the card: both parents keep it, so a statement the learner
+  // comes back to shows the answer it already carries and a changed answer needs no local copy.
+  const given = answered ?? null;
   // The answer key is shown only after the learner handed the answer in — and in an exam, not at all.
   const reveal = !exam && given !== null;
   const correct = given === q.answer;
   const bookmarked = progress.bookmarks.includes(q.id);
 
-  // A statement the learner comes back to shows the answer it already carries, not the one before it.
-  useEffect(() => { setGiven(answered ?? null); }, [answered, q.id]);
-
   const answer = (value: boolean) => {
     if (reveal) return;
-    setGiven(value);
     // Practice counts towards progress; an exam is scored as a whole when it is handed in.
     if (!exam) update((p) => recordAnswer(p, sessionId, q.id, value === q.answer, Date.now()));
     onAnswered?.(value);

@@ -1,5 +1,5 @@
 import "./italy.css";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "../app/router";
 import { useApp, useNow } from "../app/state";
 import { T } from "../app/strings";
@@ -222,32 +222,33 @@ export function ItalyExam() {
   const [pos, setPos] = useState(0);
   const [session, setSession] = useState(newSession);
   const [onlyErrors, setOnlyErrors] = useState(false);
-  const [recorded, setRecorded] = useState(0);
+  const recorded = useRef(0);
   const now = useNowTicking(paper !== null && !handedInByLearner);
   const left = paper === null ? rules.minutes * 60 : itTimeLeft(startedAt, now, rules);
   // Time over ends the exam on its own: derived from the clock, never written into state.
   const handedIn = handedInByLearner || (paper !== null && left === 0);
-  const history = progress.itExamHistory ?? [];
+  const history = progress.examHistory;
 
   const start = () => {
     const picked = pickItExam(approved.questions, rules);
     if (!picked) return;
     setPaper(picked); setStartedAt(Date.now()); setAnswers({}); setFlags({}); setPos(0);
-    setHandedIn(false); setAsking(false); setOnlyErrors(false); setRecorded(0); setSession(newSession());
+    setHandedIn(false); setAsking(false); setOnlyErrors(false); recorded.current = 0; setSession(newSession());
   };
 
   const result = paper === null ? null : scoreItExam(paper.map((q) => ({ questionId: q.id, correct: answers[q.id] === q.answer })), rules);
 
   /**
-   * The attempt is written once, when the paper is handed in, into the Italian list of its own: results
-   * stay separate per country, so an Italian attempt never counts towards the German section.
+   * The attempt is written once, when the paper is handed in. The progress document is already its own
+   * per country (progressKey), so an Italian attempt lands in Italy's history and never counts towards
+   * the German section. The guard is a ref: writing it must not itself cause a render.
    */
   useEffect(() => {
-    if (!handedIn || paper === null || result === null || recorded === startedAt) return;
-    setRecorded(startedAt);
-    const attempt = { at: Date.now(), passed: result.passed, errors: result.errors, questionCount: paper.length, rulesVersion: result.rulesVersion };
-    update((p) => ({ ...p, itExamHistory: [...(p.itExamHistory ?? []), attempt].slice(-50) }));
-  }, [handedIn, paper, result, recorded, startedAt, update]);
+    if (!handedIn || paper === null || result === null || recorded.current === startedAt) return;
+    recorded.current = startedAt;
+    const attempt = { at: Date.now(), passed: result.passed, errorPoints: result.errors, totalPoints: paper.length, rulesVersion: result.rulesVersion };
+    update((p) => ({ ...p, examHistory: [...p.examHistory, attempt].slice(-50) }));
+  }, [handedIn, paper, result, startedAt, update]);
 
   if (paper === null) {
     const enough = approved.questions.length >= rules.questionCount;
@@ -272,7 +273,7 @@ export function ItalyExam() {
                   <li key={a.at} className={a.passed ? "is-pass" : "is-fail"}>
                     <span className="it-history-mark" aria-hidden="true"><Icon name={a.passed ? "check" : "close"} /></span>
                     <strong><Bi t={a.passed ? T.it.examPassed : T.it.examFailed} inline /></strong>
-                    <span className="muted small"><Bi t={T.it.examErrors} inline /> <bdi dir="ltr">{a.errors} / {a.questionCount}</bdi></span>
+                    <span className="muted small"><Bi t={T.it.examErrors} inline /> <bdi dir="ltr">{a.errorPoints} / {a.totalPoints}</bdi></span>
                   </li>
                 ))}
               </ul>}

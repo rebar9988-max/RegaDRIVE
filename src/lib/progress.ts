@@ -18,27 +18,12 @@ export interface ProgressState {
   /** YYYY-MM-DD -> answers that day */
   days: Record<string, number>;
   examHistory: { at: number; passed: boolean; errorPoints: number; totalPoints: number; rulesVersion: string }[];
-  /**
-   * Italian mock exams, kept apart from `examHistory` on purpose: progress and results stay separate per
-   * country (owner rule), so an Italian attempt never counts towards German readiness or the reverse.
-   * Optional, because a device that last wrote before the Italian exam existed has no such list.
-   */
-  itExamHistory?: ItExamAttempt[];
-}
-
-/** One Italian mock-exam attempt: 30 statements, so the error count alone says how it went. */
-export interface ItExamAttempt {
-  at: number;
-  passed: boolean;
-  errors: number;
-  questionCount: number;
-  rulesVersion: string;
 }
 
 export const MASTERY_THRESHOLD_DEFAULT = 3;
 
 export const emptyProgress = (): ProgressState => ({
-  version: 1, questions: {}, scored: {}, bookmarks: [], completedLessons: [], days: {}, examHistory: [], itExamHistory: [],
+  version: 1, questions: {}, scored: {}, bookmarks: [], completedLessons: [], days: {}, examHistory: [],
 });
 
 const isObj = (v: unknown): v is Record<string, unknown> => typeof v === "object" && v !== null && !Array.isArray(v);
@@ -72,12 +57,6 @@ export function normalizeProgress(raw: unknown): ProgressState | null {
     out.examHistory = raw.examHistory.filter(isObj)
       .filter((e) => typeof e.at === "number" && Number.isFinite(e.at) && typeof e.passed === "boolean")
       .map((e) => ({ at: e.at as number, passed: e.passed as boolean, errorPoints: count(e.errorPoints), totalPoints: count(e.totalPoints), rulesVersion: typeof e.rulesVersion === "string" ? e.rulesVersion.slice(0, 80) : "" }))
-      .slice(-50);
-  }
-  if (Array.isArray(raw.itExamHistory)) {
-    out.itExamHistory = raw.itExamHistory.filter(isObj)
-      .filter((e) => typeof e.at === "number" && Number.isFinite(e.at) && typeof e.passed === "boolean")
-      .map((e) => ({ at: e.at as number, passed: e.passed as boolean, errors: count(e.errors), questionCount: count(e.questionCount), rulesVersion: typeof e.rulesVersion === "string" ? e.rulesVersion.slice(0, 80) : "" }))
       .slice(-50);
   }
   return out;
@@ -202,8 +181,6 @@ export function mergeProgress(a: ProgressState, b: ProgressState): ProgressState
   for (const [d, n] of Object.entries(b.days ?? {})) days[d] = Math.max(days[d] ?? 0, n);
   const exams = new Map<number, ProgressState["examHistory"][number]>();
   for (const e of [...(a.examHistory ?? []), ...(b.examHistory ?? [])]) exams.set(e.at, e);
-  const itExams = new Map<number, ItExamAttempt>();
-  for (const e of [...(a.itExamHistory ?? []), ...(b.itExamHistory ?? [])]) itExams.set(e.at, e);
   return {
     version: 1,
     questions,
@@ -212,6 +189,5 @@ export function mergeProgress(a: ProgressState, b: ProgressState): ProgressState
     completedLessons: [...new Set([...(a.completedLessons ?? []), ...(b.completedLessons ?? [])])],
     days,
     examHistory: [...exams.values()].sort((x, y) => x.at - y.at),
-    itExamHistory: [...itExams.values()].sort((x, y) => x.at - y.at),
   };
 }
