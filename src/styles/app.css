@@ -250,6 +250,10 @@ textarea.input { min-height: 120px; }
 .account-logo, .splash-logo { width: min(336px, 80vw); height: auto; margin: 0 auto 18px; }
 .splash { min-height: 60vh; display: grid; place-content: center; text-align: center; }
 @media (min-width: 720px) {
+  /* On a wider screen a full-width 3:1 band would eat the whole first screen, so the banner
+     becomes a compact centred brand plate and the content starts above the fold. */
+  .site-banner { padding: 16px 24px 2px; }
+  .site-banner .brand { max-width: 520px; }
   .main { padding: 28px 28px 100px; }
   .welcome h1 { font-size: 1.5rem; }
   .home-tiles { gap: 14px; }
@@ -261,6 +265,8 @@ textarea.input { min-height: 120px; }
 }
 @media (min-width: 1100px) {
   .topbar { padding-inline: 32px; }
+  .site-banner { padding: 18px 32px 4px; }
+  .site-banner .brand { max-width: 560px; }
   .layout { grid-template-columns: 220px minmax(0, 1fr); max-width: 1600px; margin: auto; }
   .sidenav { display: flex; flex-direction: column; gap: 6px; position: sticky; top: var(--header-h); height: calc(100dvh - var(--header-h)); padding: 28px 16px 100px; overflow-y: auto; border-inline-end: 1px solid var(--border); background: rgb(255 255 255 / 70%); }
   .navlink { min-height: 48px; padding: 10px 12px; display: flex; align-items: center; gap: 10px; border-radius: 13px; color: var(--muted); text-decoration: none; font-weight: 600; font-size: .85rem; }
@@ -273,8 +279,8 @@ textarea.input { min-height: 120px; }
   .dashboard-main, .dashboard-aside { min-width: 0; }
   .dashboard-aside { margin-top: 0; padding-top: 0; }
   .dashboard > .feature-strip, .dashboard > .notice { grid-column: 1/-1; }
-  .tabbar { inset-inline: max(260px, calc((100vw - 780px) / 2)) max(40px, calc((100vw - 1280px) / 2)); bottom: 16px; border: 1px solid var(--border); border-radius: 20px; box-shadow: 0 8px 32px rgb(15 23 42 / 12%); }
-  .tab { font-size: .75rem; }
+  .tabbar { display: none; }
+  .main { padding-bottom: 64px; }
   .question-card, .practice-page, .lesson-page { max-width: 880px; margin-inline: auto; }
 }
 @media (max-width: 359px) {
