@@ -22,17 +22,17 @@ export function SiteHeader() {
     <header className="topbar site-header">
       <div className="header-rail">
         <div className="header-tools">
+          <Link href="/more" className="icon-button" aria-label={label(T.nav.more)}><Icon name="more" /></Link>
+          <span className="header-divider" aria-hidden="true" />
+          <Link href="/account" className="icon-button" aria-label={label(T.nav.account)}><Icon name="user" /></Link>
+        </div>
+        <div className="header-tools">
+          <LanguageMenu />
+          {!online && <span className="offline-pill" role="status" data-testid="offline-pill">{label(T.offline)}</span>}
           <details className="notification-menu">
             <summary className="icon-button" aria-label={label({ ckb: "ئاگادارییەکان", de: "Hinweise", kmr: "Agahdarî", ar: "تنبيهات" })}><Icon name="bell" /></summary>
             <div className="notification-panel"><Bi t={{ ckb: "فێربوون لە هەنگاوێکی بچووکەوە دەست پێ دەکات. ئامانجی ڕۆژانەت لە پەڕەی سەرەکی ببینە.", de: "Lernen beginnt mit einem kleinen Schritt. Dein Tagesziel findest du auf der Startseite.", kmr: "Fêrbûn bi gaveke biçûk dest pê dike. Armanca xwe ya rojane li rûpela destpêkê bibîne.", ar: "يبدأ التعلّم بخطوة صغيرة. ستجد هدفك اليومي في الصفحة الرئيسية." }} /><Link href="/">{label(T.nav.home)}</Link></div>
           </details>
-          <LanguageMenu />
-          {!online && <span className="offline-pill" role="status" data-testid="offline-pill">{label(T.offline)}</span>}
-        </div>
-        <div className="header-tools">
-          <Link href="/more" className="icon-button" aria-label={label(T.nav.more)}><Icon name="more" /></Link>
-          <span className="header-divider" aria-hidden="true" />
-          <Link href="/account" className="icon-button" aria-label={label(T.nav.account)}><Icon name="user" /></Link>
         </div>
       </div>
     </header>

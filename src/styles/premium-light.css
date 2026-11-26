@@ -129,7 +129,11 @@ body { background: var(--canvas); }
 .site-header .lang-trigger::before { border-radius: 999px; }
 .site-header .lang-trigger .lang-code { color: #fff; font-weight: 800; letter-spacing: .02em; }
 .site-header .lang-trigger svg { color: #fff; }
+/* The panel is anchored to the trailing edge of the bell, which sits at the screen edge; the
+   width clamp keeps it inside the viewport even at 200% text on a 320px screen (WCAG 1.4.4/1.4.10). */
 .site-header .notification-panel {
+  width: min(300px, calc(100vw - 24px));
+  max-width: calc(100vw - 24px);
   background: rgb(255 255 255 / 96%);
   border-color: rgb(255 255 255 / 80%);
   box-shadow: 0 18px 44px rgb(6 95 70 / 18%), inset 0 1px 0 #fff;
