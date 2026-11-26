@@ -159,3 +159,18 @@ export function restoreItExamSession(
     paper,
   };
 }
+
+/** The mistakes of a handed-in paper, grouped by chapter and heaviest first: where to study next. */
+export function itExamErrorsByChapter(
+  paper: readonly ItQuestion[],
+  answers: Readonly<Record<string, boolean>>,
+): { chapter: number; errors: number }[] {
+  const per = new Map<number, number>();
+  for (const q of paper) {
+    if (answers[q.id] === q.answer) continue;
+    per.set(q.chapter, (per.get(q.chapter) ?? 0) + 1);
+  }
+  return [...per.entries()]
+    .map(([chapter, errors]) => ({ chapter, errors }))
+    .sort((a, b) => b.errors - a.errors || a.chapter - b.chapter);
+}

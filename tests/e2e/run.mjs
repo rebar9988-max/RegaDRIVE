@@ -1225,6 +1225,28 @@ try {
       const italian = page.locator("[data-testid=it-question-card] .de[lang=it]").first();
       assert.equal(await italian.getAttribute("dir"), "ltr", "the Italian original keeps its own direction");
       assert.equal(await page.getAttribute("[data-testid=it-question-card] .pri", "dir"), "rtl", "Sorani is right to left");
+      // The overview: every statement reachable, its state in words and not in colour alone, and a jump
+      // that moves the card and takes the keyboard with it.
+      const navCells = page.locator("[data-testid=italy-practice-nav] .it-nav-cell");
+      const cellCount = await navCells.count();
+      assert.ok(cellCount >= 1, "the practice overview lists the statements of the run");
+      const firstLabel = await navCells.first().getAttribute("aria-label");
+      assert.ok(/\d/.test(firstLabel ?? ""), "a cell is named by its number");
+      assert.ok((firstLabel ?? "").includes(":"), "a cell's name carries its state in words, not only its colour");
+      assert.equal(await navCells.first().getAttribute("aria-current"), "true", "the current statement is marked");
+      if (cellCount > 1) {
+        const before = await page.locator("[data-testid=it-question-card]").getAttribute("data-qid");
+        await navCells.nth(1).click();
+        await page.waitForFunction((was) => document.querySelector("[data-testid=it-question-card]")?.dataset.qid !== was, before);
+        assert.equal(
+          await page.evaluate(() => document.activeElement?.getAttribute("data-testid")),
+          "it-question-card",
+          "a jump moves the keyboard to the statement it opened",
+        );
+        await navCells.first().click();
+        await page.waitForFunction((was) => document.querySelector("[data-testid=it-question-card]")?.dataset.qid === was, before);
+      }
+
       await page.screenshot({ path: `${OUT}/italy-practice-${viewport.width}.png`, fullPage: true });
       await axe(page, `italy practice ${viewport.width}`);
 

@@ -6,14 +6,17 @@ import { countryKey } from "../app/settings";
 import { T } from "../app/strings";
 import { Bi, useBiText } from "../components/Bi";
 import { ItQuestionCard } from "../components/ItQuestionCard";
+import { ItQuestionNav, type ItNavCell } from "../components/ItQuestionNav";
 import { ItSignImage } from "../components/ItSignImage";
+import { ProgressRing } from "../components/ProgressRing";
 import { useItApproved } from "../app/approved";
 import { IT_CHAPTERS, IT_PLANNED_TOTAL } from "../content/italy/chapters";
 import type { ItQuestion, ItText } from "../content/italy/types";
 import { PATENTE_B_RULES_IT, scoreItExam } from "../lib/shared/examIt";
-import { IT_EXAM_SESSION_KEY, formatClock, itClockState, itExamCells, itExamNextOpen, itExamReview, itExamUnanswered, itTimeLeft, pickItExam, restoreItExamSession, type ItExamSession } from "../lib/itExam";
+import { IT_EXAM_SESSION_KEY, formatClock, itClockState, itExamCells, itExamNextOpen, itExamReview, itExamErrorsByChapter, itExamUnanswered, itTimeLeft, pickItExam, restoreItExamSession, type ItExamSession } from "../lib/itExam";
 import { questionStatus, recordAnswer } from "../lib/progress";
 import { kv } from "../lib/storage";
+import { IT_PRACTICE_SESSION_KEY, itPracticeCells, itPracticeLeft, newItPracticeSession, restoreItPracticeSession } from "../lib/itPractice";
 import { isItIncrocioSolved, isItLessonDone, isItPracticeMode, itChapterSources, itChapterStats, itIncrociSolved, itLessonNeighbours, itLessonsDone, itNextIncrocio, itNextStep, itOverall, itPracticeSet, itReadiness, itStats, itStrongChapters, itWeakChapters, markItIncrocioSolved, toggleItLessonDone, type ItNextStep, type ItPracticeMode, type ItReadinessLevel } from "../lib/italyStudy";
 import { IT_INCROCI, IT_INCROCI_GROUPS, itIncrocioById, itIncrocioNeighbours, itIncrociOf, type ItIncrocio } from "../content/italy/incroci";
 import { ItIncrocioScene } from "../components/ItIncrocioScene";
@@ -217,16 +220,56 @@ export function ItalyPractice() {
   const session = run.session;
   const [pos, setPos] = useState(0);
   const [done, setDone] = useState<Record<string, boolean>>({});
+  // A resumed run keeps the statements it was drawn with, so its numbering cannot shift under the learner.
+  const [resumed, setResumed] = useState<ItQuestion[] | null>(null);
+  // True once the learner has answered or moved in this run: what makes the run worth saving, and what
+  // stops a stored run from being applied over work already in progress.
+  const touched = useRef(false);
+  const sessionKey = countryKey(IT_PRACTICE_SESSION_KEY, settings.country);
+  // Whether the learner has moved within the run: the card that replaces this one then takes focus.
+  const [navigated, setNavigated] = useState(false);
+  const go = (i: number) => { touched.current = true; setNavigated(true); setPos(i); };
   // Keep progress fixed for the current run, including when the approved bank loads asynchronously.
-  const list = useMemo(
+  const drawn = useMemo(
     () => itPracticeSet(approved.questions, run.progress, mode, chapter, settings.masteryThreshold),
     [approved.questions, run.progress, mode, chapter, settings.masteryThreshold],
   );
-  const restart = () => { setRun({ session: newSession(), progress }); setPos(0); setDone({}); };
+  const restart = () => {
+    touched.current = false;
+    kv.del(sessionKey).catch(() => undefined);
+    setRun({ session: newSession(), progress }); setPos(0); setDone({}); setResumed(null); setNavigated(false);
+  };
+
+  /**
+   * An unfinished run is picked up where it was left, without a screen in the way: the answers are
+   * already scored, so there is nothing to confirm and nothing to lose. Only the run for the mode and
+   * chapter the learner opened, and never over work already begun in this visit.
+   */
+  useEffect(() => {
+    if (approved.loading) return;
+    let alive = true;
+    kv.get<unknown>(sessionKey)
+      .then((raw) => {
+        if (!alive || touched.current) return;
+        const back = restoreItPracticeSession(raw, { mode, chapter }, approved.questions, Date.now());
+        if (!back) return;
+        setResumed(back.list); setDone(back.session.answers); setPos(back.session.pos);
+      })
+      .catch(() => undefined);
+    return () => { alive = false; };
+  }, [sessionKey, approved.loading, approved.questions, mode, chapter]);
   const title = mode === "wrong" ? { title: T.it.reviewWrong }
     : mode === "bookmarks" ? { title: T.it.reviewBookmarks }
     : chapter === null ? null : IT_CHAPTERS.find((c) => c.id === chapter) ?? null;
+  const list = resumed ?? drawn;
   const q = list[pos];
+
+  // Every answer and move is saved at once, so a reload continues the run instead of redrawing it.
+  useEffect(() => {
+    if (!touched.current || list.length === 0) return;
+    const open = { ...newItPracticeSession(mode, chapter, list, Date.now()), answers: done, pos };
+    kv.set(sessionKey, open).catch(() => undefined);
+  }, [list, done, pos, mode, chapter, sessionKey]);
 
   if (list.length === 0) {
     return (
@@ -240,11 +283,18 @@ export function ItalyPractice() {
     );
   }
   if (!q) {
+    const left = itPracticeLeft(list, done);
     return (
       <section className="stack" data-testid="italy-practice-done">
         <h1><Bi t={T.it.finished} /></h1>
+        <div className="grid grid-2 compact-stats">
+          <div className="card stat"><span className="num" dir="ltr">{list.length - left} / {list.length}</span><span className="stat-label"><Bi t={ITU.result.score} /></span></div>
+          <div className="card stat"><span className="num" dir="ltr">{left}</span><span className="stat-label"><Bi t={ITU.practice.stillWrong} /></span></div>
+        </div>
+        {left === 0 && <p className="card" role="status" data-testid="italy-practice-allfixed"><Bi t={ITU.practice.allFixed} /></p>}
         <div className="q-actions">
           <button type="button" className="btn btn-primary" onClick={restart} data-testid="italy-again"><Bi t={T.it.again} /></button>
+          {left > 0 && <Link href="/practice?mode=wrong" className="btn" data-testid="italy-practice-continue-wrong"><Bi t={ITU.practice.continueWrong} /></Link>}
           <Link href="/" className="btn"><Bi t={T.it.backToChapters} /></Link>
         </div>
       </section>
@@ -260,9 +310,16 @@ export function ItalyPractice() {
         index={pos}
         total={list.length}
         answered={done[q.id]}
-        onAnswered={(a) => setDone((d) => ({ ...d, [q.id]: a }))}
-        onPrev={pos > 0 ? () => setPos(pos - 1) : undefined}
-        onNext={() => setPos((p) => p + 1)}
+        focusOnMount={navigated}
+        onAnswered={(a) => { touched.current = true; setDone((d) => ({ ...d, [q.id]: a })); }}
+        onPrev={pos > 0 ? () => go(pos - 1) : undefined}
+        onNext={() => go(pos + 1)}
+      />
+      <ItQuestionNav
+        testId="italy-practice-nav"
+        current={pos}
+        onGo={go}
+        cells={itPracticeCells(list, done).map((c): ItNavCell => ({ index: c.index, id: c.id, state: c.state }))}
       />
     </section>
   );
@@ -313,6 +370,9 @@ export function ItalyExam() {
   const [session, setSession] = useState(newSession);
   const [onlyErrors, setOnlyErrors] = useState(false);
   const recorded = useRef(0);
+  // Whether the learner has moved within the paper: the card that replaces this one then takes focus.
+  const [navigated, setNavigated] = useState(false);
+  const go = (i: number) => { setNavigated(true); setPos(i); };
   // undefined: the stored paper has not been read yet. null: there is none to offer.
   const [paused, setPaused] = useState<{ session: ItExamSession; paper: ItQuestion[] } | null | undefined>(undefined);
   const sessionKey = countryKey(IT_EXAM_SESSION_KEY, settings.country);
@@ -433,13 +493,37 @@ export function ItalyExam() {
   if (handedIn && result !== null) {
     const rows = itExamReview(paper, answers);
     const shown = onlyErrors ? rows.filter((r) => !r.correct) : rows;
+    const byChapter = itExamErrorsByChapter(paper, answers);
     return (
       <section className="stack" data-testid="italy-exam-result">
-        <h1><Bi t={result.passed ? T.it.examPassed : T.it.examFailed} /></h1>
-        <div className="grid grid-2 compact-stats">
-          <div className="card stat"><span className="num" dir="ltr">{result.errors}</span><span className="stat-label"><Bi t={T.it.examErrors} /></span></div>
-          <div className="card stat"><span className="num" dir="ltr">{rules.maxErrors}</span><span className="stat-label"><Bi t={T.it.examNeeded} /></span></div>
+        <section className={`card it-verdict ${result.passed ? "is-pass" : "is-fail"}`} aria-labelledby="it-verdict-title">
+          <div className="it-verdict-mark" aria-hidden="true"><Icon name={result.passed ? "trophy" : "alert"} /></div>
+          <div className="it-verdict-text">
+            <h1 id="it-verdict-title"><Bi t={result.passed ? T.it.examPassed : T.it.examFailed} /></h1>
+            <Bi t={result.errors === 0 ? ITU.result.perfect : result.passed ? ITU.result.passNote : ITU.result.failNote} className="small" />
+          </div>
+          <ProgressRing value={(paper.length - result.errors) / paper.length * 100} label={label(ITU.result.score)} />
+        </section>
+        <div className="grid grid-3 compact-stats">
+          <div className="card stat"><span className="num" dir="ltr">{paper.length - result.errors} / {paper.length}</span><span className="stat-label"><Bi t={ITU.result.score} /></span></div>
+          <div className="card stat"><span className="num" dir="ltr">{result.errors} / {rules.maxErrors}</span><span className="stat-label"><Bi t={ITU.result.allowed} /></span></div>
+          <div className="card stat"><span className="num" dir="ltr">{formatClock(rules.minutes * 60 - left)}</span><span className="stat-label"><Bi t={ITU.result.timeUsed} /></span></div>
         </div>
+        {byChapter.length > 0 && (
+          <section className="card it-bychapter" aria-labelledby="it-bychapter-title">
+            <h2 id="it-bychapter-title" className="small"><Bi t={ITU.result.byChapter} inline /></h2>
+            <ul className="it-bychapter-list" data-testid="italy-exam-bychapter">
+              {byChapter.map(({ chapter, errors }) => (
+                <li key={chapter}>
+                  <Link href={`/practice?chapter=${chapter}`} className="it-bychapter-row">
+                    <span className="it-bychapter-name"><Bi t={IT_CHAPTERS.find((c) => c.id === chapter)?.title ?? T.it.chapter} inline /></span>
+                    <span className="badge" dir="ltr">{errors}</span>
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          </section>
+        )}
         <div className="q-actions">
           <button type="button" className="btn btn-primary" onClick={() => setPaper(null)} data-testid="italy-exam-again"><Bi t={T.it.again} /></button>
           {result.errors > 0 && <Link href="/practice?mode=wrong" className="btn" data-testid="italy-exam-practice-wrong"><Bi t={ITU.tiles.mistakes} /></Link>}
@@ -492,9 +576,18 @@ export function ItalyExam() {
       </div>
 
       {asking && (
-        <div className="card it-handin-ask" role="alertdialog" aria-labelledby="it-handin-title" data-testid="italy-exam-confirm">
+        <div
+          className="card it-handin-ask"
+          role="alertdialog"
+          aria-labelledby="it-handin-title"
+          aria-describedby="it-handin-open"
+          tabIndex={-1}
+          ref={(el) => { el?.focus(); }}
+          onKeyDown={(e) => { if (e.key === "Escape") { e.stopPropagation(); setAsking(false); } }}
+          data-testid="italy-exam-confirm"
+        >
           <strong id="it-handin-title"><Bi t={T.it.examHandInAsk} inline /></strong>
-          <p className="small"><Bi t={T.it.examUnanswered} inline /> <bdi dir="ltr">{open}</bdi></p>
+          <p className="small" id="it-handin-open"><Bi t={T.it.examUnanswered} inline /> <bdi dir="ltr">{open}</bdi></p>
           <div className="q-actions">
             <button type="button" className="btn btn-primary" onClick={() => setHandedIn(true)} data-testid="italy-exam-handin-yes"><Bi t={T.it.examHandInYes} /></button>
             <button type="button" className="btn" onClick={() => setAsking(false)}><Bi t={T.it.back} /></button>
@@ -513,29 +606,17 @@ export function ItalyExam() {
         flagged={flags[q.id] === true}
         onToggleFlag={() => setFlags((f) => ({ ...f, [q.id]: !f[q.id] }))}
         onAnswered={(a) => setAnswers((prev) => ({ ...prev, [q.id]: a }))}
-        onPrev={pos > 0 ? () => setPos(pos - 1) : undefined}
-        onNext={() => setPos(pos + 1 < paper.length ? pos + 1 : nextOpen ?? pos)}
+        focusOnMount={navigated}
+        onPrev={pos > 0 ? () => go(pos - 1) : undefined}
+        onNext={() => go(pos + 1 < paper.length ? pos + 1 : nextOpen ?? pos)}
       />
 
-      <nav className="card it-nav" aria-label={label(T.it.examOverview)} data-testid="italy-exam-nav">
-        <h2 className="small"><Bi t={T.it.examOverview} inline /></h2>
-        <ol className="it-nav-grid">
-          {cells.map((c) => (
-            <li key={c.id}>
-              <button
-                type="button"
-                className={`it-nav-cell${c.answered ? " is-answered" : ""}${c.flagged ? " is-flagged" : ""}${c.index === pos ? " is-current" : ""}`}
-                aria-current={c.index === pos ? "true" : undefined}
-                aria-label={`${label(T.it.examOpenQuestion)} ${c.index + 1}`}
-                onClick={() => setPos(c.index)}
-                data-testid={`italy-exam-cell-${c.index + 1}`}
-              >
-                <span dir="ltr">{c.index + 1}</span>
-              </button>
-            </li>
-          ))}
-        </ol>
-      </nav>
+      <ItQuestionNav
+        testId="italy-exam-nav"
+        current={pos}
+        onGo={go}
+        cells={cells.map((c): ItNavCell => ({ index: c.index, id: c.id, state: c.answered ? "answered" : "unanswered", flagged: c.flagged }))}
+      />
     </section>
   );
 }
