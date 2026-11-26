@@ -116,6 +116,18 @@ export const ITU = {
     },
   },
 
+  // ── An exam left in the middle ────────────────────────────────────────
+  exam: {
+    resumeHeading: { it: "Hai un esame in corso", ckb: "تاقیکردنەوەیەکت کراوەیە", kmrArab: "ئەزموونەک ب تە ڤەکریە" },
+    resumeNote: {
+      it: "Le tue risposte e il tempo rimasto sono stati conservati. Puoi riprendere da dove eri.",
+      ckb: "وەڵامەکانت و کاتی ماوە پارێزراون. دەتوانیت لەوێوە بەردەوام بیت کە لێی بوویت.",
+      kmrArab: "بەرسڤێن تە و دەمێ مای هاتینە پاراستن. تو دشێی ژ وێرێ بدۆمینی.",
+    },
+    resume: { it: "Riprendi l'esame", ckb: "بەردەوامبوون لە تاقیکردنەوە", kmrArab: "ئەزموونێ بدۆمینە" },
+    discard: { it: "Scarta e ricomincia", ckb: "فڕێدان و دەستپێکردنەوە", kmrArab: "بەردە و ژ نوی دەست پێ بکە" },
+  },
+
   // ── Incroci (right of way) ────────────────────────────────────────────
   incroci: {
     title: { it: "Incroci e precedenze", ckb: "چوارڕێیان و مافی تێپەڕین", kmrArab: "خاچەڕێ و مافێ پێشیێ" },

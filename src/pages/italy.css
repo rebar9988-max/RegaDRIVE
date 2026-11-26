@@ -237,3 +237,7 @@
   .it-nav-grid { grid-template-columns: repeat(auto-fill, minmax(40px, 1fr)); gap: 6px; }
   .it-nav-cell { min-height: 40px; }
 }
+
+/* A paper the learner left in the middle, offered again on the exam screen. */
+.it-resume { display: grid; gap: 8px; border-color: var(--primary); }
+.it-resume p { margin: 0; }
