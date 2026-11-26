@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { itClockState, itExamCells, itExamNextOpen, itExamReview, itExamUnanswered, newItExamSession, pickItExam, restoreItExamSession } from "../../src/lib/itExam";
+import { itClockState, itExamCells, itExamErrorsByChapter, itExamNextOpen, itExamReview, itExamUnanswered, newItExamSession, pickItExam, restoreItExamSession } from "../../src/lib/itExam";
 import { PATENTE_B_RULES_IT, scoreItExam } from "../../src/lib/shared/examIt";
 import type { ItQuestion } from "../../src/content/italy/types";
 
@@ -135,5 +135,19 @@ describe("a paper left in the middle", () => {
     expect(back?.session.answers).toEqual({ q1: true });
     expect(back?.session.flagged).toEqual(["q3"]);
     expect(back?.session.pos).toBe(PATENTE_B_RULES_IT.questionCount - 1);
+  });
+});
+
+describe("the result tells the learner where the mistakes fell", () => {
+  it("groups the errors by chapter, heaviest first", () => {
+    const mixed = [q(1, true), q(2, true), q(17, true), q(18, true), q(33, true)];
+    // q1 and q17 are chapter 1, q2 and q18 chapter 2, q33 chapter 1 again.
+    const wrongEverywhere = itExamErrorsByChapter(mixed, { q1: false, q17: false, q33: false, q2: false, q18: true });
+    expect(wrongEverywhere).toEqual([{ chapter: 1, errors: 3 }, { chapter: 2, errors: 1 }]);
+  });
+
+  it("counts an unanswered statement as a mistake and lists no chapter without one", () => {
+    expect(itExamErrorsByChapter([q(1, true)], {})).toEqual([{ chapter: 1, errors: 1 }]);
+    expect(itExamErrorsByChapter([q(1, true)], { q1: true })).toEqual([]);
   });
 });

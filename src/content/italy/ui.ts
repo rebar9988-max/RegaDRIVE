@@ -128,6 +128,43 @@ export const ITU = {
     discard: { it: "Scarta e ricomincia", ckb: "فڕێدان و دەستپێکردنەوە", kmrArab: "بەردە و ژ نوی دەست پێ بکە" },
   },
 
+  // ── The question overview, shared by the exam and the practice run ────
+  nav: {
+    title: { it: "Elenco delle domande", ckb: "پێڕستی پرسیارەکان", kmrArab: "لیستا پرسان" },
+    open: { it: "Apri la domanda", ckb: "پرسیار بکەرەوە", kmrArab: "پرسێ ڤەکە" },
+    answered: { it: "con risposta", ckb: "وەڵامدراوە", kmrArab: "بەرسڤدای" },
+    unanswered: { it: "senza risposta", ckb: "بێ وەڵام", kmrArab: "بێ بەرسڤ" },
+    flagged: { it: "da rivedere", ckb: "بۆ پێداچوونەوە", kmrArab: "بۆ ڤەگەرێ" },
+    correct: { it: "corretta", ckb: "ڕاست", kmrArab: "ڕاست" },
+    wrong: { it: "sbagliata", ckb: "هەڵە", kmrArab: "چەوت" },
+  },
+
+  // ── The exam result ───────────────────────────────────────────────────
+  result: {
+    score: { it: "Risposte corrette", ckb: "وەڵامی ڕاست", kmrArab: "بەرسڤێن ڕاست" },
+    allowed: { it: "Errori consentiti", ckb: "هەڵەی ڕێپێدراو", kmrArab: "چەوتیێن ڕێپێدای" },
+    timeUsed: { it: "Tempo impiegato", ckb: "کاتی بەکارهاتوو", kmrArab: "دەمێ هاتی بکارئینان" },
+    byChapter: { it: "Errori per capitolo", ckb: "هەڵە بەپێی بەش", kmrArab: "چەوتی ل گۆرا بەشان" },
+    perfect: { it: "Nessun errore. Ottimo lavoro.", ckb: "هیچ هەڵەیەک نەبوو. زۆر باش.", kmrArab: "چ چەوتی نەبوون. گەلەک باش." },
+    passNote: {
+      it: "Con questo risultato avresti superato la prova.",
+      ckb: "بەم ئەنجامە لە تاقیکردنەوەی ڕاستەقینە سەرکەوتوو دەبوویت.",
+      kmrArab: "ب ڤێ ئەنجامێ تە ل ئەزموونا ڕاستەقینە سەرکەفتی ببوویی.",
+    },
+    failNote: {
+      it: "Con più di 3 errori la prova non è superata. Ripassa gli errori e riprova.",
+      ckb: "بە زیاتر لە ٣ هەڵە تاقیکردنەوە سەرکەوتوو نییە. پێداچوونەوە بە هەڵەکان بکە و دووبارە هەوڵ بدە.",
+      kmrArab: "ب پتر ژ ٣ چەوتیان ئەزموون سەرکەفتی نینە. چەوتیان دوبارە بکە و ژ نوی هەول بدە.",
+    },
+  },
+
+  // ── Finishing a practice run ──────────────────────────────────────────
+  practice: {
+    stillWrong: { it: "Ancora da correggere", ckb: "هێشتا بۆ ڕاستکردنەوە", kmrArab: "هێشتا بۆ ڕاستکرنێ" },
+    continueWrong: { it: "Continua con gli errori", ckb: "بەردەوام بە بە هەڵەکان", kmrArab: "ب چەوتیان بدۆمینە" },
+    allFixed: { it: "Hai corretto tutti i tuoi errori.", ckb: "هەموو هەڵەکانت ڕاستکردەوە.", kmrArab: "تە هەمی چەوتیێن خۆ ڕاست کرن." },
+  },
+
   // ── Incroci (right of way) ────────────────────────────────────────────
   incroci: {
     title: { it: "Incroci e precedenze", ckb: "چوارڕێیان و مافی تێپەڕین", kmrArab: "خاچەڕێ و مافێ پێشیێ" },
