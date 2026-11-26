@@ -1,4 +1,4 @@
-import { useId, useState } from "react";
+import { useEffect, useId } from "react";
 import { Link } from "../app/router";
 import { useApp } from "../app/state";
 import { T } from "../app/strings";
@@ -19,9 +19,14 @@ interface Props {
   index: number;
   total: number;
   onNext?: () => void;
+  /** Goes back one statement. Absent on the first one, so the control is never a dead end. */
+  onPrev?: () => void;
   /** The answer already given in this session, so returning to a question shows it again. */
   answered?: boolean;
   onAnswered?: (answer: boolean) => void;
+  /** Exam only: marked for a second look before handing in. Separate from the bookmark, which is kept for good. */
+  flagged?: boolean;
+  onToggleFlag?: () => void;
 }
 
 /**
@@ -30,14 +35,19 @@ interface Props {
  * Deliberately separate from QuestionCard: the German exam is multiple choice with option ids and
  * points, and nothing here touches it. Both cards use the same existing classes, so the two sections
  * look like one app without any new styling.
+ *
+ * In an exam the answer can be changed and the statement revisited until the paper is handed in, as in
+ * the real test; in practice the answer stands once it is given, because it has already been scored.
  */
-export function ItQuestionCard({ question: q, mode = "practice", sessionId, index, total, onNext, answered, onAnswered }: Props) {
+export function ItQuestionCard({ question: q, mode = "practice", sessionId, index, total, onNext, onPrev, answered, onAnswered, flagged = false, onToggleFlag }: Props) {
   const { progress, update } = useApp();
   const label = useBiText();
-  const [given, setGiven] = useState<boolean | null>(answered ?? null);
   const legendId = useId();
   const sign = q.signId ? itSignById(q.signId) : undefined;
   const exam = mode === "exam";
+  // The answer lives with the run, not in the card: both parents keep it, so a statement the learner
+  // comes back to shows the answer it already carries and a changed answer needs no local copy.
+  const given = answered ?? null;
   // The answer key is shown only after the learner handed the answer in — and in an exam, not at all.
   const reveal = !exam && given !== null;
   const correct = given === q.answer;
@@ -45,11 +55,30 @@ export function ItQuestionCard({ question: q, mode = "practice", sessionId, inde
 
   const answer = (value: boolean) => {
     if (reveal) return;
-    setGiven(value);
     // Practice counts towards progress; an exam is scored as a whole when it is handed in.
     if (!exam) update((p) => recordAnswer(p, sessionId, q.id, value === q.answer, Date.now()));
     onAnswered?.(value);
   };
+
+  /**
+   * Keyboard: 1 / V answers VERO, 2 / F answers FALSO, Enter moves on. Letters and digits only, so the
+   * shortcut never depends on the reading direction of the chosen language. Typing in a field, a held
+   * modifier, or focus on a control the key would also operate is left alone.
+   */
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.ctrlKey || e.metaKey || e.altKey) return;
+      const el = e.target as HTMLElement | null;
+      const tag = el?.tagName;
+      if (el?.isContentEditable || tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT") return;
+      const key = e.key.toLowerCase();
+      if (key === "1" || key === "v") { e.preventDefault(); answer(true); return; }
+      if (key === "2" || key === "f") { e.preventDefault(); answer(false); return; }
+      if (e.key === "Enter" && tag !== "BUTTON" && tag !== "A" && onNext && (exam || reveal)) { e.preventDefault(); onNext(); }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  });
 
   const option = (value: boolean) => {
     const isSel = given === value;
@@ -61,6 +90,7 @@ export function ItQuestionCard({ question: q, mode = "practice", sessionId, inde
         <span className="option-body">
           <Bi t={value ? T.it.vero : T.it.falso} />
           <span className="option-tag" lang="it" dir="ltr">{value ? "VERO" : "FALSO"}</span>
+          <kbd className="it-key" aria-hidden="true">{value ? "V" : "F"}</kbd>
           {reveal && isRight && <span className="option-tag ok" data-testid="it-tag-correct"><Bi t={T.correctAnswers} inline /></span>}
           {reveal && isSel && !isRight && <span className="option-tag bad" data-testid="it-tag-wrong"><Bi t={T.wrongChoice} inline /></span>}
         </span>
@@ -82,6 +112,11 @@ export function ItQuestionCard({ question: q, mode = "practice", sessionId, inde
         <span className="badge" dir="ltr">{index + 1} / {total}</span>
         <span className="badge badge-outline"><Bi t={T.it.chapter} inline /> <span dir="ltr">{q.chapter}</span></span>
         <span className="spacer" />
+        {exam && onToggleFlag && (
+          <button type="button" className="chip" aria-pressed={flagged} onClick={onToggleFlag} data-testid="it-flag">
+            <Icon name="pin" /><span>{label(flagged ? T.it.examFlagged : T.it.examFlag)}</span>
+          </button>
+        )}
         <button type="button" className="chip" aria-pressed={bookmarked} onClick={() => update((p) => toggleBookmark(p, q.id))}>
           <Icon name="bookmark" /><span>{label(bookmarked ? T.bookmarked : T.bookmark)}</span>
         </button>
@@ -104,11 +139,12 @@ export function ItQuestionCard({ question: q, mode = "practice", sessionId, inde
         </div>
       )}
 
-      {(exam || reveal) && onNext && (
+      {((exam || reveal) && onNext) || onPrev ? (
         <div className="q-actions">
-          <button type="button" className="btn btn-primary" onClick={onNext} data-testid="it-next"><Bi t={T.it.next} /></button>
+          {onPrev && <button type="button" className="btn" onClick={onPrev} data-testid="it-prev"><Bi t={T.it.back} /></button>}
+          {(exam || reveal) && onNext && <button type="button" className="btn btn-primary" onClick={onNext} data-testid="it-next"><Bi t={T.it.next} /></button>}
         </div>
-      )}
+      ) : null}
     </article>
   );
 }
