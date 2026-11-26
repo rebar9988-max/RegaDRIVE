@@ -19,15 +19,20 @@ const TABS: { href: string; icon: IconName; t: Bilingual }[] = [
   { href: "/more", icon: "more", t: T.nav.more },
 ];
 /**
- * Italy's tabs, the same shape as Germany's: start, lessons, practice, exam, more. They point at
- * Italy's own screens; nothing German is linked here. Signs and progress live under "More".
+ * Italy's tabs: start, lessons, practice, exam, and the learner's own area. They point at Italy's own
+ * screens; nothing German is linked here.
+ *
+ * The fifth tab is the account, not "More": registering and signing in are free and belong one tap away,
+ * not two. The pages that sit under "More" in the German section are listed inside that area
+ * (src/pages/Account.tsx), signed in or not, so nothing becomes unreachable. The German navigation keeps
+ * "More" unchanged (owner instruction 2026-11-12).
  */
 const IT_TABS: { href: string; icon: IconName; t: Bilingual }[] = [
   { href: "/", icon: "home", t: T.nav.home },
   { href: "/learn", icon: "book", t: T.nav.learn },
   { href: "/practice", icon: "check", t: T.nav.practice },
   { href: "/exam", icon: "exam", t: T.nav.exam },
-  { href: "/more", icon: "more", t: T.nav.more },
+  { href: "/account", icon: "user", t: T.nav.account },
 ];
 export const MORE_LINKS: { href: string; icon: IconName; t: Bilingual }[] = [
   { href: "/account", icon: "user", t: T.nav.account },
@@ -61,7 +66,8 @@ export function Shell({ children }: { children: ReactNode }) {
       <SiteBanner />
       <div className="layout">
         <nav className="sidenav" aria-label={label({ ckb: "ڕێنیشاندەری سەرەکی", de: "Hauptnavigation", kmr: "Navîgasyona sereke", ar: "التنقل الرئيسي" })}>
-          {[...tabs.filter((t) => t.href !== "/more"), ...moreLinks].map((l) => (
+          {/* Every destination is listed once: a tab that is also a "More" link (Italy's account tab) is not repeated. */}
+          {[...tabs.filter((t) => t.href !== "/more"), ...moreLinks].filter((l, i, all) => all.findIndex((o) => o.href === l.href) === i).map((l) => (
             <Link key={l.href} href={l.href} className="navlink" aria-current={isActive(path, l.href) ? "page" : undefined}>
               <Icon name={l.icon} /><Bi t={l.t} />
             </Link>

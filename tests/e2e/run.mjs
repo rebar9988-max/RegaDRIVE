@@ -1218,6 +1218,22 @@ try {
       assert.equal(await page.locator("[data-testid=italy-next-step]").count(), 1);
 
 
+      // The learner's own area is the fifth tab, free, and still carries the pages that sit under "More"
+      // in the German section, signed out as well as signed in.
+      const navSel = viewport.width >= 1100 ? ".sidenav" : ".tabbar";
+      assert.equal(await page.locator(`${navSel} a[href="/account"]`).count(), 1, "the learner's area sits in the primary navigation");
+      await page.locator(`${navSel} a[href="/account"]`).click();
+      await page.locator("[data-testid=signin-form]").waitFor();
+      assert.equal(await page.locator("[data-testid=account-free]").count(), 1, "the account area says it is free for everyone");
+      assert.equal(await page.locator("[data-testid=account-hub]").count(), 1, "the pages under More stay reachable from the account area");
+      for (const href of ["/progress", "/settings", "/signs", "/services", "/access", "/about"]) {
+        assert.equal(await page.locator(`[data-testid=account-hub] a[href="${href}"]`).count(), 1, `${href} stays reachable in the Italian section`);
+      }
+      await page.click("[data-testid=to-register]");
+      await page.locator("[data-testid=register-form]").waitFor();
+      assert.equal(await page.locator("[data-testid=account-free]").count(), 1, "registration says it is free too");
+      await axe(page, `italy account ${viewport.width}`);
+
       // Practice: answer, see the answer key, the explanation and the sign, and move on.
       await page.goto(`${BASE}/practice?chapter=1`);
       await page.locator("[data-testid=it-question-card]").waitFor();

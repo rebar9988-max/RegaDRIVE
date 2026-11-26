@@ -6,6 +6,7 @@ import { Link } from "../app/router";
 import { CONTENT } from "../app/content";
 import { useBiText } from "../components/Bi";
 import { Icon, type IconName } from "../components/Icon";
+import { moreLinksFor } from "../app/Shell";
 import { emptyProgress, mergeProgress, normalizeProgress, questionStatus } from "../lib/progress";
 import type { Bilingual } from "../content/types";
 
@@ -37,6 +38,7 @@ async function api(path: string, body?: unknown): Promise<ApiResult> {
 
 const S = {
   intro: { ckb: "هەژمارێک دروست بکە بۆ پاشەکەوتکردنی پێشکەوتنەکەت. پێشکەوتنی سەر ئەم ئامێرە هەرگیز ناسڕدرێتەوە.", de: "Erstelle ein Konto, um deinen Fortschritt zu sichern. Der Fortschritt auf diesem Gerät wird nie gelöscht.", kmr: "Hesabekî çêke da ku pêşketina xwe biparêzî. Pêşketina li ser vê amûrê qet nayê jêbirin.", ar: "أنشئ حسابًا لحفظ تقدّمك. لن يُحذف التقدّم المحفوظ على هذا الجهاز أبدًا." },
+  freeForever: { ckb: "بەخۆڕایی بۆ هەمووان — بۆ هەمیشە. بەبێ پارەدان، بەبێ ئەبوونە.", de: "Für alle kostenlos — für immer. Keine Zahlung, kein Abo.", kmr: "Ji bo her kesî belaş — her û her. Bê drav, bê abone.", ar: "مجاني للجميع — إلى الأبد. بلا دفع وبلا اشتراك." },
   signin: { ckb: "چوونەژوورەوە", de: "Anmelden", kmr: "Têkeve", ar: "تسجيل الدخول" },
   register: { ckb: "دروستکردنی هەژمار", de: "Konto erstellen", kmr: "Hesab çêke", ar: "إنشاء حساب" },
   email: { ckb: "ئیمەیڵ", de: "E-Mail", kmr: "E-name", ar: "البريد الإلكتروني" },
@@ -346,6 +348,10 @@ export function Account() {
     </li>
   );
 
+  // The Italian section is free for everyone and says so. The German section has its own access page
+  // (Preise & Zugang) and is left exactly as it is.
+  const isItaly = settings.country === "IT";
+
   let body: ReactNode;
   switch (view) {
     case "loading":
@@ -365,6 +371,7 @@ export function Account() {
           {logo}
           {heading(S.signin)}
           <Tx t={S.intro} as="p" className="small muted acct-intro" />
+          {isItaly && <p className="acct-free" data-testid="account-free"><Icon name="verified" /><Tx t={S.freeForever} /></p>}
           {status("form")}
           {emailField}
           {passwordField(S.password, "current-password")}
@@ -384,6 +391,7 @@ export function Account() {
         <form className="card acct-card acct-form" onSubmit={doRegister} data-testid="register-form">
           {heading(S.register)}
           <Tx t={S.intro} as="p" className="small muted acct-intro" />
+          {isItaly && <p className="acct-free" data-testid="account-free"><Icon name="verified" /><Tx t={S.freeForever} /></p>}
           {status("form")}
           <Field label={S.name} id="auth-name">
             <input id="auth-name" className="input" maxLength={60} autoComplete="name" value={name} onChange={(e) => setName(e.target.value)} data-testid="auth-name" />
@@ -543,10 +551,33 @@ export function Account() {
     }
   }
 
+  /**
+   * Italy's fifth tab is this page, so the pages that sit under "More" in the German section are listed
+   * here instead. It is shown signed in and signed out alike: nothing is locked behind an account.
+   */
+  const hub = !isItaly ? null : (
+    <nav className="acct-section acct-hub" aria-labelledby="acct-hub-title" data-testid="account-hub">
+      <Tx t={T.nav.more} as="h2" id="acct-hub-title" className="acct-section-title" />
+      <div className="card acct-card acct-card-flush">
+        <ul className="acct-rows">
+          {moreLinksFor("IT").filter((l) => l.href !== "/account").map((l) => (
+            <li key={l.href}>
+              <Link href={l.href} className="acct-row">
+                {row(l.icon, l.t)}
+                <Icon name="arrow" className="flip-rtl" />
+              </Link>
+            </li>
+          ))}
+        </ul>
+      </div>
+    </nav>
+  );
+
   return (
     <div className="acct-page">
       <header className="page-head acct-head"><Tx t={T.nav.account} as="h1" /></header>
       {body}
+      {hub}
     </div>
   );
 }
