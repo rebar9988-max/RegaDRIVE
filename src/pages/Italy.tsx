@@ -688,12 +688,15 @@ function ItIncrocioDetail({ scene }: { scene: ItIncrocio }) {
               className={`btn it-inc-pick it-inc-${v.colour}${at < 0 ? "" : " is-picked"}`}
               data-testid={`italy-incrocio-pick-${v.id}`}
               aria-pressed={at >= 0}
-              aria-label={at < 0 ? `${label(ITU.incroci.chooseVehicle)}: ${label(name)}` : `${label(name)} — ${label(ITU.incroci.position)} ${at + 1}`}
               onClick={() => setChosen((c) => (c.includes(v.id) ? c : [...c, v.id]))}
             >
               <span className="it-inc-dot" aria-hidden="true" />
-              <span aria-hidden="true"><Bi t={name} inline /></span>
-              {at >= 0 && <span className="it-inc-num" dir="ltr" aria-hidden="true">{at + 1}</span>}
+              {/* The name the screen reader announces is built from what the button shows, with the
+                  spoken context only in front of it. An aria-label would replace the visible wording
+                  instead of containing it, which WCAG 2.5.3 (label in name) does not allow. */}
+              <span className="sr-only">{`${label(at < 0 ? ITU.incroci.chooseVehicle : ITU.incroci.position)}: `}</span>
+              <span><Bi t={name} inline /></span>
+              {at >= 0 && <span className="it-inc-num" dir="ltr">{at + 1}</span>}
             </button>
           );
         })}
