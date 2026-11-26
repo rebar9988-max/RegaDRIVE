@@ -132,8 +132,9 @@ try {
       await page.waitForSelector("[data-testid=home]", { timeout: 20000 });
       assert.equal(await page.getAttribute("html", "dir"), "rtl");
       assert.equal(await page.getAttribute("html", "lang"), "ckb");
-      // Wait for the logo to finish downloading over the real network (an instant check races the download).
-      await page.waitForFunction(() => { const i = document.querySelector(".topbar .brand img"); return !!i && i.complete && i.naturalWidth > 0; }, null, { timeout: 15000 })
+      // Wait for the banner art to finish downloading over the real network (an instant check races the download).
+      // The brand lives in the banner, its own component directly under the header (owner rule, 2026-11-26).
+      await page.waitForFunction(() => { const i = document.querySelector(".site-banner .brand img"); return !!i && i.complete && i.naturalWidth > 0; }, null, { timeout: 15000 })
         .catch(() => { throw new Error("official logo did not load within 15 s"); });
       assert.equal(await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth), 0, "no horizontal overflow");
       assert.equal(await page.locator("[data-testid=preview-banner]").count(), 0, "no preview banner in production");
@@ -156,7 +157,7 @@ try {
       // Measure only after stored settings have loaded: before that the header has no country button yet.
       await page.waitForSelector("[data-testid=lang-ckb]");
       // Four languages; the layout never mirrors or moves, only the words change.
-      const layout = () => page.evaluate(() => [".topbar .brand", ".sidenav", ".tabbar"].map((s) => { const r = document.querySelector(s)?.getBoundingClientRect(); return r && r.width ? [Math.round(r.left), Math.round(r.right)] : null; }));
+      const layout = () => page.evaluate(() => [".site-banner .brand", ".sidenav", ".tabbar"].map((s) => { const r = document.querySelector(s)?.getBoundingClientRect(); return r && r.width ? [Math.round(r.left), Math.round(r.right)] : null; }));
       // The shell paints a splash screen until settings load from storage.
       // The language buttons only exist once the app is ready, so wait for them, and the web fonts (font-display: swap) before taking the baseline; otherwise the header's
       // late arrivals would be mistaken for a layout move caused by switching language.
