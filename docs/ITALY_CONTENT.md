@@ -186,4 +186,10 @@ approval was bound to the fingerprint of the wording that was reviewed. The pane
 
 ## Database inventory (2026-11-23)
 
+### Private review of the supplied Italian catalogue
+
+Run `node scripts/stage-italy-catalogue.mjs <package-folder> <private-sqlite-file>` with Node 24 to preserve the source records and linked JPEGs for review. Keep the SQLite file outside the repository and public assets. The staging tool checks identifiers, answers, image references, JPEG markers and per-page totals before importing. It preserves the extracted category labels verbatim, uses the original question number as the source ID, and writes in batches of 500. An identical rerun leaves every staged record unchanged. A conflicting record stops the import and requires a separate database for the revised package.
+
+This local SQLite file has no connection to D1 or learner-facing routes. The supplied package stages 7,020 questions in 25 extracted categories and 3,919 linked images. Question 24962 is flagged for a possible missing illustration. The source PDF, per-question Class B verification, rights evidence for the text and images, chapter mapping and reviewed Sorani and Badini translations are needed before this catalogue can go through the regular content import and approval process.
+
 The owner requested a visible home in the database for Italy. Content migration `0004_italy_inventory.sql` stores the existing 12 questions, 8 signs and 16 chapters in `regadrive-content.italy_content`, with `country=IT`, complete multilingual JSON and source references. It is an inventory of the imported original material, not a new approval or a replacement for the learner publication gate. The owner workbench reads counts and question rows from D1 through the authenticated `/api/dr/content/status` endpoint. Re-running the seed preserves existing rows. Later editorial changes must be imported explicitly; these stored snapshots do not silently follow source-file edits.
