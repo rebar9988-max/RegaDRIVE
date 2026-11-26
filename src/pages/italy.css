@@ -63,3 +63,63 @@
   .it-lesson > h1 { font-size: 1.05rem; }
   .it-lesson .card { padding: 10px 12px; }
 }
+
+/* ── Italian mock exam ────────────────────────────────────────────────────────────────────────────
+   The ministerial format as a screen: the clock and what is still open always in view, the overview
+   of all 30 statements under the card, and the result reviewable statement by statement. Only the
+   Italian exam uses these classes; every colour is an existing palette token. */
+
+.it-exam-bar { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; padding: 12px 16px; position: sticky; top: calc(var(--header-h) + 8px); z-index: 2; }
+.it-exam-bar > .btn { margin-inline-start: auto; }
+.it-exam-clock { display: flex; align-items: center; gap: 8px; margin: 0; font-weight: 700; font-variant-numeric: tabular-nums; }
+.it-exam-clock svg { width: 20px; height: 20px; }
+.it-exam-bar p { margin: 0; }
+.it-clock-warning { border-color: var(--warning); }
+.it-clock-warning .it-exam-clock { color: var(--warning-ink); }
+.it-clock-critical { border-color: var(--danger); background: var(--danger-bg); }
+.it-clock-critical .it-exam-clock { color: var(--danger-ink); }
+
+.it-handin-ask { display: grid; gap: 8px; border-color: var(--warning); }
+.it-handin-ask p { margin: 0; }
+
+.it-nav { display: grid; gap: 10px; }
+.it-nav h2 { margin: 0; color: var(--muted); font-weight: 700; }
+.it-nav-grid { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(44px, 1fr)); gap: 8px; }
+.it-nav-cell { width: 100%; min-height: 44px; display: grid; place-items: center; border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--white); color: var(--ink); font: inherit; font-weight: 700; font-variant-numeric: tabular-nums; cursor: pointer; }
+.it-nav-cell.is-answered { background: var(--success-bg); border-color: var(--success); color: var(--success-ink); }
+.it-nav-cell.is-flagged { box-shadow: inset 0 0 0 2px var(--warning); }
+.it-nav-cell.is-current { border-color: var(--primary); box-shadow: 0 0 0 2px var(--primary-soft); }
+.it-nav-cell:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+
+.it-review { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; counter-reset: it-review; }
+.it-review-row { display: grid; gap: 8px; padding: 14px 16px; border-inline-start: 4px solid var(--border); }
+.it-review-row.is-correct { border-inline-start-color: var(--success); }
+.it-review-row.is-wrong { border-inline-start-color: var(--danger); }
+.it-review-head { display: flex; align-items: center; gap: 8px; }
+.it-review-mark { display: grid; place-items: center; width: 26px; height: 26px; border-radius: 50%; background: var(--success-bg); color: var(--success-ink); }
+.it-review-row.is-wrong .it-review-mark { background: var(--danger-bg); color: var(--danger-ink); }
+.it-review-mark svg { width: 16px; height: 16px; }
+.it-review-prompt { font-weight: 600; }
+.it-review-row p { margin: 0; }
+.it-review-why { padding-top: 6px; border-top: 1px solid var(--border); }
+
+.it-history { display: grid; gap: 8px; }
+.it-history h2 { margin: 0; color: var(--muted); font-weight: 700; }
+.it-history-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.it-history-list > li { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.it-history-mark { display: grid; place-items: center; width: 24px; height: 24px; border-radius: 50%; background: var(--success-bg); color: var(--success-ink); }
+.it-history-list > li.is-fail .it-history-mark { background: var(--danger-bg); color: var(--danger-ink); }
+.it-history-mark svg { width: 15px; height: 15px; }
+
+/* The keyboard shortcut printed on each answer: V for VERO, F for FALSO. Hidden where there is no
+   keyboard, so a phone screen does not carry a key nobody can press. */
+.it-key { display: none; }
+@media (hover: hover) and (pointer: fine) {
+  .it-key { display: inline-grid; place-items: center; min-width: 22px; padding: 1px 5px; margin-inline-start: 6px; border: 1px solid var(--border); border-bottom-width: 2px; border-radius: 6px; background: var(--pearl); color: var(--muted); font: inherit; font-size: .72rem; font-weight: 700; }
+}
+
+@media (max-width: 420px) {
+  .it-exam-bar { position: static; padding: 10px 12px; }
+  .it-nav-grid { grid-template-columns: repeat(auto-fill, minmax(40px, 1fr)); gap: 6px; }
+  .it-nav-cell { min-height: 40px; }
+}

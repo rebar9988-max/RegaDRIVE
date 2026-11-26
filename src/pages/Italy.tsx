@@ -4,13 +4,14 @@ import { Link } from "../app/router";
 import { useApp, useNow } from "../app/state";
 import { T } from "../app/strings";
 import { Bi, useBiText } from "../components/Bi";
+import { Icon } from "../components/Icon";
 import { ItQuestionCard } from "../components/ItQuestionCard";
 import { ItSignImage } from "../components/ItSignImage";
 import { useItApproved } from "../app/approved";
 import { IT_CHAPTERS, IT_PLANNED_TOTAL } from "../content/italy/chapters";
 import type { ItQuestion } from "../content/italy/types";
 import { PATENTE_B_RULES_IT, scoreItExam } from "../lib/shared/examIt";
-import { formatClock, itTimeLeft, pickItExam } from "../lib/itExam";
+import { formatClock, itClockState, itExamCells, itExamNextOpen, itExamReview, itExamUnanswered, itTimeLeft, pickItExam } from "../lib/itExam";
 import { questionStatus } from "../lib/progress";
 import { isItLessonDone, isItPracticeMode, itChapterSources, itChapterStats, itLessonNeighbours, itLessonsDone, itOverall, itPracticeSet, toggleItLessonDone, type ItPracticeMode } from "../lib/italyStudy";
 import { itLessonFor } from "../content/italy/lessons";
@@ -170,6 +171,7 @@ export function ItalyPractice() {
         total={list.length}
         answered={done[q.id]}
         onAnswered={(a) => setDone((d) => ({ ...d, [q.id]: a }))}
+        onPrev={pos > 0 ? () => setPos(pos - 1) : undefined}
         onNext={() => setPos((p) => p + 1)}
       />
     </section>
@@ -201,29 +203,55 @@ export function ItalySigns() {
  * Italy's mock exam: the real ministerial format — 30 true/false statements, 20 minutes, at most 3
  * errors (src/lib/shared/examIt.ts). It can only start with 30 approved questions: a shorter paper
  * would not be this exam, so until then the screen says plainly what is missing.
+ *
+ * The paper is answered the way the real test is: in any order, with the overview as the flow, any
+ * answer changeable, statements markable for a second look, and the paper handed in when the learner
+ * says so — or when the 20 minutes are over.
  */
 export function ItalyExam() {
   const rules = PATENTE_B_RULES_IT;
   const approved = useItApproved();
+  const label = useBiText();
+  const { progress, update } = useApp();
   const [paper, setPaper] = useState<ItQuestion[] | null>(null);
   const [startedAt, setStartedAt] = useState(0);
   const [answers, setAnswers] = useState<Record<string, boolean>>({});
+  const [flags, setFlags] = useState<Record<string, boolean>>({});
   const [handedInByLearner, setHandedIn] = useState(false);
+  const [asking, setAsking] = useState(false);
   const [pos, setPos] = useState(0);
   const [session, setSession] = useState(newSession);
+  const [onlyErrors, setOnlyErrors] = useState(false);
+  const [recorded, setRecorded] = useState(0);
   const now = useNowTicking(paper !== null && !handedInByLearner);
   const left = paper === null ? rules.minutes * 60 : itTimeLeft(startedAt, now, rules);
   // Time over ends the exam on its own: derived from the clock, never written into state.
   const handedIn = handedInByLearner || (paper !== null && left === 0);
+  const history = progress.itExamHistory ?? [];
 
   const start = () => {
     const picked = pickItExam(approved.questions, rules);
     if (!picked) return;
-    setPaper(picked); setStartedAt(Date.now()); setAnswers({}); setPos(0); setHandedIn(false); setSession(newSession());
+    setPaper(picked); setStartedAt(Date.now()); setAnswers({}); setFlags({}); setPos(0);
+    setHandedIn(false); setAsking(false); setOnlyErrors(false); setRecorded(0); setSession(newSession());
   };
+
+  const result = paper === null ? null : scoreItExam(paper.map((q) => ({ questionId: q.id, correct: answers[q.id] === q.answer })), rules);
+
+  /**
+   * The attempt is written once, when the paper is handed in, into the Italian list of its own: results
+   * stay separate per country, so an Italian attempt never counts towards the German section.
+   */
+  useEffect(() => {
+    if (!handedIn || paper === null || result === null || recorded === startedAt) return;
+    setRecorded(startedAt);
+    const attempt = { at: Date.now(), passed: result.passed, errors: result.errors, questionCount: paper.length, rulesVersion: result.rulesVersion };
+    update((p) => ({ ...p, itExamHistory: [...(p.itExamHistory ?? []), attempt].slice(-50) }));
+  }, [handedIn, paper, result, recorded, startedAt, update]);
 
   if (paper === null) {
     const enough = approved.questions.length >= rules.questionCount;
+    const recent = [...history].slice(-5).reverse();
     return (
       <section className="stack" data-testid="italy-exam">
         <h1><Bi t={T.it.exam} /></h1>
@@ -235,13 +263,28 @@ export function ItalyExam() {
         {enough
           ? <button type="button" className="btn btn-primary" onClick={start} data-testid="italy-exam-start"><Bi t={T.it.examStart} /></button>
           : <p className="card" role="status" data-testid="italy-exam-blocked"><Bi t={T.it.examNeedsMore} /></p>}
+        <section className="card it-history" aria-labelledby="it-history-title">
+          <h2 id="it-history-title" className="small"><Bi t={T.it.examHistory} inline /></h2>
+          {recent.length === 0
+            ? <p className="muted small" data-testid="italy-exam-nohistory"><Bi t={T.it.examNoHistory} inline /></p>
+            : <ul className="it-history-list" data-testid="italy-exam-history">
+                {recent.map((a) => (
+                  <li key={a.at} className={a.passed ? "is-pass" : "is-fail"}>
+                    <span className="it-history-mark" aria-hidden="true"><Icon name={a.passed ? "check" : "close"} /></span>
+                    <strong><Bi t={a.passed ? T.it.examPassed : T.it.examFailed} inline /></strong>
+                    <span className="muted small"><Bi t={T.it.examErrors} inline /> <bdi dir="ltr">{a.errors} / {a.questionCount}</bdi></span>
+                  </li>
+                ))}
+              </ul>}
+        </section>
         <p className="small muted"><Bi t={T.it.examRulesSource} /> <bdi dir="ltr">({rules.version})</bdi></p>
       </section>
     );
   }
 
-  if (handedIn) {
-    const result = scoreItExam(paper.map((q) => ({ questionId: q.id, correct: answers[q.id] === q.answer })), rules);
+  if (handedIn && result !== null) {
+    const rows = itExamReview(paper, answers);
+    const shown = onlyErrors ? rows.filter((r) => !r.correct) : rows;
     return (
       <section className="stack" data-testid="italy-exam-result">
         <h1><Bi t={result.passed ? T.it.examPassed : T.it.examFailed} /></h1>
@@ -253,14 +296,63 @@ export function ItalyExam() {
           <button type="button" className="btn btn-primary" onClick={() => setPaper(null)} data-testid="italy-exam-again"><Bi t={T.it.again} /></button>
           <Link href="/" className="btn"><Bi t={T.it.backToChapters} /></Link>
         </div>
+        <div className="it-chapter-heading">
+          <h2><Bi t={T.it.examReview} /></h2>
+          <button type="button" className="chip" aria-pressed={onlyErrors} onClick={() => setOnlyErrors((v) => !v)} data-testid="italy-exam-filter">
+            <Icon name="target" /><span>{label(onlyErrors ? T.it.examAllQuestions : T.it.examOnlyErrors)}</span>
+          </button>
+        </div>
+        <ol className="it-review" data-testid="italy-exam-review">
+          {shown.map((r) => (
+            <li key={r.question.id} className={`card it-review-row ${r.correct ? "is-correct" : "is-wrong"}`} data-testid={`italy-review-${r.question.id}`}>
+              <div className="it-review-head">
+                <span className="it-review-mark" aria-hidden="true"><Icon name={r.correct ? "check" : "close"} /></span>
+                <span className="badge badge-outline"><Bi t={T.it.chapter} inline /> <span dir="ltr">{r.question.chapter}</span></span>
+              </div>
+              <Bi t={r.question.prompt} className="it-review-prompt" />
+              <p className="small">
+                <Bi t={T.it.examYourAnswer} inline />{": "}
+                <strong>{r.given === null ? label(T.it.examUnanswered) : label(r.given ? T.it.vero : T.it.falso)}</strong>
+                {!r.correct && <> · <Bi t={T.correctAnswers} inline />{": "}<strong>{label(r.question.answer ? T.it.vero : T.it.falso)}</strong></>}
+              </p>
+              {!r.correct && <div className="it-review-why"><Bi t={r.question.explanation} /></div>}
+            </li>
+          ))}
+        </ol>
       </section>
     );
   }
 
   const q = paper[pos]!;
+  const cells = itExamCells(paper, answers, flags);
+  const open = itExamUnanswered(paper, answers);
+  const clock = itClockState(left, rules);
+  const nextOpen = itExamNextOpen(paper, answers, pos);
   return (
     <section className="stack" data-testid="italy-exam-running">
-      <p className="card" role="timer" data-testid="italy-exam-clock"><Bi t={T.it.examTimeLeft} inline />: <span className="num" dir="ltr">{formatClock(left)}</span></p>
+      <div className={`card it-exam-bar it-clock-${clock}`}>
+        <p role="timer" data-testid="italy-exam-clock" className="it-exam-clock">
+          <Icon name="exam" /><Bi t={T.it.examTimeLeft} inline />: <span className="num" dir="ltr">{formatClock(left)}</span>
+        </p>
+        <p className="small muted" data-testid="italy-exam-open">
+          <Bi t={T.answeredL} inline /> <bdi dir="ltr">{paper.length - open} / {paper.length}</bdi>
+        </p>
+        <button type="button" className="btn btn-primary" onClick={() => (open > 0 ? setAsking(true) : setHandedIn(true))} data-testid="italy-exam-handin">
+          <Bi t={T.it.examHandIn} />
+        </button>
+      </div>
+
+      {asking && (
+        <div className="card it-handin-ask" role="alertdialog" aria-labelledby="it-handin-title" data-testid="italy-exam-confirm">
+          <strong id="it-handin-title"><Bi t={T.it.examHandInAsk} inline /></strong>
+          <p className="small"><Bi t={T.it.examUnanswered} inline /> <bdi dir="ltr">{open}</bdi></p>
+          <div className="q-actions">
+            <button type="button" className="btn btn-primary" onClick={() => setHandedIn(true)} data-testid="italy-exam-handin-yes"><Bi t={T.it.examHandInYes} /></button>
+            <button type="button" className="btn" onClick={() => setAsking(false)}><Bi t={T.it.back} /></button>
+          </div>
+        </div>
+      )}
+
       <ItQuestionCard
         key={q.id}
         question={q}
@@ -269,9 +361,32 @@ export function ItalyExam() {
         index={pos}
         total={paper.length}
         answered={answers[q.id]}
+        flagged={flags[q.id] === true}
+        onToggleFlag={() => setFlags((f) => ({ ...f, [q.id]: !f[q.id] }))}
         onAnswered={(a) => setAnswers((prev) => ({ ...prev, [q.id]: a }))}
-        onNext={() => (pos + 1 < paper.length ? setPos(pos + 1) : setHandedIn(true))}
+        onPrev={pos > 0 ? () => setPos(pos - 1) : undefined}
+        onNext={() => setPos(pos + 1 < paper.length ? pos + 1 : nextOpen ?? pos)}
       />
+
+      <nav className="card it-nav" aria-label={label(T.it.examOverview)} data-testid="italy-exam-nav">
+        <h2 className="small"><Bi t={T.it.examOverview} inline /></h2>
+        <ol className="it-nav-grid">
+          {cells.map((c) => (
+            <li key={c.id}>
+              <button
+                type="button"
+                className={`it-nav-cell${c.answered ? " is-answered" : ""}${c.flagged ? " is-flagged" : ""}${c.index === pos ? " is-current" : ""}`}
+                aria-current={c.index === pos ? "true" : undefined}
+                aria-label={`${label(T.it.examOpenQuestion)} ${c.index + 1}`}
+                onClick={() => setPos(c.index)}
+                data-testid={`italy-exam-cell-${c.index + 1}`}
+              >
+                <span dir="ltr">{c.index + 1}</span>
+              </button>
+            </li>
+          ))}
+        </ol>
+      </nav>
     </section>
   );
 }
