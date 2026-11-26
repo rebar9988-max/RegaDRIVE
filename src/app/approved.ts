@@ -68,9 +68,42 @@ export function parseItalyPublished(api: ItalyApi | null): { signs: ItSign[]; qu
   return { signs, questions };
 }
 
+/**
+ * The last catalogue the server published, kept in this browser so the Italian section still works on a
+ * cold start without a connection. It is treated as untrusted on the way back in: every item is
+ * validated again, so a tampered or stale-format copy is dropped rather than shown.
+ */
+const IT_CACHE_KEY = "regadrive:it-published:v1";
+
+type ReadStore = Pick<Storage, "getItem">;
+type WriteStore = Pick<Storage, "setItem">;
+
+export function readCachedItaly(store: ReadStore | undefined): { signs: ItSign[]; questions: ItQuestion[] } | null {
+  if (!store) return null;
+  try {
+    const raw = store.getItem(IT_CACHE_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as { ok?: boolean; questions?: unknown; signs?: unknown };
+    return parseItalyPublished({ ...parsed, ok: true });
+  } catch { return null; }
+}
+
+export function writeCachedItaly(store: WriteStore | undefined, value: { signs: ItSign[]; questions: ItQuestion[] }): void {
+  if (!store) return;
+  try { store.setItem(IT_CACHE_KEY, JSON.stringify(value)); } catch { /* a full or blocked store is not an error here */ }
+}
+
+const browserStore = (): Storage | undefined => {
+  try { return typeof localStorage === "undefined" ? undefined : localStorage; } catch { return undefined; }
+};
+
 export function useItApproved(): ItApproved {
-  const [state, setState] = useState<ItApproved>(() =>
-    CONTENT_MODE === "preview" ? { signs: IT_SIGNS, questions: itPublished, loading: false, failed: false } : { signs: [], questions: [], loading: true, failed: false });
+  const [state, setState] = useState<ItApproved>(() => {
+    if (CONTENT_MODE === "preview") return { signs: IT_SIGNS, questions: itPublished, loading: false, failed: false };
+    // Show what was published last time straight away, then refresh from the server.
+    const cached = readCachedItaly(browserStore());
+    return cached ? { ...cached, loading: true, failed: false } : { signs: [], questions: [], loading: true, failed: false };
+  });
   useEffect(() => {
     if (CONTENT_MODE === "preview") return;
     let alive = true;
@@ -80,7 +113,14 @@ export function useItApproved(): ItApproved {
         .then((r) => (r.ok ? r.json() as Promise<ItalyApi> : null)).catch(() => null);
       const fromServer = parseItalyPublished(live);
       if (fromServer) {
+        writeCachedItaly(browserStore(), fromServer);
         if (alive) setState({ ...fromServer, loading: false, failed: false });
+        return;
+      }
+      // Offline or the endpoint is unavailable: keep what this browser already had.
+      const cached = readCachedItaly(browserStore());
+      if (cached && (cached.questions.length > 0 || cached.signs.length > 0)) {
+        if (alive) setState({ ...cached, loading: false, failed: false });
         return;
       }
       const api = await load();

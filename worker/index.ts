@@ -37,7 +37,8 @@ const SECURITY_HEADERS: Record<string, string> = {
   "referrer-policy": "strict-origin-when-cross-origin",
   "x-frame-options": "DENY",
 };
-const json = (body: unknown, status = 200) => new Response(JSON.stringify(body), { status, headers: SECURITY_HEADERS });
+const json = (body: unknown, status = 200, extra?: Record<string, string>) =>
+  new Response(JSON.stringify(body), { status, headers: extra ? { ...SECURITY_HEADERS, ...extra } : SECURITY_HEADERS });
 
 let gateway: AiGateway | null = null;
 let gatewayEnv: Env | null = null;
@@ -85,7 +86,8 @@ export async function handleApi(req: Request, env: Env, now = Date.now()): Promi
   if (p === "/api/content/italy" && req.method === "GET") {
     // Public, read-only, no account needed: the Italian items the publication gate lets through, with
     // their content, so an imported and reviewed catalogue reaches learners without a code change.
-    return json(await approvedItalyContent(env.DB, env.CONTENT_DB));
+    // Public and identical for everyone, so it may be held briefly: the gate is re-read on every miss.
+    return json(await approvedItalyContent(env.DB, env.CONTENT_DB), 200, { "cache-control": "public, max-age=60, stale-while-revalidate=600" });
   }
 
   if (p.startsWith("/api/dr/")) {

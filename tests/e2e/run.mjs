@@ -1350,6 +1350,28 @@ try {
       await ctx.close();
     }
 
+    // Offline: the Italian section still opens, with the lessons and whatever was published last.
+    {
+      const ctx = await newContext({ ...devices["iPhone 13"] });
+      const page = await ctx.newPage();
+      await page.goto(BASE);
+      await page.locator(".country-card:has([lang=it])").click();
+      await page.locator("[data-testid=italy-home]").waitFor();
+      await page.goto(`${BASE}/learn?chapter=1`);
+      await page.locator("[data-testid=italy-lesson]").waitFor();
+      await ctx.setOffline(true);
+      await page.reload();
+      await page.locator("[data-testid=italy-lesson]").waitFor();
+      assert.ok(await page.locator("[data-testid=italy-lesson-points] > li").count() >= 3, "the lesson is readable offline");
+      assert.ok(await page.locator("[data-testid=it-lesson-check]").count() >= 2, "the self-checks work offline");
+      await page.locator("[data-testid=it-lesson-check]").first().locator("[data-testid=it-check-vero]").click();
+      await page.locator("[data-testid=it-check-why]").first().waitFor();
+      await page.goto(`${BASE}/learn`);
+      await page.locator("[data-testid=italy-lessons]").waitFor();
+      await ctx.setOffline(false);
+      await ctx.close();
+    }
+
     // Registration costs nothing and leads back into the Italian section.
     const ctx = await newContext({ ...devices["iPhone 13"], bypassCSP: true });
     const page = await ctx.newPage();

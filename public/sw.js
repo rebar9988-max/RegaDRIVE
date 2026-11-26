@@ -26,7 +26,20 @@ self.addEventListener("activate", (event) => {
 self.addEventListener("fetch", (event) => {
   const req = event.request;
   const url = new URL(req.url);
-  if (req.method !== "GET" || url.origin !== self.location.origin || url.pathname.startsWith("/api/")) return;
+  if (req.method !== "GET" || url.origin !== self.location.origin) return;
+
+  // The only API response worth keeping: the published Italian catalogue. It is public, it holds no
+  // personal data, and a learner offline should keep the questions already approved for them. Network
+  // first so an approval or a withdrawal arrives as soon as there is a connection.
+  if (url.pathname === "/api/content/italy") {
+    event.respondWith(
+      fetch(req)
+        .then((res) => { if (res.ok) { const copy = res.clone(); caches.open(CACHE).then((c) => c.put(req, copy)); } return res; })
+        .catch(() => caches.match(req).then((r) => r || new Response(JSON.stringify({ ok: false, offline: true, questions: [], signs: [] }), { status: 200, headers: { "content-type": "application/json" } }))),
+    );
+    return;
+  }
+  if (url.pathname.startsWith("/api/")) return;
 
   if (req.mode === "navigate") {
     // Network first so updates arrive; fall back to the cached app shell offline.

@@ -5,7 +5,7 @@ import { loadItalyCatalogue, bundledItalyCatalogue } from "../../worker/italy/ca
 import { itReviewItemsFor } from "../../src/content/italy/reviewItems";
 import { IT_QUESTIONS } from "../../src/content/italy/questions";
 import { IT_SIGNS } from "../../src/content/italy/signs";
-import { parseItalyPublished } from "../../src/app/approved";
+import { parseItalyPublished, readCachedItaly, writeCachedItaly } from "../../src/app/approved";
 import type { D1Like, D1Stmt } from "../../worker/dr/db";
 
 const SIGN_IDS = new Set(IT_SIGNS.map((s) => s.id));
@@ -204,5 +204,38 @@ describe("what the learner's app accepts from the server", () => {
   it("drops an item the server sent that does not validate", () => {
     const got = parseItalyPublished({ ok: true, signs: [], questions: [question({ answer: false })] });
     expect(got?.questions).toEqual([]);
+  });
+});
+
+describe("the catalogue a learner keeps offline", () => {
+  const store = () => {
+    const map = new Map<string, string>();
+    return { map, getItem: (k: string) => map.get(k) ?? null, setItem: (k: string, v: string) => { map.set(k, v); } };
+  };
+  const payload = { signs: [parseItSign(sign()).value!], questions: [parseItQuestion(question({ signId: "it-x-sign" }), new Set(["it-x-sign"])).value!] };
+
+  it("comes back exactly as it was written", () => {
+    const s = store();
+    writeCachedItaly(s, payload);
+    const back = readCachedItaly(s);
+    expect(back?.questions.map((q) => q.id)).toEqual(["it-x-001"]);
+    expect(back?.signs.map((x) => x.id)).toEqual(["it-x-sign"]);
+  });
+  it("is nothing when there is no store, nothing stored, or the copy is unreadable", () => {
+    expect(readCachedItaly(undefined)).toBeNull();
+    expect(readCachedItaly(store())).toBeNull();
+    const broken = store();
+    broken.map.set("regadrive:it-published:v1", "{not json");
+    expect(readCachedItaly(broken)).toBeNull();
+  });
+  // The copy in the browser is untrusted on the way back in.
+  it("drops a cached item that no longer validates", () => {
+    const s = store();
+    s.map.set("regadrive:it-published:v1", JSON.stringify({ signs: [], questions: [question({ answer: false })] }));
+    expect(readCachedItaly(s)?.questions).toEqual([]);
+  });
+  it("survives a store that refuses to write", () => {
+    expect(() => writeCachedItaly({ setItem: () => { throw new Error("quota"); } }, payload)).not.toThrow();
+    expect(() => writeCachedItaly(undefined, payload)).not.toThrow();
   });
 });

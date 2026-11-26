@@ -72,7 +72,9 @@ await check("Italian published catalogue", async () => {
     assert.equal(q.questionCode, null, `${q.id} must carry no official question code`);
     assert.equal(q.sourceType, "original", `${q.id} must be original content`);
   }
-  return `ok=${body.ok} · source ${body.source} · published ${body.questions.length} questions, ${body.signs.length} signs · stored inventory ${body.inventory?.questions}/${body.inventory?.signs} · rules ${body.rulesVersion}`;
+  const cache = r.headers.get("cache-control") ?? "";
+  assert.match(cache, /max-age=\d+/, `the catalogue should be cacheable, got "${cache}"`);
+  return `ok=${body.ok} · source ${body.source} · published ${body.questions.length} questions, ${body.signs.length} signs · stored inventory ${body.inventory?.questions}/${body.inventory?.signs} · rules ${body.rulesVersion} · ${cache}`;
 });
 // No account is needed anywhere in the Italian section.
 await check("Italian content needs no sign-in", async () => {
