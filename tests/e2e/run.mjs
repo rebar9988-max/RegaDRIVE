@@ -1209,7 +1209,9 @@ try {
       assert.equal(await page.locator("[data-testid=italy-chapters] > li").count(), 0);
       await search.fill("");
       assert.equal(await page.locator("[data-testid=italy-chapters] > li").count(), 16);
-      assert.equal(await page.locator(".it-actions a").count(), 4);
+      assert.equal(await page.locator("[data-testid=italy-tiles] a").count(), 8, "every area of the Italian course is on the start screen");
+      assert.equal(await page.locator("[data-testid=italy-guide]").count(), 1, "the study guide offers one next step");
+      assert.equal(await page.locator("[data-testid=italy-next-step]").count(), 1);
 
 
       // Practice: answer, see the answer key, the explanation and the sign, and move on.
@@ -1293,10 +1295,38 @@ try {
         await page.locator("[data-testid=it-question-card]").waitFor();
       }
 
+      // Intersections: our own schematics, the order of precedence and the rule behind it.
+      await page.goto(`${BASE}/incroci`);
+      const incroci = page.locator("[data-testid=italy-incroci]");
+      await incroci.waitFor();
+      assert.ok(await incroci.locator(".it-inc-grid > li").count() >= 10, "the intersection scenes are listed");
+      assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth), false, "incroci list fits the screen");
+      await axe(page, `italy incroci ${viewport.width}`);
+      await page.locator("[data-testid=italy-incroci-start]").click();
+      const scene = page.locator("[data-testid=italy-incrocio]");
+      await scene.waitFor();
+      assert.equal(await scene.locator("svg.it-inc-board").count(), 1, "the scene is drawn");
+      assert.equal(await scene.locator("[data-testid=italy-incrocio-why]").count(), 0, "the reason appears only after an answer");
+      // A wrong order is refused, the right one is accepted and remembered.
+      const picks = scene.locator("[data-testid^=italy-incrocio-pick-]");
+      const count = await picks.count();
+      for (let i = count - 1; i >= 0; i--) await picks.nth(i).click();
+      await scene.locator("[data-testid=italy-incrocio-feedback]").waitFor();
+      const first = (await scene.locator("[data-testid=italy-incrocio-feedback]").textContent()) ?? "";
+      await scene.locator("[data-testid=italy-incrocio-reset]").click();
+      for (let i = 0; i < count; i++) await picks.nth(i).click();
+      const second = (await scene.locator("[data-testid=italy-incrocio-feedback]").textContent()) ?? "";
+      assert.notEqual(first.trim(), second.trim(), "the two orders are judged differently");
+      assert.equal(await scene.locator("[data-testid=italy-incrocio-why]").count(), 1, "the reason and the article are shown");
+      await axe(page, `italy incrocio ${viewport.width}`);
+      await page.screenshot({ path: `${OUT}/italy-incrocio-${viewport.width}.png`, fullPage: true });
+
       // Progress and the two review runs.
       await page.goto(`${BASE}/progress`);
       await page.locator("[data-testid=italy-progress]").waitFor();
       assert.equal(await page.locator("[data-testid=italy-progress-chapters] > li").count(), 16, "progress per chapter");
+      assert.equal(await page.locator("[data-testid=italy-readiness]").count(), 1, "exam readiness from real answers only");
+      assert.equal(await page.locator("[data-testid=italy-week] > li").count(), 7, "the last seven days of study");
       await axe(page, `italy progress ${viewport.width}`);
       await page.locator("[data-testid=italy-review-wrong]").click();
       // The learner answered correctly above, so there is nothing to review and the page says so.
