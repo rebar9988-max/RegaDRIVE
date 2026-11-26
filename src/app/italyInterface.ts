@@ -156,10 +156,10 @@ export const italianInterface: Record<string, string> = {
   "Nochmal": "Riprova", "Zurück zu den Kapiteln": "Torna ai capitoli",
   "In diesem Kapitel gibt es noch keine freigegebenen Fragen.": "Questo capitolo non contiene ancora domande approvate.",
   "Diese Fragen sind eigene Inhalte in Prüfung, keine amtlichen Prüfungsfragen.": "Queste domande originali sono in fase di revisione e non sono quesiti ufficiali.",
-  "Italienischer Originaltext": "Testo originale italiano", "Beantwortet": "Domande con risposta",
+  "Italienischer Originaltext": "Testo originale italiano",
   "Gemeisterte Fragen": "Domande apprese", "Richtige Antwort": "Risposta corretta",
   "Falsch gewählt": "Risposta errata", "Merken": "Salva", "Gemerkt": "Salvato",
-  "Offline": "Offline", "Diese Inhalte werden noch fachlich geprüft und erst nach Freigabe veröffentlicht.": "Questi contenuti sono in fase di revisione e saranno pubblicati dopo l’approvazione.",
+  "Offline": "Offline",
 };
 
 // Duhok Arabic-script usage reference: https://uod.ac/documents/7119/Graduation_guide_2025-2026.pdf
