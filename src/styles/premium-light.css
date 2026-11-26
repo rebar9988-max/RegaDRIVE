@@ -208,7 +208,7 @@ body { background: var(--canvas); }
 .navlink:hover { background: var(--rd-mint); color: var(--primary); }
 .navlink[aria-current='page'] { background: var(--btn-face); color: #fff; box-shadow: var(--shadow-btn); }
 .navlink[aria-current='page'] .de, .sidenav .navlink[aria-current='page'] .de { color: #e6f8ee; }
-@media (min-width: 1100px) { .tabbar { border-radius: 24px; } }
+/* From 1100px up the side navigation is the only navigation (app.css hides the bottom bar). */
 
 /* ── Surfaces ───────────────────────────────────────────────────────────── */
 .card { background: linear-gradient(180deg, #fff, #fbfefc); border: 1px solid var(--border); border-radius: var(--radius-card); box-shadow: var(--shadow-card); }
