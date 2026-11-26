@@ -5,10 +5,12 @@ import { spawn, execFileSync } from "node:child_process";
 import { createServer } from "node:http";
 import { mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { createRequire } from "node:module";
+import { resolve } from "node:path";
 import assert from "node:assert/strict";
 import { chromium, devices } from "playwright";
 
 const require = createRequire(import.meta.url);
+const wrangler = resolve("node_modules/wrangler/bin/wrangler.js");
 const AXE = readFileSync(require.resolve("axe-core/axe.min.js"), "utf8");
 const PORT = 8788;
 const BASE = `http://127.0.0.1:${PORT}`;
@@ -33,9 +35,9 @@ const mailSink = createServer((req, res) => {
 const codeFor = (to) => /(\d{6})/.exec([...outbox].reverse().find((m) => m.to?.[0] === to)?.text ?? "")?.[1] ?? "";
 // Fresh local student database with the reviewed migrations (local only — never touches Cloudflare).
 rmSync(".wrangler/state", { recursive: true, force: true });
-execFileSync("npx", ["wrangler", "d1", "migrations", "apply", "regadrive-students", "--local", "-c", ".wrangler-e2e.json"], { stdio: "inherit", env: { ...process.env, CI: "true", WRANGLER_SEND_METRICS: "false" } });
+execFileSync(process.execPath, [wrangler, "d1", "migrations", "apply", "regadrive-students", "--local", "-c", ".wrangler-e2e.json"], { stdio: "inherit", env: { ...process.env, CI: "true", WRANGLER_SEND_METRICS: "false" } });
 
-const dev = spawn("npx", ["wrangler", "dev", "-c", ".wrangler-e2e.json", "--port", String(PORT), "--ip", "127.0.0.1", "--show-interactive-dev-session=false"], { stdio: ["ignore", "pipe", "pipe"], env: { ...process.env, WRANGLER_SEND_METRICS: "false" } });
+const dev = spawn(process.execPath, [wrangler, "dev", "-c", ".wrangler-e2e.json", "--port", String(PORT), "--ip", "127.0.0.1", "--show-interactive-dev-session=false"], { stdio: ["ignore", "pipe", "pipe"], env: { ...process.env, WRANGLER_SEND_METRICS: "false" } });
 let devLog = "";
 dev.stdout.on("data", (d) => (devLog += d));
 dev.stderr.on("data", (d) => (devLog += d));
