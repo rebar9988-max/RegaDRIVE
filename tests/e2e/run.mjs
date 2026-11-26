@@ -114,16 +114,16 @@ try {
       await page.waitForSelector("[data-testid=home]");
       assert.equal(await page.getAttribute("html", "dir"), "rtl");
       assert.equal(await page.getAttribute("html", "lang"), "ckb");
-      const logo = page.locator(".topbar .brand img");
+      const logo = page.locator(".site-banner .brand img");
       await logo.evaluate((img) => img.decode());
-      assert.equal(await page.locator('img[src="/brand/regadrive-logo.webp"]').count(), 1, "one home logo");
+      assert.equal(await page.locator('img[src="/brand/regadrive-banner.webp"]').count(), 1, "one home banner");
       const banner = await logo.boundingBox();
       assert.ok(Math.abs(banner.width / banner.height - 3) < 0.01, "banner keeps the original 3:1 ratio");
       if (await page.evaluate(() => innerWidth <= 640)) {
         const header = await page.locator(".topbar").boundingBox();
         const toolbar = await page.locator(".header-tools").first().boundingBox();
-        assert.ok(Math.abs(banner.width - Math.min(header.width, 480)) < 1, "banner fills its mobile header row");
-        assert.ok(toolbar.y >= banner.y + banner.height - 1, "controls sit below the art");
+        assert.ok(Math.abs(banner.width - header.width) < 1, "banner spans the full mobile width");
+        assert.ok(banner.y >= toolbar.y + toolbar.height - 1, "the banner sits directly under the header controls");
       }
       const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
       assert.equal(overflow, 0, "no horizontal overflow");
@@ -510,7 +510,7 @@ try {
     await page.waitForTimeout(300);
     assert.equal(await page.locator("[data-testid=error-boundary]").count(), 0, "no crash");
     assert.ok((await page.textContent("main")).includes("Seite nicht gefunden") || (await page.textContent("main")).includes("نەدۆزرایەوە"), "missing-page state");
-    assert.equal(await page.locator(".topbar .brand").count(), 1);
+    assert.equal(await page.locator(".site-banner .brand").count(), 1);
     await ctx.close();
   });
 
@@ -546,7 +546,7 @@ try {
     await page2.waitForSelector("[data-testid=home]");
     await page2.locator('.sidenav a[href="/exam"]').click();
     await page2.locator("[data-testid=error-boundary]").waitFor();
-    assert.equal(await page2.locator(".topbar .brand").count(), 1, "the app shell stays usable");
+    assert.equal(await page2.locator(".site-banner .brand").count(), 1, "the app shell stays usable");
     await page2.locator('.sidenav a[href="/learn"]').click();
     await page2.locator(".lesson-list").waitFor();
     assert.equal(await page2.locator("[data-testid=error-boundary]").count(), 0, "navigating away clears the error");
@@ -559,8 +559,8 @@ try {
     await page.goto(`${BASE}/settings`);
     await page.waitForSelector("[data-testid=lang-ckb]");
     await page.addStyleTag({ content: "[data-testid=preview-banner] { display: none !important; }" });
-    const layout = () => page.evaluate(() => [".topbar .brand", ".sidenav", ".tabbar"].map((s) => { const r = document.querySelector(s)?.getBoundingClientRect(); return r && r.width ? [Math.round(r.left), Math.round(r.right)] : null; }));
-    const detail = () => page.evaluate(() => [".topbar", ".topbar > :first-child", ".topbar .brand", ".topbar > :last-child", ".notification-menu"].map((s) => { const r = document.querySelector(s)?.getBoundingClientRect(); return `${s}=${r ? `${Math.round(r.left)}..${Math.round(r.right)}` : "none"}`; }).join(" ") + ` scrollW=${document.documentElement.scrollWidth} clientW=${document.documentElement.clientWidth}`);
+    const layout = () => page.evaluate(() => [".site-banner .brand", ".sidenav", ".tabbar"].map((s) => { const r = document.querySelector(s)?.getBoundingClientRect(); return r && r.width ? [Math.round(r.left), Math.round(r.right)] : null; }));
+    const detail = () => page.evaluate(() => [".topbar", ".header-rail > :first-child", ".site-banner .brand", ".header-rail > :last-child", ".notification-menu"].map((s) => { const r = document.querySelector(s)?.getBoundingClientRect(); return `${s}=${r ? `${Math.round(r.left)}..${Math.round(r.right)}` : "none"}`; }).join(" ") + ` scrollW=${document.documentElement.scrollWidth} clientW=${document.documentElement.clientWidth}`);
     const before = await layout();
     const beforeDetail = await detail();
     for (const lang of ["kmr", "kmr-arab", "ar", "de", "ckb"]) {
@@ -582,8 +582,12 @@ try {
       await page.waitForSelector("[data-testid=home]");
       await page.addStyleTag({ content: "[data-testid=preview-banner] { display: none !important; }" });
       assert.equal(await page.locator(".language-switch").count(), 0, `${name}: no large language buttons on the home page`);
-      assert.equal(await page.locator(".topbar .brand-name").count(), 0, `${name}: no duplicate RegaDRIVE text in the header`);
-      assert.equal(await page.locator(".topbar .brand img").count(), 1, `${name}: the official logo stays`);
+      assert.equal(await page.locator(".site-header .brand-name").count(), 0, `${name}: no duplicate RegaDRIVE text in the header`);
+      assert.equal(await page.locator(".site-banner .brand img").count(), 1, `${name}: the official logo stays`);
+      // Owner rule (2026-11-26): header and banner are independent — no brand art inside the header,
+      // and exactly the four controls (notifications, language, menu, profile) on the rail.
+      assert.equal(await page.locator(".site-header .brand, .site-header img").count(), 0, `${name}: the header carries no brand art`);
+      assert.equal(await page.locator(".header-rail .icon-button").count(), 4, `${name}: four header controls`);
       const trigger = page.locator("[data-testid=header-lang-trigger]");
       assert.equal((await trigger.locator(".lang-code").textContent()).trim(), "CKB", `${name}: Sorani is the default`);
       const overflow = () => page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
@@ -612,7 +616,7 @@ try {
       assert.equal(await panel.count(), 0, `${name}: Escape closes the selector`);
       assert.ok(await trigger.evaluate((el) => el === document.activeElement), `${name}: focus returns to the button`);
 
-      const headerBox = () => page.evaluate(() => [".topbar .brand", ".lang-trigger"].map((s) => { const r = document.querySelector(s).getBoundingClientRect(); return [Math.round(r.left), Math.round(r.right)]; }));
+      const headerBox = () => page.evaluate(() => [".site-banner .brand", ".lang-trigger"].map((s) => { const r = document.querySelector(s).getBoundingClientRect(); return [Math.round(r.left), Math.round(r.right)]; }));
       const before = await headerBox();
       for (const [id, code] of [["kmr", "KMR"], ["de", "DE"], ["ar", "AR"], ["ckb", "CKB"]]) {
         await trigger.click();
@@ -649,7 +653,7 @@ try {
       // The preview-only test banner (never shown in production) has a different length per language.
       await page.addStyleTag({ content: "[data-testid=preview-banner] { display: none !important; }" });
       // Horizontal edges and vertical positions: nothing may move sideways or up and down.
-      const boxes = () => page.evaluate(() => [".topbar .brand", ".lang-trigger", ".tabbar", ".sidenav", ".overview-card", ".learning-cta", ".home-menu"].map((sel) => {
+      const boxes = () => page.evaluate(() => [".site-banner .brand", ".lang-trigger", ".tabbar", ".sidenav", ".overview-card", ".learning-cta", ".home-menu"].map((sel) => {
         const el = document.querySelector(sel); const r = el?.getBoundingClientRect();
         return r && r.width > 0 ? [sel, r.left, r.right, r.top + scrollY, r.height] : [sel, null];
       }));
@@ -925,7 +929,7 @@ try {
       const wide = [...document.querySelectorAll("body *")].map((e) => ({ e, r: e.getBoundingClientRect() })).filter((x) => x.r.right > innerWidth + 1 || x.r.left < -1)
         .slice(0, 6).map((x) => `${x.e.tagName.toLowerCase()}.${String(x.e.className).slice(0, 40)}[${Math.round(x.r.left)},${Math.round(x.r.right)}]`);
       const bn = document.querySelector(".brand-name");
-      return { layout: [".topbar .brand", ".sidenav", ".tabbar"].map(box), innerWidth, docOverflow: document.documentElement.scrollWidth - document.documentElement.clientWidth,
+      return { layout: [".site-banner .brand", ".sidenav", ".tabbar"].map(box), innerWidth, docOverflow: document.documentElement.scrollWidth - document.documentElement.clientWidth,
         vvScale: window.visualViewport?.scale, brandFont: bn ? getComputedStyle(bn).fontSize : null, brandDisplay: bn ? getComputedStyle(bn).display : null, wide };
     });
     const before = await snap();

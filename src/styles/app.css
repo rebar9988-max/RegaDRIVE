@@ -48,27 +48,24 @@ button { cursor: pointer; }
 .skip-link { position: fixed; top: -120px; inset-inline-start: 16px; z-index: 100; padding: 12px 20px; background: var(--white); border-radius: 12px; }
 .skip-link:focus { top: 12px; }
 .app { min-height: 100dvh; background: radial-gradient(ellipse at 10% 0%, #e6e8ff 0, transparent 45%), radial-gradient(ellipse at 100% 0%, #e2f7f2 0, transparent 35%), var(--canvas); }
-.topbar { position: sticky; top: 0; z-index: 40; height: var(--header-h); display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); grid-template-areas: "account brand preferences"; align-items: center; padding: 6px 16px; gap: 8px; background: rgb(255 255 255 / 96%); border-bottom: 1px solid var(--border); }
-.topbar .brand { grid-area: brand; display: block; justify-self: center; width: 180px; min-width: 0; border-radius: 10px; }
-.topbar .brand img { width: 100%; height: auto; border-radius: inherit; }
-.header-tools { grid-area: account; }
-.header-tools, .topbar-actions { display: flex; gap: 4px; align-items: center; }
-.header-tools:last-child { grid-area: preferences; justify-content: flex-end; }
+/* ── Header (navigation bar) — independent component, holds no brand art ──────────────── */
+.topbar { position: sticky; top: 0; z-index: 40; min-height: var(--header-h); display: flex; align-items: center; padding: 10px 16px; background: rgb(255 255 255 / 96%); border-bottom: 1px solid var(--border); }
+.header-rail { width: 100%; max-width: var(--content-max); margin-inline: auto; min-height: 56px; display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 6px 10px; border-radius: 999px; }
+.header-tools, .topbar-actions { display: flex; gap: 8px; align-items: center; min-width: 0; }
+.header-divider { width: 1px; height: 26px; flex: none; background: rgb(255 255 255 / 55%); border-radius: 1px; }
+
+/* ── Banner (brand identity) — independent component, sits directly under the header ───── */
+.site-banner { position: relative; z-index: 1; width: 100%; padding: 14px 16px 0; }
+.site-banner .brand { display: block; width: 100%; max-width: var(--content-max); margin-inline: auto; border-radius: 22px; overflow: hidden; }
+.site-banner .brand img { width: 100%; height: auto; aspect-ratio: 3 / 1; border-radius: inherit; }
 @media (max-width: 640px) {
-  .topbar {
-    /* The banner scrolls away while the toolbar remains available. */
-    top: calc(min(100vw, 480px) / -3);
-    height: auto;
-    grid-template-columns: auto minmax(0, 1fr);
-    grid-template-areas: "brand brand" "account preferences";
-    gap: 0;
-    padding: 0;
-  }
-  .topbar .brand { width: min(100%, 480px); border-radius: 0; }
-  .topbar .brand:focus-visible { outline: 3px solid var(--white); outline-offset: -5px; }
-  .topbar .header-tools { min-height: 60px; padding-inline-start: max(12px, env(safe-area-inset-right)); }
-  .topbar .header-tools:last-child { padding-inline: 0 max(12px, env(safe-area-inset-left)); }
-  .topbar .offline-pill { min-width: 0; overflow-wrap: anywhere; line-height: 1.2; }
+  .topbar { padding: 8px 10px; }
+  .header-rail { padding: 5px 8px; gap: 8px; }
+  .header-tools { gap: 6px; }
+  .site-banner { padding: 0; }
+  .site-banner .brand { border-radius: 0; max-width: none; }
+  .site-banner .brand:focus-visible { outline: 3px solid var(--white); outline-offset: -5px; }
+  .offline-pill { min-width: 0; overflow-wrap: anywhere; line-height: 1.2; }
 }
 .icon-button { width: 44px; height: 44px; flex: none; border: 0; border-radius: 14px; background: transparent; color: var(--ink); display: inline-grid; place-items: center; text-decoration: none; }
 .icon-button:hover { background: var(--primary-soft); color: var(--primary); }
