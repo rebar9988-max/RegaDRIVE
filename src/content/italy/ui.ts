@@ -158,16 +158,8 @@ export const ITU = {
     },
   },
 
-  // ── A practice run left in the middle ─────────────────────────────────
+  // ── Finishing a practice run ──────────────────────────────────────────
   practice: {
-    resumeHeading: { it: "Hai un'esercitazione in corso", ckb: "ڕاهێنانێکت کراوەیە", kmrArab: "ڕاهێنانەک ب تە ڤەکریە" },
-    resumeNote: {
-      it: "Riprendi da dove eri, con le risposte che hai già dato.",
-      ckb: "لەوێوە بەردەوام بە کە لێی بوویت، لەگەڵ ئەو وەڵامانەی پێشتر داوتن.",
-      kmrArab: "ژ وێرێ بدۆمینە کو تو لێ بووی، دگەل وان بەرسڤێن تە بەری هندێ دای.",
-    },
-    resume: { it: "Riprendi", ckb: "بەردەوامبوون", kmrArab: "بدۆمینە" },
-    restart: { it: "Ricomincia da capo", ckb: "لە سەرەتاوە دەستپێبکەرەوە", kmrArab: "ژ نوی دەست پێ بکە" },
     stillWrong: { it: "Ancora da correggere", ckb: "هێشتا بۆ ڕاستکردنەوە", kmrArab: "هێشتا بۆ ڕاستکرنێ" },
     continueWrong: { it: "Continua con gli errori", ckb: "بەردەوام بە بە هەڵەکان", kmrArab: "ب چەوتیان بدۆمینە" },
     allFixed: { it: "Hai corretto tutti i tuoi errori.", ckb: "هەموو هەڵەکانت ڕاستکردەوە.", kmrArab: "تە هەمی چەوتیێن خۆ ڕاست کرن." },

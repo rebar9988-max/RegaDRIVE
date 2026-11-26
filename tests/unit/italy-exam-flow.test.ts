@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { itClockState, itExamCells, itExamElapsed, itExamErrorsByChapter, itExamNextOpen, itExamReview, itExamUnanswered, newItExamSession, pickItExam, restoreItExamSession } from "../../src/lib/itExam";
+import { itClockState, itExamCells, itExamErrorsByChapter, itExamNextOpen, itExamReview, itExamUnanswered, newItExamSession, pickItExam, restoreItExamSession } from "../../src/lib/itExam";
 import { PATENTE_B_RULES_IT, scoreItExam } from "../../src/lib/shared/examIt";
 import type { ItQuestion } from "../../src/content/italy/types";
 
@@ -149,12 +149,5 @@ describe("the result tells the learner where the mistakes fell", () => {
   it("counts an unanswered statement as a mistake and lists no chapter without one", () => {
     expect(itExamErrorsByChapter([q(1, true)], {})).toEqual([{ chapter: 1, errors: 1 }]);
     expect(itExamErrorsByChapter([q(1, true)], { q1: true })).toEqual([]);
-  });
-
-  it("reports the time used, capped at the 20 minutes", () => {
-    expect(itExamElapsed(1000, 1000)).toBe(0);
-    expect(itExamElapsed(0, 65_000)).toBe(65);
-    expect(itExamElapsed(0, 99 * 60_000)).toBe(PATENTE_B_RULES_IT.minutes * 60);
-    expect(itExamElapsed(5000, 0)).toBe(0);
   });
 });

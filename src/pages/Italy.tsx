@@ -13,7 +13,7 @@ import { useItApproved } from "../app/approved";
 import { IT_CHAPTERS, IT_PLANNED_TOTAL } from "../content/italy/chapters";
 import type { ItQuestion, ItText } from "../content/italy/types";
 import { PATENTE_B_RULES_IT, scoreItExam } from "../lib/shared/examIt";
-import { IT_EXAM_SESSION_KEY, formatClock, itClockState, itExamCells, itExamNextOpen, itExamReview, itExamElapsed, itExamErrorsByChapter, itExamUnanswered, itTimeLeft, pickItExam, restoreItExamSession, type ItExamSession } from "../lib/itExam";
+import { IT_EXAM_SESSION_KEY, formatClock, itClockState, itExamCells, itExamNextOpen, itExamReview, itExamErrorsByChapter, itExamUnanswered, itTimeLeft, pickItExam, restoreItExamSession, type ItExamSession } from "../lib/itExam";
 import { questionStatus, recordAnswer } from "../lib/progress";
 import { kv } from "../lib/storage";
 import { IT_PRACTICE_SESSION_KEY, itPracticeCells, itPracticeLeft, newItPracticeSession, restoreItPracticeSession } from "../lib/itPractice";
@@ -210,34 +210,42 @@ export function ItalyPractice() {
   const session = run.session;
   const [pos, setPos] = useState(0);
   const [done, setDone] = useState<Record<string, boolean>>({});
-  // undefined: the stored run has not been read yet. null: there is none for this mode and chapter.
-  const [paused, setPaused] = useState<{ list: ItQuestion[]; answers: Record<string, boolean>; pos: number } | null | undefined>(undefined);
   // A resumed run keeps the statements it was drawn with, so its numbering cannot shift under the learner.
   const [resumed, setResumed] = useState<ItQuestion[] | null>(null);
+  // True once the learner has answered or moved in this run: what makes the run worth saving, and what
+  // stops a stored run from being applied over work already in progress.
+  const touched = useRef(false);
   const sessionKey = countryKey(IT_PRACTICE_SESSION_KEY, settings.country);
-  const navigated = useRef(false);
-  const go = (i: number) => { navigated.current = true; setPos(i); };
+  // Whether the learner has moved within the run: the card that replaces this one then takes focus.
+  const [navigated, setNavigated] = useState(false);
+  const go = (i: number) => { touched.current = true; setNavigated(true); setPos(i); };
   // Keep progress fixed for the current run, including when the approved bank loads asynchronously.
   const drawn = useMemo(
     () => itPracticeSet(approved.questions, run.progress, mode, chapter, settings.masteryThreshold),
     [approved.questions, run.progress, mode, chapter, settings.masteryThreshold],
   );
   const restart = () => {
+    touched.current = false;
     kv.del(sessionKey).catch(() => undefined);
-    setRun({ session: newSession(), progress }); setPos(0); setDone({}); setResumed(null); setPaused(null);
+    setRun({ session: newSession(), progress }); setPos(0); setDone({}); setResumed(null); setNavigated(false);
   };
 
-  // An unfinished run is offered again, but only the one for this mode and chapter.
+  /**
+   * An unfinished run is picked up where it was left, without a screen in the way: the answers are
+   * already scored, so there is nothing to confirm and nothing to lose. Only the run for the mode and
+   * chapter the learner opened, and never over work already begun in this visit.
+   */
   useEffect(() => {
     if (approved.loading) return;
     let alive = true;
     kv.get<unknown>(sessionKey)
       .then((raw) => {
-        if (!alive) return;
+        if (!alive || touched.current) return;
         const back = restoreItPracticeSession(raw, { mode, chapter }, approved.questions, Date.now());
-        setPaused(back && back.session.pos > 0 ? { list: back.list, answers: back.session.answers, pos: back.session.pos } : null);
+        if (!back) return;
+        setResumed(back.list); setDone(back.session.answers); setPos(back.session.pos);
       })
-      .catch(() => { if (alive) setPaused(null); });
+      .catch(() => undefined);
     return () => { alive = false; };
   }, [sessionKey, approved.loading, approved.questions, mode, chapter]);
   const title = mode === "wrong" ? { title: T.it.reviewWrong }
@@ -248,14 +256,10 @@ export function ItalyPractice() {
 
   // Every answer and move is saved at once, so a reload continues the run instead of redrawing it.
   useEffect(() => {
-    if (list.length === 0 || pos === 0) return;
+    if (!touched.current || list.length === 0) return;
     const open = { ...newItPracticeSession(mode, chapter, list, Date.now()), answers: done, pos };
     kv.set(sessionKey, open).catch(() => undefined);
   }, [list, done, pos, mode, chapter, sessionKey]);
-
-  const resume = (p: { list: ItQuestion[]; answers: Record<string, boolean>; pos: number }) => {
-    setResumed(p.list); setDone(p.answers); setPos(p.pos); setPaused(null);
-  };
 
   if (list.length === 0) {
     return (
@@ -286,24 +290,6 @@ export function ItalyPractice() {
       </section>
     );
   }
-  if (paused) {
-    return (
-      <section className="stack" data-testid="italy-practice-resume">
-        <h1><Bi t={title?.title ?? T.it.title} /></h1>
-        <section className="card it-resume" aria-labelledby="it-practice-resume-title">
-          <strong id="it-practice-resume-title"><Bi t={ITU.practice.resumeHeading} inline /></strong>
-          <Bi t={ITU.practice.resumeNote} className="small" />
-          <p className="small muted">
-            <Bi t={T.answeredL} inline /> <bdi dir="ltr">{Object.keys(paused.answers).length} / {paused.list.length}</bdi>
-          </p>
-          <div className="q-actions">
-            <button type="button" className="btn btn-primary" onClick={() => resume(paused)} data-testid="italy-practice-resume-go"><Bi t={ITU.practice.resume} /></button>
-            <button type="button" className="btn" onClick={restart} data-testid="italy-practice-resume-restart"><Bi t={ITU.practice.restart} /></button>
-          </div>
-        </section>
-      </section>
-    );
-  }
   return (
     <section className="stack" data-testid="italy-practice" aria-label={label(T.it.title)}>
       {title && <h1><Bi t={title.title} /></h1>}
@@ -314,8 +300,8 @@ export function ItalyPractice() {
         index={pos}
         total={list.length}
         answered={done[q.id]}
-        focusOnMount={navigated.current}
-        onAnswered={(a) => setDone((d) => ({ ...d, [q.id]: a }))}
+        focusOnMount={navigated}
+        onAnswered={(a) => { touched.current = true; setDone((d) => ({ ...d, [q.id]: a })); }}
         onPrev={pos > 0 ? () => go(pos - 1) : undefined}
         onNext={() => go(pos + 1)}
       />
@@ -374,10 +360,9 @@ export function ItalyExam() {
   const [session, setSession] = useState(newSession);
   const [onlyErrors, setOnlyErrors] = useState(false);
   const recorded = useRef(0);
-  const [endedAt, setEndedAt] = useState(0);
-  // True once the learner has moved within the paper, so the card that replaces this one takes focus.
-  const navigated = useRef(false);
-  const go = (i: number) => { navigated.current = true; setPos(i); };
+  // Whether the learner has moved within the paper: the card that replaces this one then takes focus.
+  const [navigated, setNavigated] = useState(false);
+  const go = (i: number) => { setNavigated(true); setPos(i); };
   // undefined: the stored paper has not been read yet. null: there is none to offer.
   const [paused, setPaused] = useState<{ session: ItExamSession; paper: ItQuestion[] } | null | undefined>(undefined);
   const sessionKey = countryKey(IT_EXAM_SESSION_KEY, settings.country);
@@ -411,7 +396,7 @@ export function ItalyExam() {
     setFlags(Object.fromEntries((prev?.flagged ?? []).map((id) => [id, true])));
     setPos(prev?.pos ?? 0);
     setHandedIn(false); setAsking(false); setOnlyErrors(false); recorded.current = 0; setSession(newSession());
-    setEndedAt(0); setPaused(null);
+    setPaused(null);
   };
 
   const start = () => {
@@ -434,7 +419,6 @@ export function ItalyExam() {
     if (!handedIn || paper === null || result === null || recorded.current === startedAt) return;
     recorded.current = startedAt;
     const at = Date.now();
-    setEndedAt(at);
     const attempt = { at, passed: result.passed, errorPoints: result.errors, totalPoints: paper.length, rulesVersion: result.rulesVersion };
     const sat = paper;
     // The statements were really answered, so they count towards progress — which is what makes
@@ -513,7 +497,7 @@ export function ItalyExam() {
         <div className="grid grid-3 compact-stats">
           <div className="card stat"><span className="num" dir="ltr">{paper.length - result.errors} / {paper.length}</span><span className="stat-label"><Bi t={ITU.result.score} /></span></div>
           <div className="card stat"><span className="num" dir="ltr">{result.errors} / {rules.maxErrors}</span><span className="stat-label"><Bi t={ITU.result.allowed} /></span></div>
-          <div className="card stat"><span className="num" dir="ltr">{formatClock(itExamElapsed(startedAt, endedAt || Date.now(), rules))}</span><span className="stat-label"><Bi t={ITU.result.timeUsed} /></span></div>
+          <div className="card stat"><span className="num" dir="ltr">{formatClock(rules.minutes * 60 - left)}</span><span className="stat-label"><Bi t={ITU.result.timeUsed} /></span></div>
         </div>
         {byChapter.length > 0 && (
           <section className="card it-bychapter" aria-labelledby="it-bychapter-title">
@@ -612,7 +596,7 @@ export function ItalyExam() {
         flagged={flags[q.id] === true}
         onToggleFlag={() => setFlags((f) => ({ ...f, [q.id]: !f[q.id] }))}
         onAnswered={(a) => setAnswers((prev) => ({ ...prev, [q.id]: a }))}
-        focusOnMount={navigated.current}
+        focusOnMount={navigated}
         onPrev={pos > 0 ? () => go(pos - 1) : undefined}
         onNext={() => go(pos + 1 < paper.length ? pos + 1 : nextOpen ?? pos)}
       />

@@ -160,10 +160,6 @@ export function restoreItExamSession(
   };
 }
 
-/** Seconds of the 20 minutes the learner actually used, never more than the limit. */
-export const itExamElapsed = (startedAt: number, endedAt: number, rules: ItExamRules = PATENTE_B_RULES_IT): number =>
-  Math.max(0, Math.min(rules.minutes * 60, Math.floor((endedAt - startedAt) / 1000)));
-
 /** The mistakes of a handed-in paper, grouped by chapter and heaviest first: where to study next. */
 export function itExamErrorsByChapter(
   paper: readonly ItQuestion[],
