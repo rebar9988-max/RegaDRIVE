@@ -59,6 +59,9 @@ gate(!v.AI_OPENROUTER_MODEL || v.AI_OPENROUTER_MODEL.endsWith(":free"), "OpenRou
 const info = existsSync("dist/build-info.json") ? JSON.parse(readFileSync("dist/build-info.json", "utf8")) : null;
 gate(info !== null && existsSync("dist/index.html") && existsSync("dist/brand/regadrive-logo.webp"), "production build with official logo present");
 gate(existsSync("dist/brand/regadrive-banner.webp") && existsSync("dist/brand/regadrive-banner-1200.webp"), "banner artwork present in both sizes");
+// Owner rule (2026-11-26): the identity is green and white. The red-and-white logo was deleted and
+// must never be shipped again, so a build that carries one of its files does not go out.
+gate(!existsSync("dist/brand/regadrive-logo.png") && !existsSync("dist/brand/regadrive-logo.svg"), "no red-and-white logo files in the build");
 gate(info?.contentMode === "production", "build is a production content build (no unapproved preview content)");
 gate(v.CONTENT_MODE === "production", "Worker CONTENT_MODE=production");
 // Owner instruction 2026-11-12: the import / licence / media preview is part of the /dr owner workbench. It must
