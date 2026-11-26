@@ -25,14 +25,20 @@ export interface ItReviewItem {
 const ARABIC = /[؀-ۿ]/;
 const SORANI_ONLY = /[ڕڵۆێ]/;
 
+/**
+ * The three languages the Italian section serves — Sorani, Badini and Italian — are required of every
+ * text. Latin-script Kurmanji, German and Arabic are not part of the Italian interface; when an item
+ * carries them anyway they are checked for the right script, but their absence is not a defect.
+ */
 function textChecks(label: string, t: ItText): ItCheck[] {
+  const optional = (value: string | undefined, ok: (v: string) => boolean) => value === undefined || value.trim().length === 0 || ok(value);
   return [
     { ok: t.it.trim().length > 0 && !ARABIC.test(t.it), label: `${label}: Italian source text present (Latin script)` },
     { ok: t.ckb.trim().length > 0 && ARABIC.test(t.ckb), label: `${label}: Sorani text present (Arabic script)` },
     { ok: !!t.kmrArab && t.kmrArab.trim().length > 0 && ARABIC.test(t.kmrArab), label: `${label}: Badini text present (Arabic script)` },
-    { ok: !!t.kmr && t.kmr.trim().length > 0 && !ARABIC.test(t.kmr), label: `${label}: Kurmanji in Latin script` },
-    { ok: !!t.de && t.de.trim().length > 0 && !ARABIC.test(t.de), label: `${label}: German translation present` },
-    { ok: !!t.ar && t.ar.trim().length > 0 && ARABIC.test(t.ar) && !SORANI_ONLY.test(t.ar), label: `${label}: Arabic text without Sorani-only letters` },
+    { ok: optional(t.kmr, (v) => !ARABIC.test(v)), label: `${label}: Kurmanji, if present, in Latin script` },
+    { ok: optional(t.de, (v) => !ARABIC.test(v)), label: `${label}: German, if present, in Latin script` },
+    { ok: optional(t.ar, (v) => ARABIC.test(v) && !SORANI_ONLY.test(v)), label: `${label}: Arabic, if present, without Sorani-only letters` },
   ];
 }
 
