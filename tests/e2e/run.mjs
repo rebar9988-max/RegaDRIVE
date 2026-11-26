@@ -1343,6 +1343,26 @@ try {
       await axe(page, `italy incrocio ${viewport.width}`);
       await page.screenshot({ path: `${OUT}/italy-incrocio-${viewport.width}.png`, fullPage: true });
 
+      // The free account: Italy's own screen, in Italy's own languages, offering no purchase at all.
+      await page.goto(`${BASE}/account`);
+      const acct = page.locator("[data-testid=italy-account]");
+      // The screen asks the server whether accounts are open before it can offer one: wait for the answer.
+      await page.locator("[data-testid=italy-account-signin]").waitFor();
+      assert.equal(await page.locator("[data-testid=account-signed-in], .acct-section, #auth-heading").count(), 0, "Italy never shows the German account page");
+      assert.equal(await page.locator("[data-testid=italy-account-free-badge]").count(), 1, "the account is stated to be free");
+      assert.equal(await acct.locator(".de[lang=de]").count(), 0, "no German leftovers on the Italian account screen");
+      await page.locator("[data-testid=italy-account-tab-register]").click();
+      await page.locator("[data-testid=italy-account-register]").waitFor();
+      assert.equal(await page.locator("#ita-name").count(), 1, "creating an account asks for a name");
+      assert.equal(await page.locator("[data-testid=italy-account-submit]").count(), 1);
+      // Nothing on this screen may ask for money.
+      const money = await acct.evaluate((el) => /prezzo|pagament|abbonament|acquist|€/i.test(el.textContent.replace(/nessun pagamento|nessuna carta|nessun abbonamento/gi, "")));
+      assert.equal(money, false, "the Italian account screen never asks for payment");
+      const tiny = await page.$$eval("[data-testid=italy-account] button, [data-testid=italy-account] a", (els) => els.filter((e) => e.offsetParent && (e.getBoundingClientRect().height < 44 || e.getBoundingClientRect().width < 44)).length);
+      assert.equal(tiny, 0, "every control on the account screen is at least 44px");
+      await axe(page, `italy account ${viewport.width}`);
+      await page.screenshot({ path: `${OUT}/italy-account-${viewport.width}.png`, fullPage: true });
+
       // Progress and the two review runs.
       await page.goto(`${BASE}/progress`);
       await page.locator("[data-testid=italy-progress]").waitFor();
@@ -1436,22 +1456,25 @@ try {
     await page.locator(".country-card:has([lang=it])").click();
     await page.locator("[data-testid=italy-home]").waitFor();
     const email = `e2e-it-${Date.now()}@example.de`;
+    // Italy's own account screen carries the whole journey, in Italy's own languages.
     await page.goto(`${BASE}/account`);
-    await page.locator("[data-testid=signin-form]").waitFor();
-    await page.click("[data-testid=to-register]");
-    await page.locator("[data-testid=register-form]").waitFor();
-    await page.fill("[data-testid=auth-name]", "E2E Italia");
-    await page.fill("[data-testid=auth-email]", email);
-    await page.fill("[data-testid=auth-password]", "E2E-sicheres-Passwort");
-    await page.click("[data-testid=register-submit]");
-    await page.locator("[data-testid=verify-form]").waitFor();
+    await page.locator("[data-testid=italy-account-signin]").waitFor();
+    await page.click("[data-testid=italy-account-tab-register]");
+    await page.locator("[data-testid=italy-account-register]").waitFor();
+    await page.fill("#ita-name", "E2E Italia");
+    await page.fill("#ita-email", email);
+    await page.fill("#ita-pass", "E2E-password-sicura");
+    await page.click("[data-testid=italy-account-submit]");
+    await page.locator("[data-testid=italy-account-verify]").waitFor();
     const code = codeFor(email);
     assert.match(code, /^\d{6}$/, "verification e-mail delivered to the sink");
-    await page.fill("[data-testid=auth-code]", code);
-    await page.click("[data-testid=verify-submit]");
-    await page.locator("[data-testid=account-signed-in]").waitFor();
+    await page.fill("#ita-code", code);
+    await page.click("[data-testid=italy-account-verify-submit]");
+    await page.locator("[data-testid=italy-account-profile]").waitFor();
+    assert.equal(await page.locator("[data-testid=italy-account-free]").count(), 1, "a signed-in learner is told the whole course is free");
+    await axe(page, "italy account signed in");
     // No payment wall anywhere on the way in or back.
-    const text = (await page.textContent("[data-testid=account-signed-in]")) ?? "";
+    const text = (await page.textContent("[data-testid=italy-account]")) ?? "";
     assert.equal(/€|EUR|Kauf|checkout/i.test(text), false, `no price or purchase on the account page: ${text.slice(0, 200)}`);
     assert.equal((await fetch(`${BASE}/api/checkout`, { method: "POST" })).status >= 400, true, "checkout refuses");
     await page.goto(BASE);

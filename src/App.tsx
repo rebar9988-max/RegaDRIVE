@@ -17,6 +17,8 @@ const pages = {
   exam: () => import("./pages/Exam"),
   misc: () => import("./pages/Misc"),
   italy: () => import("./pages/Italy"),
+  // Its own chunk: the account screen is not needed to study, so studying never downloads it.
+  italyAccount: () => import("./pages/ItalyAccount"),
 };
 const page = <M, K extends keyof M>(load: () => Promise<M>, name: K) => lazy(() => load().then((m) => ({ default: m[name] as ComponentType })));
 const Shell = lazy(() => pages.shell().then((m) => ({ default: m.Shell })));
@@ -37,6 +39,7 @@ const ItalyExam = page(pages.italy, "ItalyExam");
 const ItalyLessons = page(pages.italy, "ItalyLessons");
 const ItalyProgress = page(pages.italy, "ItalyProgress");
 const ItalyIncroci = page(pages.italy, "ItalyIncroci");
+const ItalyAccount = page(pages.italyAccount, "ItalyAccount");
 const warmUp = () => { for (const load of Object.values(pages)) void load().catch(() => undefined); };
 
 // Owner import workbench: compiled in only when VITE_ADMIN_UI=true (production builds drop it entirely).
@@ -64,7 +67,7 @@ function route(path: string) {
 }
 
 /** Pages that hold no country content at all, so both countries use the same ones. */
-const ITALY_SHARED_PATHS = new Set(["/account", "/settings", "/more", "/about", "/access", "/services"]);
+const ITALY_SHARED_PATHS = new Set(["/settings", "/more", "/about", "/access", "/services"]);
 
 /**
  * Italy's own routes. The Italian content has its own model (true/false questions, Italian source
@@ -80,6 +83,8 @@ function italyRoute(path: string) {
   if (p === "/learn") return <ItalyLessons />;
   if (p === "/progress") return <ItalyProgress />;
   if (p === "/incroci") return <ItalyIncroci />;
+  // Italy has its own account screen: free sign-up in Italian, Sorani and Badini, never the German one.
+  if (p === "/account") return <ItalyAccount />;
   if (ITALY_SHARED_PATHS.has(p)) return route(p);
   return <ItalyPending />;
 }
