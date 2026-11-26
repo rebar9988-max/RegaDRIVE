@@ -105,6 +105,60 @@ Questions (12):
 | `it-b-011` | 15 | VERO |
 | `it-b-012` | 16 | VERO |
 
+## Importing a catalogue (owner)
+
+The Italian section serves whatever the owner imports, without a new build. The order is always the
+same: **set up → import → review → published automatically.**
+
+1. **Once:** `/dr` → Content → *Italy · setup and import* → **Create the Italian review table**. This is
+   migration `0007` applied through the panel (additive DDL: it creates, never drops) and needs a fresh
+   sign-in code. Until it exists, `/api/content/approved` reports `ready.it: false` and nothing Italian
+   can be published — the German bank is unaffected.
+2. **Import:** paste an array of questions and signs into the same panel. *Check only* validates and
+   stores nothing; *Store* writes to `italy_content` in the content database. Both need
+   `CONTENT_ADMIN_ENABLED` and `CONTENT_IMPORT_EXECUTION_ENABLED`; a real write also needs a fresh code.
+   Up to 500 items per request.
+3. **Review:** imported items appear in `/dr` → Content Review beside the bundled ones, and go through
+   the same three stages (translation → educational → owner).
+4. **Published:** `/api/content/italy` serves exactly the items whose own fingerprint passed all three
+   stages, and the app reads that endpoint. Nothing else has to happen.
+
+### What an item must contain
+
+```json
+{
+  "id": "it-b-013",
+  "chapter": 1,
+  "answer": true,
+  "sourceRefs": ["CdS art. 3"],
+  "prompt":      { "it": "…", "ckb": "…", "kmrArab": "…" },
+  "explanation": { "it": "VERO: …", "ckb": "…", "kmrArab": "…" },
+  "signId": "it-autostrada"
+}
+```
+
+A sign is `{ "id", "file": "<name>.svg", "group", "name": {…}, "sourceRefs": […] }`.
+
+Rules the import enforces, item by item, rejecting what fails and storing the rest:
+
+- `id` 3–64 characters of `a-z`, `0-9`, `-`, and never twice in one batch.
+- `chapter` an integer 1–16; `answer` a boolean (VERO / FALSO).
+- `prompt` and `explanation` in all three languages, **Italian in Latin script, Sorani and Badini in
+  Arabic script**; optional `kmr`, `de`, `ar` are script-checked too, and Arabic may not contain
+  Sorani-only letters.
+- The Italian explanation must **begin with VERO or FALSO, matching the answer key**.
+- At least one legal reference in `sourceRefs`; review cannot pass an item without one.
+- `questionCode` absent or null, `sourceType` original, `reviewStatus` never `approved`: an import can
+  never arrive pre-approved.
+- `signId` must resolve, to a stored sign or one imported in the same batch.
+- A sign's `file` must be a plain `<name>.svg` — no path and no URL.
+
+### Changing an item later
+
+Re-importing the same id with the same wording changes nothing, so its review survives. Re-importing
+it with different wording stores the new version and **withdraws it from learners**, because the
+approval was bound to the fingerprint of the wording that was reviewed. The panel lists those ids.
+
 ## State of the section
 
 | Part | State |

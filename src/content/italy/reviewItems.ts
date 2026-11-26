@@ -59,13 +59,17 @@ function signChecks(s: ItSign): ItCheck[] {
   ];
 }
 
-const src = (id: string) => IT_CONTENT_REGISTRY.get(id)?.provenance.sourceRefs ?? [];
+/** Where an item's legal references come from: the content registry for bundled items, the item itself for imported ones. */
+const src = (id: string, own?: readonly string[]) => {
+  const registered = IT_CONTENT_REGISTRY.get(id)?.provenance.sourceRefs ?? [];
+  return registered.length > 0 ? registered : [...(own ?? [])];
+};
 const ver = (id: string) => IT_CONTENT_REGISTRY.get(id)?.contentVersion ?? "";
 
 export function itQuestionReviewItem(q: ItQuestion): ItReviewItem {
-  const sourceRefs = src(q.id);
+  const sourceRefs = src(q.id, q.sourceRefs);
   const checks = [...questionChecks(q), { ok: sourceRefs.length > 0, label: "legal source reference recorded (Codice della Strada)" }];
-  return { id: q.id, kind: "itQuestion", hash: itQuestionHash(q), contentVersion: ver(q.id), sourceRefs, checks, valid: checks.every((c) => c.ok) };
+  return { id: q.id, kind: "itQuestion", hash: itQuestionHash(q), contentVersion: ver(q.id) || q.contentVersion, sourceRefs, checks, valid: checks.every((c) => c.ok) };
 }
 
 export const IT_REVIEW_ITEMS: ItReviewItem[] = [
@@ -77,3 +81,19 @@ export const IT_REVIEW_ITEMS: ItReviewItem[] = [
 ];
 
 export const IT_REVIEW_ITEM_BY_ID: ReadonlyMap<string, ItReviewItem> = new Map(IT_REVIEW_ITEMS.map((i) => [i.id, i]));
+
+/**
+ * Review items for a catalogue that did not come from this build — an owner import stored in the
+ * content database. The same checks and the same fingerprinting are applied, so imported content is
+ * held to the standard the bundled content is held to, and nothing can be published without review.
+ */
+export function itReviewItemsFor(questions: readonly ItQuestion[], signs: readonly ItSign[]): ItReviewItem[] {
+  return [
+    ...signs.map((s): ItReviewItem => {
+      const refs = src(s.id, s.sourceRefs);
+      const checks = [...signChecks(s), { ok: refs.length > 0, label: "source reference recorded" }];
+      return { id: s.id, kind: "itSign", hash: itSignHash(s), contentVersion: ver(s.id) || "imported", sourceRefs: refs, checks, valid: checks.every((c) => c.ok) };
+    }),
+    ...questions.map((q) => itQuestionReviewItem(q)),
+  ];
+}

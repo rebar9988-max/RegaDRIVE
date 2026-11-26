@@ -58,6 +58,32 @@ await check("checkout refuses for Italy", async () => {
   assert.equal(body.error, "FREE_FOREVER_COUNTRY", `unexpected refusal: ${JSON.stringify(body)}`);
   return `POST /api/purchase/checkout (IT) → 403 ${body.error}`;
 });
+// The Italian catalogue a learner is served: public, account-free, and gated by human review.
+await check("Italian published catalogue", async () => {
+  const r = await get("/api/content/italy");
+  assert.equal(r.status, 200, `HTTP ${r.status}`);
+  const body = await r.json();
+  assert.ok(Array.isArray(body.questions) && Array.isArray(body.signs), "questions and signs must be arrays");
+  assert.equal(typeof body.inventory?.questions, "number", "inventory reported");
+  if (body.ok !== true) {
+    assert.equal(body.questions.length + body.signs.length, 0, "fail closed: nothing published when the gate cannot be read");
+  }
+  for (const q of body.questions) {
+    assert.equal(q.questionCode, null, `${q.id} must carry no official question code`);
+    assert.equal(q.sourceType, "original", `${q.id} must be original content`);
+  }
+  return `ok=${body.ok} · source ${body.source} · published ${body.questions.length} questions, ${body.signs.length} signs · stored inventory ${body.inventory?.questions}/${body.inventory?.signs} · rules ${body.rulesVersion}`;
+});
+// No account is needed anywhere in the Italian section.
+await check("Italian content needs no sign-in", async () => {
+  const noCookies = { headers: { accept: "application/json" } };
+  for (const path of ["/api/content/italy", "/api/content/approved", "/api/flags"]) {
+    const r = await fetch(`${base}${path}`, noCookies);
+    assert.equal(r.status, 200, `${path} answered ${r.status} without a session`);
+    assert.equal(r.headers.get("www-authenticate"), null, `${path} must not ask for credentials`);
+  }
+  return "3 public endpoints served without a session";
+});
 let approved;
 await check("/api/content/approved", async () => {
   const r = await get("/api/content/approved"); assert.equal(r.status, 200);

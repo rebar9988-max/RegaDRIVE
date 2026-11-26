@@ -34,6 +34,11 @@ export interface ItChapter {
 /** A sign illustration served from /signs/it/<file>. Original RegaDRIVE artwork, not an official reproduction. */
 export interface ItSign {
   id: string;
+  /**
+   * Legal or provenance references for this item. The bundled catalogue records them in the content
+   * registry; an imported item carries them here, because review needs them either way.
+   */
+  sourceRefs?: readonly string[];
   /** File name under public/signs/it, without the folder. */
   file: string;
   group: "danger" | "priority" | "prohibition" | "mandatory" | "information";
@@ -58,6 +63,8 @@ export interface ItQuestion {
   licenseClasses: readonly string[];
   sourceType: "original";
   contentVersion: string;
+  /** Legal references (Codice della Strada articles) when the item was imported rather than bundled. */
+  sourceRefs?: readonly string[];
   /** Never "approved" before a qualified human review (docs/CONTENT_REVIEW.md). */
   reviewStatus: ItReviewStatus;
   publicationStatus: "published" | "hidden";

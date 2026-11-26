@@ -6,6 +6,8 @@
  * cookie; only their hash is stored. Sessions end after 30 min idle or 8 h. Critical changes need a fresh code
  * (step-up, valid 10 min). Every decision is written to dr_audit_log.
  */
+import { loadItalyCatalogue } from "../italy/catalogue";
+import { IT_IMPORT_MAX_ITEMS, parseItalyImport, runItalyImport } from "../italy/import";
 import { evaluateAll, loadRowsWithState, parseSubmission, checkSubmission, checkReviewMetadata, recordReview, ALL_REVIEW_ITEMS, REVIEW_ITEM_BY_ID, REVIEW_TABLE, ROLE_FOR_STAGE, rulesVersionFor, sourceFor } from "./reviews";
 import { IT_QUESTION_BY_ID, italyQuestionRows, italyQuestionsForReview, italyTranslationHistory, loadItalyQuestionDraft, parseTranslations, recordItalyQuestionReview, saveItalyQuestionEdit } from "./italyQuestionReview";
 import { KLASSE_B_RULES_2026 } from "../../src/lib/shared/exam";
@@ -367,6 +369,85 @@ export async function handleDr(req: Request, env: DrEnv, deps: DrDeps = {}): Pro
     invalidateOverrides();
     await audit(actor, action, "allowed", { from: current ?? "default", backupId });
     return reply({ ok: true, key: def.key, state, backupId });
+  }
+
+  if (path === "/api/dr/italy/setup" && req.method === "POST") {
+    // Creates the Italian review table (migration 0007) if it is not there yet. Additive DDL on the
+    // admin tables only: it creates, never drops, and never touches student data or German tables.
+    const action = "italy.setup";
+    if (!steppedUp) return needStepUp(action);
+    try {
+      await db.prepare(`CREATE TABLE IF NOT EXISTS dr_it_content_reviews (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        content_id TEXT NOT NULL,
+        content_kind TEXT NOT NULL CHECK (content_kind IN ('itSign','itQuestion')),
+        content_hash TEXT NOT NULL,
+        content_version TEXT NOT NULL,
+        stage TEXT NOT NULL CHECK (stage IN ('TRANSLATION_REVIEW','EDUCATIONAL_REVIEW','APPROVED')),
+        outcome TEXT NOT NULL CHECK (outcome IN ('pass','fail')),
+        reviewer_name TEXT NOT NULL,
+        reviewer_role TEXT NOT NULL CHECK (reviewer_role IN ('sorani_translator','driving_instructor','content_owner')),
+        reviewed_on TEXT NOT NULL,
+        evidence_ref TEXT NOT NULL,
+        note TEXT NOT NULL DEFAULT '',
+        rules_version TEXT,
+        recorded_by TEXT NOT NULL,
+        recorded_at INTEGER NOT NULL,
+        revoked_at INTEGER,
+        revoked_by TEXT,
+        revoke_reason TEXT
+      )`).run();
+      await db.prepare("CREATE INDEX IF NOT EXISTS idx_dr_it_content_reviews_item ON dr_it_content_reviews (content_id, stage, recorded_at)").run();
+    } catch (err) {
+      await audit(actor, action, "denied", { reason: String(err).slice(0, 200) });
+      return reply({ error: "SETUP_FAILED" }, 500);
+    }
+    const { ready } = await loadRowsWithState(db);
+    await audit(actor, action, "allowed", { ready });
+    return reply({ ok: true, tablesReady: ready });
+  }
+
+  if (path === "/api/dr/italy/import" && (req.method === "POST" || req.method === "GET")) {
+    // Owner import of the Italian catalogue into the content database. Storing is not publishing: every
+    // item still has to pass the three human review stages before a learner sees it.
+    const flags = deps.context?.().flags;
+    if (req.method === "GET") {
+      const catalogue = env.CONTENT_DB ? await loadItalyCatalogue(env.CONTENT_DB) : null;
+      return reply({
+        ready: !!env.CONTENT_DB && !!flags?.contentAdminEnabled && !!flags?.contentImportExecutionEnabled,
+        missing: [
+          ...(env.CONTENT_DB ? [] : ["no content database is bound (CONTENT_DB)"]),
+          ...(flags?.contentAdminEnabled ? [] : ["content administration is off (CONTENT_ADMIN_ENABLED)"]),
+          ...(flags?.contentImportExecutionEnabled ? [] : ["stored imports are off (CONTENT_IMPORT_EXECUTION_ENABLED)"]),
+        ],
+        maxItemsPerRequest: IT_IMPORT_MAX_ITEMS,
+        catalogue: catalogue ? { source: catalogue.source, questions: catalogue.questions.length, signs: catalogue.signs.length, skipped: catalogue.skipped } : null,
+      });
+    }
+    const action = "italy.import";
+    if (!env.CONTENT_DB) { await audit(actor, action, "denied", { reason: "no content database" }); return reply({ error: "NO_CONTENT_DB" }, 503); }
+    if (!flags?.contentAdminEnabled || !flags?.contentImportExecutionEnabled) {
+      await audit(actor, action, "denied", { reason: "imports are off" });
+      return reply({ error: "IMPORTS_DISABLED", reason: "CONTENT_ADMIN_ENABLED and CONTENT_IMPORT_EXECUTION_ENABLED are required" }, 403);
+    }
+    let body: unknown;
+    try { body = await req.json(); } catch { return reply({ error: "BAD_REQUEST" }, 400); }
+    const parsed = parseItalyImport(body);
+    if (typeof parsed === "string") return reply({ error: parsed, maxItemsPerRequest: IT_IMPORT_MAX_ITEMS }, 400);
+    // A real write needs a fresh code; a dry run is read-only and does not.
+    if (!parsed.dryRun && !steppedUp) return needStepUp(action);
+    let result;
+    try {
+      result = await runItalyImport(env.CONTENT_DB, parsed.items, parsed.dryRun, `dr-import:${actor}`);
+    } catch (err) {
+      await audit(actor, action, "denied", { reason: String(err).slice(0, 200) });
+      return reply({ error: "IMPORT_FAILED" }, 500);
+    }
+    await audit(actor, action, parsed.dryRun ? "allowed" : "allowed", {
+      dryRun: parsed.dryRun, received: result.received, stored: result.stored, unchanged: result.unchanged,
+      rejected: result.rejected.length, changed: result.changed.length,
+    });
+    return reply({ ok: true, ...result });
   }
 
   if (path === "/api/dr/sessions/revoke-others" && req.method === "POST") {

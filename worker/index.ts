@@ -20,6 +20,7 @@ import { handlePage } from "./pages";
 import { contentFor } from "../src/content/access";
 import { serveMedia } from "./content/media";
 import { approvedContent } from "./dr/reviews";
+import { approvedItalyContent } from "./italy/published";
 
 export interface Env extends FlagEnv, AiEnv, AdminEnv, DrEnv, StudentEnv {
   /** "preview" only for local/CI; production shows and explains approved content only. */
@@ -78,7 +79,13 @@ export async function handleApi(req: Request, env: Env, now = Date.now()): Promi
 
   if (p === "/api/content/approved" && req.method === "GET") {
     // Public, read-only: which signs / sign-quiz questions the publication gate lets through right now (ids + fingerprints only).
-    return json(await approvedContent(env.DB));
+    return json(await approvedContent(env.DB, env.CONTENT_DB));
+  }
+
+  if (p === "/api/content/italy" && req.method === "GET") {
+    // Public, read-only, no account needed: the Italian items the publication gate lets through, with
+    // their content, so an imported and reviewed catalogue reaches learners without a code change.
+    return json(await approvedItalyContent(env.DB, env.CONTENT_DB));
   }
 
   if (p.startsWith("/api/dr/")) {
