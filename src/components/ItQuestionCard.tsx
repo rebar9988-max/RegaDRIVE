@@ -1,4 +1,4 @@
-import { useEffect, useId } from "react";
+import { useEffect, useId, useRef } from "react";
 import { Link } from "../app/router";
 import { useApp } from "../app/state";
 import { T } from "../app/strings";
@@ -27,6 +27,12 @@ interface Props {
   /** Exam only: marked for a second look before handing in. Separate from the bookmark, which is kept for good. */
   flagged?: boolean;
   onToggleFlag?: () => void;
+  /**
+   * Take the keyboard on mount. The run replaces the whole card when the learner moves, so the parent
+   * says whether this card is the result of a move (focus it) or the first arrival on the page (do
+   * not, or focus would jump past the skip link).
+   */
+  focusOnMount?: boolean;
 }
 
 /**
@@ -39,10 +45,11 @@ interface Props {
  * In an exam the answer can be changed and the statement revisited until the paper is handed in, as in
  * the real test; in practice the answer stands once it is given, because it has already been scored.
  */
-export function ItQuestionCard({ question: q, mode = "practice", sessionId, index, total, onNext, onPrev, answered, onAnswered, flagged = false, onToggleFlag }: Props) {
+export function ItQuestionCard({ question: q, mode = "practice", sessionId, index, total, onNext, onPrev, answered, onAnswered, flagged = false, onToggleFlag, focusOnMount = false }: Props) {
   const { progress, update } = useApp();
   const label = useBiText();
   const legendId = useId();
+  const card = useRef<HTMLElement | null>(null);
   const sign = q.signId ? itSignById(q.signId) : undefined;
   const exam = mode === "exam";
   // The answer lives with the run, not in the card: both parents keep it, so a statement the learner
@@ -59,6 +66,15 @@ export function ItQuestionCard({ question: q, mode = "practice", sessionId, inde
     if (!exam) update((p) => recordAnswer(p, sessionId, q.id, value === q.answer, Date.now()));
     onAnswered?.(value);
   };
+
+  /**
+   * Where the keyboard lands after a move. Jumping through the overview, or going on to the next
+   * statement, replaces the whole card, so focus would otherwise fall back to the document and a
+   * screen-reader user would be told nothing. The card takes focus instead and reads its own heading.
+   */
+  useEffect(() => {
+    if (focusOnMount) card.current?.focus();
+  }, [focusOnMount]);
 
   /**
    * Keyboard: 1 / V answers VERO, 2 / F answers FALSO, Enter moves on. Letters and digits only, so the
@@ -99,7 +115,7 @@ export function ItQuestionCard({ question: q, mode = "practice", sessionId, inde
   };
 
   return (
-    <article className="card question-card" aria-labelledby={legendId} data-testid="it-question-card" data-qid={q.id}>
+    <article ref={card} tabIndex={-1} className="card question-card" aria-labelledby={legendId} data-testid="it-question-card" data-qid={q.id}>
       <div className="question-heading">
         <strong><Bi t={exam ? T.it.exam : T.it.title} /></strong>
         <span className="question-counter" dir="ltr">{index + 1} / {total}</span>

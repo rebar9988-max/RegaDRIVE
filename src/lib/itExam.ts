@@ -159,3 +159,22 @@ export function restoreItExamSession(
     paper,
   };
 }
+
+/** Seconds of the 20 minutes the learner actually used, never more than the limit. */
+export const itExamElapsed = (startedAt: number, endedAt: number, rules: ItExamRules = PATENTE_B_RULES_IT): number =>
+  Math.max(0, Math.min(rules.minutes * 60, Math.floor((endedAt - startedAt) / 1000)));
+
+/** The mistakes of a handed-in paper, grouped by chapter and heaviest first: where to study next. */
+export function itExamErrorsByChapter(
+  paper: readonly ItQuestion[],
+  answers: Readonly<Record<string, boolean>>,
+): { chapter: number; errors: number }[] {
+  const per = new Map<number, number>();
+  for (const q of paper) {
+    if (answers[q.id] === q.answer) continue;
+    per.set(q.chapter, (per.get(q.chapter) ?? 0) + 1);
+  }
+  return [...per.entries()]
+    .map(([chapter, errors]) => ({ chapter, errors }))
+    .sort((a, b) => b.errors - a.errors || a.chapter - b.chapter);
+}

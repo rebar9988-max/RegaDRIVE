@@ -241,3 +241,39 @@
 /* A paper the learner left in the middle, offered again on the exam screen. */
 .it-resume { display: grid; gap: 8px; border-color: var(--primary); }
 .it-resume p { margin: 0; }
+
+/* The card takes focus after a jump or a move; the ring is the app's own focus ring, not a border. */
+.question-card:focus { outline: none; }
+.question-card:focus-visible { outline: 3px solid var(--focus); outline-offset: 3px; }
+
+/* The overview, by state. Never colour alone: each cell's accessible name carries its state in words. */
+.it-nav-cell.is-correct { background: var(--success-bg); border-color: var(--success); color: var(--success-ink); }
+.it-nav-cell.is-wrong { background: var(--danger-bg); border-color: var(--danger); color: var(--danger-ink); }
+
+/* The exam verdict: the one card the learner looks at first. */
+.it-verdict { display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 16px; padding: 18px 20px; border-inline-start: 5px solid var(--border); }
+.it-verdict.is-pass { border-inline-start-color: var(--success); }
+.it-verdict.is-fail { border-inline-start-color: var(--danger); }
+.it-verdict-mark { display: grid; place-items: center; width: 48px; height: 48px; border-radius: 50%; background: var(--success-bg); color: var(--success-ink); }
+.it-verdict.is-fail .it-verdict-mark { background: var(--danger-bg); color: var(--danger-ink); }
+.it-verdict-mark svg { width: 26px; height: 26px; }
+.it-verdict-text { display: grid; gap: 4px; min-width: 0; }
+.it-verdict-text h1 { margin: 0; }
+.it-verdict .progress-ring { width: 84px; }
+
+/* Where the mistakes fell: straight into that chapter's practice. */
+.it-bychapter { display: grid; gap: 8px; }
+.it-bychapter h2 { margin: 0; color: var(--muted); font-weight: 700; }
+.it-bychapter-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; }
+.it-bychapter-row { display: flex; align-items: center; gap: 10px; padding: 8px 10px; border-radius: var(--radius-sm); color: inherit; text-decoration: none; }
+.it-bychapter-row:hover { background: var(--pearl); }
+.it-bychapter-row:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+.it-bychapter-name { flex: 1; min-width: 0; }
+.it-bychapter-row .badge { background: var(--danger-bg); color: var(--danger-ink); }
+
+@media (max-width: 480px) {
+  .it-verdict { grid-template-columns: auto 1fr; }
+  .it-verdict .progress-ring { grid-column: 1 / -1; justify-self: center; }
+}
+.it-handin-ask:focus { outline: none; }
+.it-handin-ask:focus-visible { outline: 3px solid var(--focus); outline-offset: 3px; }
