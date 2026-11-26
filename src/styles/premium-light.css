@@ -459,6 +459,12 @@ a { color: var(--primary); }
 /* Sign-in, registration and code forms. */
 .acct-logo { justify-self: center; width: min(216px, 100%); height: auto; margin: 0; }
 .acct-form-title { margin: 0; font-size: 1.2rem; text-align: center; }
+
+/* Italy's account tab replaces its "More" tab, so the same page also lists those pages underneath. */
+.acct-hub { margin-top: 22px; }
+/* The free promise sits with the sign-in and registration forms: no payment, no subscription, ever. */
+.acct-free { display: flex; align-items: center; justify-content: center; gap: 8px; margin: 0; padding: 10px 12px; border-radius: 14px; background: var(--rd-mint); color: var(--primary); font-size: .9rem; font-weight: 800; text-align: center; }
+.acct-free svg { flex: none; width: 18px; height: 18px; }
 .acct-intro { text-align: center; }
 .acct-switch { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 8px 12px; padding-top: 12px; border-top: 1px solid var(--border); }
 .acct-switch .btn { flex: 1 1 160px; }
