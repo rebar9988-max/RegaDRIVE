@@ -42,8 +42,12 @@ function textChecks(label: string, t: ItText): ItCheck[] {
   ];
 }
 
-function questionChecks(q: ItQuestion): ItCheck[] {
-  const sign = q.signId ? itSignById(q.signId) : undefined;
+/** Whether a sign id exists. Bundled items resolve against the bundled signs, imported ones against their own catalogue. */
+type SignLookup = (id: string) => boolean;
+const bundledSign: SignLookup = (id) => !!itSignById(id);
+
+function questionChecks(q: ItQuestion, hasSign: SignLookup = bundledSign): ItCheck[] {
+  const signResolves = !q.signId || hasSign(q.signId);
   return [
     ...textChecks("question", q.prompt),
     ...textChecks("explanation", q.explanation),
@@ -53,7 +57,7 @@ function questionChecks(q: ItQuestion): ItCheck[] {
     { ok: Number.isInteger(q.chapter) && q.chapter >= 1 && q.chapter <= 16, label: "belongs to one of the 16 syllabus chapters" },
     { ok: q.sourceType === "original" && q.questionCode === null, label: "original question without an official code" },
     { ok: q.reviewStatus !== "approved", label: "not pre-approved in the code" },
-    { ok: !q.signId || !!sign, label: "sign illustration resolves" },
+    { ok: signResolves, label: "sign illustration resolves" },
   ];
 }
 
@@ -72,9 +76,9 @@ const src = (id: string, own?: readonly string[]) => {
 };
 const ver = (id: string) => IT_CONTENT_REGISTRY.get(id)?.contentVersion ?? "";
 
-export function itQuestionReviewItem(q: ItQuestion): ItReviewItem {
+export function itQuestionReviewItem(q: ItQuestion, hasSign: SignLookup = bundledSign): ItReviewItem {
   const sourceRefs = src(q.id, q.sourceRefs);
-  const checks = [...questionChecks(q), { ok: sourceRefs.length > 0, label: "legal source reference recorded (Codice della Strada)" }];
+  const checks = [...questionChecks(q, hasSign), { ok: sourceRefs.length > 0, label: "legal source reference recorded (Codice della Strada)" }];
   return { id: q.id, kind: "itQuestion", hash: itQuestionHash(q), contentVersion: ver(q.id) || q.contentVersion, sourceRefs, checks, valid: checks.every((c) => c.ok) };
 }
 
@@ -83,7 +87,7 @@ export const IT_REVIEW_ITEMS: ItReviewItem[] = [
     const checks = [...signChecks(s), { ok: src(s.id).length > 0, label: "source reference recorded" }];
     return { id: s.id, kind: "itSign", hash: itSignHash(s), contentVersion: ver(s.id), sourceRefs: src(s.id), checks, valid: checks.every((c) => c.ok) };
   }),
-  ...IT_QUESTIONS.map(itQuestionReviewItem),
+  ...IT_QUESTIONS.map((q) => itQuestionReviewItem(q)),
 ];
 
 export const IT_REVIEW_ITEM_BY_ID: ReadonlyMap<string, ItReviewItem> = new Map(IT_REVIEW_ITEMS.map((i) => [i.id, i]));
@@ -94,12 +98,14 @@ export const IT_REVIEW_ITEM_BY_ID: ReadonlyMap<string, ItReviewItem> = new Map(I
  * held to the standard the bundled content is held to, and nothing can be published without review.
  */
 export function itReviewItemsFor(questions: readonly ItQuestion[], signs: readonly ItSign[]): ItReviewItem[] {
+  const ids = new Set(signs.map((s) => s.id));
+  const hasSign: SignLookup = (id) => ids.has(id) || bundledSign(id);
   return [
     ...signs.map((s): ItReviewItem => {
       const refs = src(s.id, s.sourceRefs);
       const checks = [...signChecks(s), { ok: refs.length > 0, label: "source reference recorded" }];
       return { id: s.id, kind: "itSign", hash: itSignHash(s), contentVersion: ver(s.id) || "imported", sourceRefs: refs, checks, valid: checks.every((c) => c.ok) };
     }),
-    ...questions.map((q) => itQuestionReviewItem(q)),
+    ...questions.map((q) => itQuestionReviewItem(q, hasSign)),
   ];
 }
