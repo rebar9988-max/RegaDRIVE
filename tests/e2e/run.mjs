@@ -1327,6 +1327,29 @@ try {
       await ctx.close();
     }
 
+    // Italy needs no account at all: the whole section works in a fresh context with no session.
+    {
+      const ctx = await newContext({ ...devices["iPhone 13"] });
+      const page = await ctx.newPage();
+      const cookies = await ctx.cookies();
+      assert.equal(cookies.filter((c) => /session|sid|auth/i.test(c.name)).length, 0, "no session cookie before signing in");
+      await page.goto(BASE);
+      await page.locator(".country-card:has([lang=it])").click();
+      await page.locator("[data-testid=italy-home]").waitFor();
+      for (const path of ["/learn", "/learn?chapter=1", "/practice", "/exam", "/signs", "/progress"]) {
+        await page.goto(`${BASE}${path}`);
+        await page.locator("[data-testid^=italy-]").first().waitFor();
+        const text = (await page.textContent("main")) ?? "";
+        assert.equal(/Anmelden|Konto erstellen|Accedi|Crea account/.test(text), false, `${path} must not ask a learner to sign in: ${text.slice(0, 120)}`);
+      }
+      // The published catalogue is public and says what it serves.
+      const published = await (await fetch(`${BASE}/api/content/italy`)).json();
+      assert.ok(Array.isArray(published.questions) && Array.isArray(published.signs), "/api/content/italy serves arrays");
+      assert.equal(typeof published.inventory.questions, "number", "the inventory is reported");
+      for (const q of published.questions) assert.equal(q.questionCode, null, `${q.id} carries no official code`);
+      await ctx.close();
+    }
+
     // Registration costs nothing and leads back into the Italian section.
     const ctx = await newContext({ ...devices["iPhone 13"], bypassCSP: true });
     const page = await ctx.newPage();

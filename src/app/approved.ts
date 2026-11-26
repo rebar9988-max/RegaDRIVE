@@ -6,6 +6,7 @@ import { questionHash, signHash } from "../content/hash";
 import { IT_QUESTIONS } from "../content/italy/questions";
 import { IT_SIGNS } from "../content/italy/signs";
 import { itQuestionHash, itSignHash } from "../content/italy/hash";
+import { parseItQuestion, parseItSign } from "../content/italy/schema";
 import type { ItQuestion, ItSign } from "../content/italy/types";
 import type { Question, TrafficSign } from "../content/types";
 
@@ -52,13 +53,39 @@ function load(): Promise<Api | null> {
  * production shows only what the server's publication gate lets through, so nothing reaches a learner
  * before the human reviews are recorded in /dr.
  */
+/**
+ * The published Italian catalogue, with its content, from /api/content/italy. The server holds the
+ * catalogue the owner imported and applies the publication gate, so a reviewed import reaches learners
+ * without a new build. Needs no account: the Italian section is free and sign-in free.
+ */
+interface ItalyApi { ok?: boolean; questions?: unknown; signs?: unknown; inventory?: { questions?: number; signs?: number } }
+
+export function parseItalyPublished(api: ItalyApi | null): { signs: ItSign[]; questions: ItQuestion[] } | null {
+  if (!api || api.ok !== true || !Array.isArray(api.questions) || !Array.isArray(api.signs)) return null;
+  const signs = api.signs.flatMap((raw) => { const p = parseItSign(raw); return p.value ? [p.value] : []; });
+  const ids = new Set(signs.map((s) => s.id));
+  const questions = api.questions.flatMap((raw) => { const p = parseItQuestion(raw, ids); return p.value ? [p.value] : []; });
+  return { signs, questions };
+}
+
 export function useItApproved(): ItApproved {
   const [state, setState] = useState<ItApproved>(() =>
     CONTENT_MODE === "preview" ? { signs: IT_SIGNS, questions: itPublished, loading: false, failed: false } : { signs: [], questions: [], loading: true, failed: false });
   useEffect(() => {
     if (CONTENT_MODE === "preview") return;
     let alive = true;
-    void load().then((api) => { if (alive) setState({ ...filterItApproved(api), loading: false, failed: !api || api.ok !== true }); });
+    void (async () => {
+      // The server catalogue first; the build's own copy is the fallback when that endpoint is absent.
+      const live = await fetch("/api/content/italy", { headers: { accept: "application/json" } })
+        .then((r) => (r.ok ? r.json() as Promise<ItalyApi> : null)).catch(() => null);
+      const fromServer = parseItalyPublished(live);
+      if (fromServer) {
+        if (alive) setState({ ...fromServer, loading: false, failed: false });
+        return;
+      }
+      const api = await load();
+      if (alive) setState({ ...filterItApproved(api), loading: false, failed: !api || api.ok !== true });
+    })();
     return () => { alive = false; };
   }, []);
   return state;

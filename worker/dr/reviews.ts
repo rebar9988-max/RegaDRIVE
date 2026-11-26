@@ -11,7 +11,8 @@ import { CONTENT_REGISTRY } from "../../src/content/registry";
 import { publicationGate, type ContentRecord, type ReviewRecord } from "../../src/content/pipeline";
 import { SIGN_QUIZ } from "../../src/content/signQuiz";
 import { REVIEW_ITEMS, type ReviewItem } from "../../src/content/reviewItems";
-import { IT_REVIEW_ITEMS, type ItReviewItem } from "../../src/content/italy/reviewItems";
+import { IT_REVIEW_ITEMS, itReviewItemsFor, type ItReviewItem } from "../../src/content/italy/reviewItems";
+import { loadItalyCatalogue } from "../italy/catalogue";
 import { IT_CONTENT_REGISTRY, IT_RULES_VERSION } from "../../src/content/italy/registry";
 import { IT_QUESTIONS } from "../../src/content/italy/questions";
 import { KLASSE_B_RULES_2026 } from "../../src/lib/shared/exam";
@@ -151,8 +152,8 @@ export async function loadRowsWithState(db: D1Like): Promise<RowsState> {
   };
 }
 
-export function evaluateAll(rows: ReviewRow[]): ItemState[] {
-  return ALL_REVIEW_ITEMS.map((i) => evaluate(i, rows));
+export function evaluateAll(rows: ReviewRow[], italyItems: ItReviewItem[] = IT_REVIEW_ITEMS): ItemState[] {
+  return [...REVIEW_ITEMS, ...italyItems].map((i) => evaluate(i, rows));
 }
 
 export interface ApprovedContent {
@@ -166,16 +167,22 @@ export interface ApprovedContent {
   ready: Record<ReviewSource, boolean>;
 }
 
-/** Public: ids (with fingerprint) of everything the gate lets through. Fail closed: any error means nothing. */
-export async function approvedContent(db: D1Like | undefined): Promise<ApprovedContent> {
+/**
+ * Public: ids (with fingerprint) of everything the gate lets through. Fail closed: any error means
+ * nothing. The Italian bank is read from the content database when the owner has imported one, so an
+ * imported and reviewed item is published without a code change.
+ */
+export async function approvedContent(db: D1Like | undefined, contentDb?: D1Like): Promise<ApprovedContent> {
   const empty = () => ({ signs: {} as Record<string, string>, signQuiz: {} as Record<string, string>, itSigns: {} as Record<string, string>, itQuestions: {} as Record<string, string> });
   const out: ApprovedContent = { ok: false, ...empty(), ready: { de: false, it: false } };
   if (!db) return out;
   try {
     const { rows, ready } = await loadRowsWithState(db);
     out.ready = ready;
+    const catalogue = await loadItalyCatalogue(contentDb);
+    const italyItems = itReviewItemsFor(catalogue.questions, catalogue.signs);
     // A bank whose table could not be read publishes nothing, whatever the other bank does.
-    for (const st of evaluateAll(rows)) {
+    for (const st of evaluateAll(rows, italyItems)) {
       if (!st.publishable || !ready[sourceFor(st.kind)]) continue;
       out[st.kind === "sign" ? "signs" : st.kind === "signQuiz" ? "signQuiz" : st.kind === "itSign" ? "itSigns" : "itQuestions"][st.id] = st.hash;
     }

@@ -56,6 +56,8 @@ export function DrContent() {
         </tbody></table></div>
       </section>
 
+      <ItalyImportPanel />
+
       <section className="card stack" data-testid="italy-storage">
         <h2 className="section-title">🇮🇹 ئیتالیا — بانکی ناوەڕۆک</h2>
         {status?.italy ? <>
@@ -97,5 +99,91 @@ export function DrContent() {
         <AdminImport />
       </section>
     </div>
+  );
+}
+
+interface ImportReady { ready: boolean; missing: string[]; maxItemsPerRequest: number; catalogue: null | { source: string; questions: number; signs: number; skipped: number } }
+interface ImportReport { ok?: boolean; dryRun?: boolean; received?: number; stored?: number; unchanged?: number; changed?: string[]; rejected?: { index: number; id: string; issues: { field: string; problem: string }[] }[]; error?: string; reason?: string; needStepUp?: boolean }
+
+/**
+ * Italy: one-off setup of the review table, then import of the catalogue.
+ *
+ * Storing is not publishing. Every imported item still has to pass the three human review stages in
+ * Content Review before a learner sees it, and re-importing an item with different wording withdraws
+ * the approval that was bound to the old wording.
+ */
+function ItalyImportPanel() {
+  const [info, setInfo] = useState<ImportReady | null>(null);
+  const [note, setNote] = useState("loading…");
+  const [payload, setPayload] = useState("");
+  const [report, setReport] = useState<ImportReport | null>(null);
+  const [busy, setBusy] = useState(false);
+
+  const refresh = () => {
+    fetch("/api/dr/italy/import", { credentials: "same-origin" })
+      .then(async (r) => { if (r.ok) { setInfo(await r.json() as ImportReady); setNote(""); } else setNote(r.status === 401 ? "Sign in at /dr." : `Not available (HTTP ${r.status}).`); })
+      .catch(() => setNote("Not available (offline)."));
+  };
+  useEffect(refresh, []);
+
+  const post = async (path: string, body?: unknown) => {
+    setBusy(true);
+    try {
+      const r = await fetch(path, {
+        method: "POST", credentials: "same-origin",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify(body ?? {}),
+      });
+      const data = await r.json().catch(() => ({})) as ImportReport;
+      setReport(data);
+      refresh();
+    } catch { setReport({ error: "NETWORK" }); } finally { setBusy(false); }
+  };
+
+  const send = (dryRun: boolean) => {
+    let items: unknown;
+    try { items = JSON.parse(payload); } catch { setReport({ error: "NOT_JSON" }); return; }
+    const list = Array.isArray(items) ? items : (items as { items?: unknown }).items;
+    if (!Array.isArray(list)) { setReport({ error: "EXPECTED_ARRAY" }); return; }
+    void post("/api/dr/italy/import", { items: list, dryRun });
+  };
+
+  return (
+    <section className="card stack" data-testid="italy-import">
+      <h2 className="section-title">Italy · setup and import</h2>
+      {note && <p className="small muted">{note}</p>}
+      {info && <>
+        <p className="small">
+          Imports: <strong>{info.ready ? "ready" : "not ready"}</strong>
+          {info.catalogue && <> · catalogue <strong>{info.catalogue.source}</strong> · {info.catalogue.questions} questions · {info.catalogue.signs} signs{info.catalogue.skipped > 0 && <> · {info.catalogue.skipped} unusable rows</>}</>}
+          · up to {info.maxItemsPerRequest} items per request
+        </p>
+        {info.missing.length > 0 && <ul className="small">{info.missing.map((m) => <li key={m}>{m}</li>)}</ul>}
+      </>}
+      <div className="q-actions">
+        <button type="button" className="btn" disabled={busy} onClick={() => void post("/api/dr/italy/setup")} data-testid="italy-setup">
+          Create the Italian review table
+        </button>
+      </div>
+      <label className="stack small" htmlFor="italy-import-json">
+        Catalogue JSON — an array of questions and signs, each with its own legal reference
+        <textarea id="italy-import-json" rows={8} value={payload} spellCheck={false}
+          onChange={(e) => setPayload(e.target.value)} data-testid="italy-import-json"
+          placeholder={'[{"id":"it-b-013","chapter":1,"answer":true,"sourceRefs":["CdS art. 3"],"prompt":{"it":"…","ckb":"…","kmrArab":"…"},"explanation":{"it":"VERO: …","ckb":"…","kmrArab":"…"}}]'} />
+      </label>
+      <div className="q-actions">
+        <button type="button" className="btn" disabled={busy || payload.trim() === ""} onClick={() => send(true)} data-testid="italy-import-check">Check only</button>
+        <button type="button" className="btn btn-primary" disabled={busy || payload.trim() === ""} onClick={() => send(false)} data-testid="italy-import-store">Store</button>
+      </div>
+      {report && <div className="stack small" data-testid="italy-import-report">
+        {report.error
+          ? <p className="dr-msg err">{report.error}{report.reason ? `: ${report.reason}` : ""}</p>
+          : <p>{report.dryRun ? "Checked" : "Stored"}: {report.stored ?? 0} of {report.received ?? 0} · unchanged {report.unchanged ?? 0} · rejected {report.rejected?.length ?? 0}{(report.changed?.length ?? 0) > 0 && <> · wording changed, review withdrawn: {report.changed?.join(", ")}</>}</p>}
+        {(report.rejected?.length ?? 0) > 0 && <div className="dr-scroll"><table className="dr-table"><thead><tr><th>#</th><th>id</th><th>problem</th></tr></thead><tbody>
+          {report.rejected?.map((r) => <tr key={`${r.index}-${r.id}`}><td>{r.index}</td><td>{r.id || "—"}</td><td>{r.issues.map((i) => `${i.field}: ${i.problem}`).join("; ")}</td></tr>)}
+        </tbody></table></div>}
+      </div>}
+      <p className="small muted">Storing is not publishing: imported items appear in Content Review and reach learners only after the translation, educational and owner stages.</p>
+    </section>
   );
 }
