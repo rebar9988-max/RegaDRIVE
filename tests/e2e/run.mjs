@@ -1062,7 +1062,7 @@ try {
       return json(404, { error: "NOT_FOUND" });
     });
     await page.goto(`${BASE}/dr`);
-    await page.getByRole("button", { name: "Content Review" }).click();
+    await page.getByRole("navigation", { name: "بەشەکانی بەڕێوەبەری" }).getByRole("button", { name: "پشکنینی مرۆیی" }).click();
     await page.locator("[data-testid=dr-review]").waitFor();
     assert.equal(await page.locator("[data-testid=review-item]").count(), 3);
     assert.equal(await page.locator("[data-testid=rv-signs]").textContent(), "0 / 2");
