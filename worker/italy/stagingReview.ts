@@ -84,6 +84,28 @@ export function parseStagingDecision(body: unknown): StagingDecision | string {
   return { sourceId, language, status: status as StagingStatus, reviewerName: read("reviewerName"), reviewedOn: read("reviewedOn"), evidenceRef: read("evidenceRef"), note: read("note") };
 }
 
+/**
+ * A decision for several selected questions at once (one language, one status, one reviewer). Accepts
+ * `sourceIds` (1..STAGING_PAGE_MAX distinct ids) or a single `sourceId`. Every id gets its own recorded
+ * decision with the same reviewer, date and evidence; nothing is approved that was not selected.
+ */
+export function parseStagingDecisions(body: unknown): StagingDecision[] | string {
+  if (typeof body !== "object" || body === null) return "BAD_REQUEST";
+  const b = body as Record<string, unknown>;
+  if (b.sourceIds === undefined) { const one = parseStagingDecision(body); return typeof one === "string" ? one : [one]; }
+  if (!Array.isArray(b.sourceIds) || b.sourceIds.length === 0) return "NO_ITEMS";
+  if (b.sourceIds.length > STAGING_PAGE_MAX) return "TOO_MANY_ITEMS";
+  const ids = [...new Set(b.sourceIds.map((v) => (typeof v === "string" ? v.trim() : "")))];
+  if (ids.length !== b.sourceIds.length) return "REPEATED_ITEM";
+  const out: StagingDecision[] = [];
+  for (const id of ids) {
+    const one = parseStagingDecision({ ...b, sourceId: id });
+    if (typeof one === "string") return one;
+    out.push(one);
+  }
+  return out;
+}
+
 /** Record one language decision. Returns false when the question is not staged. */
 export async function recordStagingDecision(db: D1Like, d: StagingDecision, actor: string): Promise<boolean> {
   const column = d.language === "ckb" ? "ckb_status" : "kmr_arab_status";

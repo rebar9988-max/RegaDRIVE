@@ -8,7 +8,7 @@
  */
 import { loadItalyCatalogue } from "../italy/catalogue";
 import { IT_IMPORT_MAX_ITEMS, parseItalyImport, runItalyImport } from "../italy/import";
-import { STAGING_PAGE_MAX, listStaging, parseStagingDecision, parseStagingQuery, recordStagingDecision } from "../italy/stagingReview";
+import { STAGING_PAGE_MAX, listStaging, parseStagingDecisions, parseStagingQuery, recordStagingDecision } from "../italy/stagingReview";
 import { evaluateAll, loadRowsWithState, parseSubmission, checkSubmission, checkReviewMetadata, recordReview, ALL_REVIEW_ITEMS, REVIEW_ITEM_BY_ID, REVIEW_TABLE, ROLE_FOR_STAGE, rulesVersionFor, sourceFor } from "./reviews";
 import { IT_QUESTION_BY_ID, italyQuestionRows, italyQuestionsForReview, italyTranslationHistory, loadItalyQuestionDraft, parseTranslations, recordItalyQuestionReview, saveItalyQuestionEdit } from "./italyQuestionReview";
 import { KLASSE_B_RULES_2026 } from "../../src/lib/shared/exam";
@@ -449,25 +449,30 @@ export async function handleDr(req: Request, env: DrEnv, deps: DrDeps = {}): Pro
   }
 
   if (path === "/api/dr/italy/catalogue/review" && req.method === "POST") {
-    // One translation decision for one staged question. Changes a review status only; cannot publish.
+    // Translation decisions for one or several selected staged questions (one language, one status, one
+    // named reviewer). Changes review statuses only; the staging table cannot publish.
     let value: unknown;
     try { value = await req.json(); } catch { return reply({ error: "BAD_REQUEST" }, 400); }
-    const decision = parseStagingDecision(value);
-    if (typeof decision === "string") return reply({ error: decision }, 400);
-    const action = `italy.catalogue.review.${decision.language}.${decision.status}`;
+    const decisions = parseStagingDecisions(value);
+    if (typeof decisions === "string") return reply({ error: decisions, max: STAGING_PAGE_MAX }, 400);
+    const first = decisions[0];
+    if (!first) return reply({ error: "NO_ITEMS" }, 400);
+    const action = `italy.catalogue.review.${first.language}.${first.status}`;
     if (!steppedUp) return needStepUp(action);
     if (!env.CONTENT_DB) return reply({ error: "NO_CONTENT_DB" }, 503);
-    const invalid = checkReviewMetadata(decision, new Date(now).toISOString().slice(0, 10));
+    const invalid = checkReviewMetadata(first, new Date(now).toISOString().slice(0, 10));
     if (invalid) {
-      await audit(actor, action, "denied", { id: decision.sourceId, reason: invalid });
+      await audit(actor, action, "denied", { ids: decisions.slice(0, 10).map((d) => d.sourceId), count: decisions.length, reason: invalid });
       return reply({ error: invalid }, 422);
     }
-    let found: boolean;
-    try { found = await recordStagingDecision(env.CONTENT_DB, decision, actor); }
-    catch { return reply({ error: "STAGING_TABLE_MISSING" }, 503); }
-    if (!found) return reply({ error: "UNKNOWN_ITEM" }, 404);
-    await audit(actor, action, "allowed", { id: decision.sourceId, reviewer: decision.reviewerName, evidence: decision.evidenceRef.slice(0, 120) });
-    return reply({ ok: true });
+    const unknown: string[] = [];
+    try {
+      for (const decision of decisions) if (!await recordStagingDecision(env.CONTENT_DB, decision, actor)) unknown.push(decision.sourceId);
+    } catch { return reply({ error: "STAGING_TABLE_MISSING" }, 503); }
+    const recorded = decisions.length - unknown.length;
+    await audit(actor, action, recorded > 0 ? "allowed" : "denied", { ids: decisions.slice(0, 10).map((d) => d.sourceId), recorded, unknown: unknown.slice(0, 10), reviewer: first.reviewerName, evidence: first.evidenceRef.slice(0, 120) });
+    if (recorded === 0) return reply({ error: "UNKNOWN_ITEM", unknown }, 404);
+    return reply({ ok: true, recorded, unknown });
   }
 
   if (path === "/api/dr/italy/import" && (req.method === "POST" || req.method === "GET")) {

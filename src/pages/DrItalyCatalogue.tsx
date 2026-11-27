@@ -30,6 +30,7 @@ export function DrItalyCatalogue() {
   const [reviewer, setReviewer] = useState({ reviewerName: "", reviewedOn: today(), evidenceRef: "" });
   const [msg, setMsg] = useState("");
   const [busy, setBusy] = useState(false);
+  const [selected, setSelected] = useState<Set<string>>(new Set());
 
   const load = useCallback(() => {
     const p = new URLSearchParams({ offset: String(offset), limit: String(PAGE) });
@@ -39,25 +40,29 @@ export function DrItalyCatalogue() {
     fetch(`/api/dr/italy/catalogue?${p}`, { credentials: "same-origin" })
       .then(async (r) => {
         const body = await r.json().catch(() => ({})) as ListReply;
-        if (r.ok) { setData(body); setNote(""); }
+        if (r.ok) { setData(body); setNote(""); setSelected(new Set()); }
         else setNote(r.status === 401 ? "Sign in at /dr." : `${body.error ?? "Not available"} (HTTP ${r.status})${body.reason ? `: ${body.reason}` : ""}`);
       })
       .catch(() => setNote("Not available (offline)."));
   }, [offset, chapter, status, search]);
   useEffect(load, [load]);
 
-  const decide = async (row: Row, language: "ckb" | "kmrArab", next: Status) => {
+  const decide = async (ids: string[], language: "ckb" | "kmrArab", next: Status) => {
+    if (ids.length === 0) return;
     setBusy(true); setMsg("");
     try {
       const r = await fetch("/api/dr/italy/catalogue/review", {
         method: "POST", credentials: "same-origin", headers: { "content-type": "application/json" },
-        body: JSON.stringify({ sourceId: row.source_id, language, status: next, ...reviewer }),
+        body: JSON.stringify({ sourceIds: ids, language, status: next, ...reviewer }),
       });
-      const body = await r.json().catch(() => ({})) as { ok?: boolean; error?: string };
-      setMsg(r.ok ? `${row.source_id} · ${language} → ${next}` : `${row.source_id}: ${body.error ?? `HTTP ${r.status}`}`);
+      const body = await r.json().catch(() => ({})) as { ok?: boolean; error?: string; recorded?: number; unknown?: string[] };
+      setMsg(r.ok ? `${body.recorded ?? ids.length} × ${language} → ${next}${body.unknown?.length ? ` · not found: ${body.unknown.join(", ")}` : ""}` : `${body.error ?? `HTTP ${r.status}`}`);
       if (r.ok) load();
     } catch { setMsg("NETWORK"); } finally { setBusy(false); }
   };
+  const toggle = (id: string) => setSelected((prev) => { const next = new Set(prev); if (next.has(id)) next.delete(id); else next.add(id); return next; });
+  const pageIds = data?.rows?.map((r) => r.source_id) ?? [];
+  const allSelected = pageIds.length > 0 && pageIds.every((id) => selected.has(id));
 
   const c = data?.counts ?? {};
   const total = data?.total ?? 0;
@@ -92,10 +97,21 @@ export function DrItalyCatalogue() {
       {note && <p className="small muted">{note}</p>}
       {msg && <p className="small dr-msg" data-testid="italy-catalogue-msg">{msg}</p>}
 
+      <div className="q-actions small" data-testid="italy-catalogue-bulk">
+        <span>Selected: <strong>{selected.size}</strong></span>
+        {(["ckb", "kmrArab"] as const).map((lang) => <span key={lang}>
+          {lang === "ckb" ? "Sorani" : "Badini"}:{" "}
+          <button type="button" className="btn" disabled={busy || selected.size === 0} onClick={() => void decide([...selected], lang, "approved")}>approve selected</button>{" "}
+          <button type="button" className="btn" disabled={busy || selected.size === 0} onClick={() => void decide([...selected], lang, "needs_revision")}>revise selected</button>
+        </span>)}
+      </div>
+
       {data?.rows && <div className="dr-scroll"><table className="dr-table"><thead><tr>
+        <th><input type="checkbox" aria-label="Select all on this page" checked={allSelected} onChange={() => setSelected(allSelected ? new Set() : new Set(pageIds))} /></th>
         <th>ID</th><th>Ch.</th><th>Italiano</th><th>Answer</th><th>Sorani</th><th>Badini</th><th>Image</th>
       </tr></thead><tbody>
         {data.rows.map((r) => <tr key={r.source_id}>
+          <td><input type="checkbox" aria-label={`Select ${r.source_id}`} checked={selected.has(r.source_id)} onChange={() => toggle(r.source_id)} /></td>
           <td>{r.source_id}<br /><span className="muted">{r.batch}</span></td>
           <td>{r.chapter_draft ?? "—"}{r.chapter_confidence === "needs_review" && <span title="draft chapter needs review"> ⚠</span>}</td>
           <td lang="it" dir="ltr">{r.question_it}</td>
@@ -106,8 +122,8 @@ export function DrItalyCatalogue() {
             return <td key={lang}>
               <span lang={lang === "ckb" ? "ckb" : "kmr-Arab"} dir="rtl">{text ?? "—"}</span><br />
               <span className="muted">{st}</span>{" "}
-              <button type="button" className="btn" disabled={busy} onClick={() => void decide(r, lang, "approved")}>approve</button>{" "}
-              <button type="button" className="btn" disabled={busy} onClick={() => void decide(r, lang, "needs_revision")}>revise</button>
+              <button type="button" className="btn" disabled={busy} onClick={() => void decide([r.source_id], lang, "approved")}>approve</button>{" "}
+              <button type="button" className="btn" disabled={busy} onClick={() => void decide([r.source_id], lang, "needs_revision")}>revise</button>
             </td>;
           })}
           <td>{r.image ?? "—"}</td>

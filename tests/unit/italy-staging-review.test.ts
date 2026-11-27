@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { listStaging, parseStagingDecision, parseStagingQuery, recordStagingDecision, STAGING_PAGE_MAX } from "../../worker/italy/stagingReview";
+import { listStaging, parseStagingDecision, parseStagingDecisions, parseStagingQuery, recordStagingDecision, STAGING_PAGE_MAX } from "../../worker/italy/stagingReview";
 import { checkReviewMetadata } from "../../worker/dr/reviews";
 import type { D1Like } from "../../worker/dr/db";
 
@@ -71,5 +71,25 @@ describe("staged Italian catalogue review", () => {
     expect(r).toMatchObject({ ckb_status: "approved", kmr_arab_status: "pending", publish_status: "unpublished", reviewer_name: "Ahmed Karim", correct_answer: 1 });
     expect(String(r.review_notes)).toContain("evidence: signed-review-2026-11");
     expect(await recordStagingDecision(db, { ...parsed, sourceId: "99999" }, "owner:test")).toBe(false);
+  });
+
+  it("parses bulk decisions for selected questions only, within the page limit", () => {
+    const many = parseStagingDecisions({ ...decision, sourceId: undefined, sourceIds: ["21810", "21816"] });
+    expect(Array.isArray(many) && many.map((d) => d.sourceId)).toEqual(["21810", "21816"]);
+    expect(parseStagingDecisions({ ...decision, sourceIds: [] })).toBe("NO_ITEMS");
+    expect(parseStagingDecisions({ ...decision, sourceIds: ["21810", "21810"] })).toBe("REPEATED_ITEM");
+    expect(parseStagingDecisions({ ...decision, sourceIds: Array.from({ length: STAGING_PAGE_MAX + 1 }, (_, i) => String(i + 1)) })).toBe("TOO_MANY_ITEMS");
+    expect(parseStagingDecisions({ ...decision, sourceIds: ["21810", "x"] })).toBe("UNKNOWN_ITEM");
+    const single = parseStagingDecisions(decision);
+    expect(Array.isArray(single) && single.length).toBe(1);
+  });
+
+  it("records a bulk decision for each selected question and leaves the others untouched", async () => {
+    const { db, row } = setup();
+    const many = parseStagingDecisions({ ...decision, language: "kmrArab", status: "needs_revision", sourceIds: ["21816"] });
+    if (typeof many === "string") throw new Error(many);
+    for (const d of many) expect(await recordStagingDecision(db, d, "owner:test")).toBe(true);
+    expect(row("21816")).toMatchObject({ kmr_arab_status: "needs_revision", ckb_status: "pending", publish_status: "unpublished" });
+    expect(row("21810")).toMatchObject({ kmr_arab_status: "pending", ckb_status: "pending" });
   });
 });
