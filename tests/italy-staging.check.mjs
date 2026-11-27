@@ -27,4 +27,13 @@ throws(`UPDATE italy_catalogue_staging SET ckb_status='done' WHERE source_id='1'
 db.exec(`UPDATE italy_catalogue_staging SET ckb='نیشانەی نوێ', ckb_status='needs_revision' WHERE source_id='1'`); // drafts stay editable
 db.exec(`UPDATE italy_catalogue_staging SET ckb_status='approved', reviewer_name='Reviewer Name', review_date='2026-12-01' WHERE source_id='1'`);
 assert.ok(db.prepare("SELECT 1 FROM sqlite_master WHERE name='italy_content'").get(), "the learner-facing catalogue table is untouched");
+// 0006: draft chapters come from the source category, are flagged when uncertain and stay in 1-16.
+const cat = (id, group) => db.exec(`INSERT INTO italy_catalogue_staging (source_id,source_row_sha256,batch,question_it,correct_answer,answer_original,source_group) VALUES ('${id}','${h}','batch-002','Il segnale',1,'VERO','Quesito n° 1 - ${group}')`);
+cat("10", "Segnali di pericolo"); cat("11", "Pannelli integrativi dei segnali"); cat("12", "Categoria sconosciuta");
+db.exec(readFileSync("migrations-content/0006_italy_catalogue_chapter_draft.sql", "utf8").split(/\r?\n/).filter((l) => !l.startsWith("ALTER")).join("\n"));
+const ch = (id) => ({ ...db.prepare("SELECT chapter_draft c, chapter_confidence k FROM italy_catalogue_staging WHERE source_id=?").get(id) });
+assert.deepEqual(ch("10"), { c: 2, k: "category_match" });
+assert.deepEqual(ch("11"), { c: 8, k: "needs_review" });
+assert.deepEqual(ch("12"), { c: null, k: null }, "an unknown category is left unclassified, never guessed");
+throws(`UPDATE italy_catalogue_staging SET chapter_draft=17 WHERE source_id='10'`, "chapter domain");
 console.log("italy staging checks passed");
