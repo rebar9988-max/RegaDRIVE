@@ -491,7 +491,13 @@ export function DrAdmin() {
   return (
     <div className="dr dr-workspace" dir="rtl" lang="ckb">
       <header className="dr-top">
-        <img src="/brand/regadrive-logo.webp" width={120} height={40} alt="RegaDRIVE" />
+        <div className="dr-top-brand">
+          <img src="/brand/regadrive-logo.webp" width={120} height={40} alt="RegaDRIVE" />
+          <div className="dr-top-page-title">
+            <strong>{SECTION_NAMES[section]}</strong>
+            <small><bdi dir="ltr">RegaDRIVE / SUPER ADMIN</bdi></small>
+          </div>
+        </div>
         <div className="dr-search">
           <label className="dr-sr" htmlFor="dr-search">گەڕان لە بەشەکان</label>
           <input id="dr-search" type="search" className="input" placeholder="گەڕان لە هەموو بەشەکان…" value={search} onChange={(e) => setSearch(e.target.value)} onKeyDown={(e) => {
@@ -502,7 +508,11 @@ export function DrAdmin() {
             {filteredSections.length ? filteredSections.map(([key]) => <li key={key}><button type="button" onClick={() => go(key)}>{SECTION_NAMES[key]}</button></li>) : <li>هیچ بەشێک نەدۆزرایەوە.</li>}
           </ul>}
         </div>
-        <button type="button" className="btn btn-secondary btn-sm" onClick={() => void load()}>نوێکردنەوە</button>
+        <div className="dr-top-actions">
+          <button type="button" className="btn btn-secondary btn-sm" onClick={() => void load()}>نوێکردنەوە</button>
+          <button type="button" className="btn btn-secondary btn-sm" onClick={() => go("audit")}>ئاگادارکردنەوە</button>
+          <button type="button" className="btn btn-primary btn-sm" onClick={() => go("security")}>هەژمار</button>
+        </div>
       </header>
       <nav className="dr-nav" aria-label="بەشەکانی بەڕێوەبەری">
         {SECTIONS.map(([key, icon]) => (
