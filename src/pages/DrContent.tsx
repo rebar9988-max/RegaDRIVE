@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { AdminImport } from "./AdminImport";
+import { DrItalyCatalogue } from "./DrItalyCatalogue";
 import { QUESTIONS } from "../content/questions";
 import { catalogReport } from "../lib/shared/catalog";
 import { CATALOG_PLAN_STATUS, planCoverage } from "../lib/shared/catalogPlan";
@@ -57,6 +58,7 @@ export function DrContent() {
       </section>
 
       <ItalyImportPanel />
+      <DrItalyCatalogue />
 
       <section className="card stack" data-testid="italy-storage">
         <h2 className="section-title">🇮🇹 ئیتالیا — بانکی ناوەڕۆک</h2>
