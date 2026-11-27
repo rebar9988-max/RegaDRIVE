@@ -176,19 +176,42 @@
 .dr-workspace .dr-tile, .dr-workspace .card { transition: box-shadow .18s ease, transform .18s ease; }
 .dr-workspace .dr-tile:hover, .dr-workspace .card:hover { box-shadow: 0 5px 18px #1f513b12, 0 18px 38px #1f513b10; }
 @media (max-width: 560px) {
-  .dr-workspace .dr-top { flex-wrap: wrap; gap: 8px; }
-  .dr-top-brand { flex: 1 1 100%; justify-content: space-between; }
-  .dr-top-brand > img { width: 84px; }
+  .dr-workspace .dr-top { flex-wrap: wrap; gap: 8px 10px; padding: 10px 14px; }
+  .dr-top-brand { flex: 1 1 100%; justify-content: space-between; gap: 10px; }
+  .dr-top-brand > img { width: 78px; }
   .dr-top-page-title { margin-inline-start: auto; }
-  .dr-top-actions { width: 100%; justify-content: flex-end; }
-  .dr-top-actions .btn { min-height: 40px; padding-inline: 10px; }
-  .dr-search { order: 1; flex-basis: 100%; max-width: none; }
-  .dr-workspace .dr-row { grid-template-columns: minmax(0, 1fr); justify-items: start; }
+  .dr-top-page-title strong { font-size: 1rem; }
+  .dr-top-actions { order: 1; width: 100%; justify-content: flex-start; gap: 6px; }
+  .dr-top-actions .btn { min-height: 38px; padding: 5px 9px; font-size: .75rem; }
+  .dr-search { order: 2; flex: 1 0 100%; max-width: none; margin: 0; }
+  .dr-workspace .dr-nav { position: sticky; top: 0; gap: 6px; padding: 8px 12px; background: #fff; scroll-snap-type: x proximity; }
+  .dr-workspace .dr-nav .dr-chip { min-height: 40px; padding: 6px 11px; font-size: .78rem; scroll-snap-align: start; }
+  .dr-workspace .dr-main { padding: 12px 12px calc(24px + env(safe-area-inset-bottom)); gap: 12px; }
+  .dr-workspace .dr-kpis { grid-template-columns: minmax(0, 1fr); gap: 10px; }
+  .dr-workspace .dr-kpis .dr-tile { grid-template-columns: 1fr auto; align-items: center; gap: 2px 12px; padding: 14px 16px; border-radius: 14px; }
+  .dr-workspace .dr-kpis .dr-tile b { grid-row: span 2; grid-column: 2; font-size: 1.65rem; }
+  .dr-workspace .dr-kpis .dr-tile span { grid-column: 1; font-size: .78rem; }
+  .dr-workspace .dr-row { grid-template-columns: minmax(0, 1fr) auto; justify-items: stretch; gap: 8px; padding: 9px 0; }
+  .dr-workspace .dr-row-label strong { font-size: .9rem; }
+  .dr-workspace .dr-row-label small { font-size: .72rem; }
+  .dr-workspace .dr-emergency-card .dr-row { grid-template-columns: minmax(0, 1fr); }
+  .dr-workspace .dr-emergency-card .dr-seg { justify-self: end; }
+  .dr-workspace .dr-emergency-card .dr-seg button { min-width: 48px; min-height: 38px; font-size: .7rem; }
+  .dr-workspace .card { border-radius: 16px; padding: 14px; }
+  .dr-workspace .dr-h { margin: 0; font-size: 1rem; }
+  .dr-workspace .dr-h small { font-size: .7rem; }
 }
 @media (min-width: 561px) and (max-width: 1050px) {
   .dr-top-brand > img { width: 88px; }
   .dr-top-page-title { display: none; }
   .dr-search { max-width: 25rem; }
+}
+
+@media (max-width: 360px) {
+  .dr-top-page-title small { font-size: .6rem; }
+  .dr-top-actions .btn { padding-inline: 7px; font-size: .7rem; }
+  .dr-workspace .dr-emergency-card .dr-seg { justify-self: stretch; width: 100%; }
+  .dr-workspace .dr-emergency-card .dr-seg button { flex: 1; min-width: 0; }
 }
 
 @media (prefers-reduced-motion: reduce) {
