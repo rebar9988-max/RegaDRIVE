@@ -13,7 +13,7 @@
     "test": "vitest run",
     "test:e2e": "node tests/e2e/run.mjs",
     "check:worker": "wrangler deploy --dry-run --outdir .wrangler-dry",
-    "check:migrations": "node --no-warnings tests/migrations.check.mjs",
+    "check:migrations": "node --no-warnings tests/migrations.check.mjs && node --no-warnings tests/italy-staging.check.mjs",
     "preview": "vite preview"
   },
   "engines": {
