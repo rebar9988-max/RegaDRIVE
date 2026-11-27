@@ -17,7 +17,6 @@ interface Overview {
   database: { ok: boolean; latencyMs: number; name: string; studentData: string; activeSessions: number; auditEntries: number; logins24h: number; denied24h: number; codesSent24h: number; mailFailures24h: number; backups: number };
   features: Feature[];
   ai: { id: string; status: string; detail: string }[];
-  content: { total?: Record<string, number>; published?: Record<string, number>; questionReview?: Record<string, number>; languages?: string[] };
   email: { owner: string; from: string; provider: string; configured: boolean };
   payments: { enabled: boolean; checkout: boolean; webhooks: boolean; purchaseRequired: boolean; priceEur: number } | null;
   security: { sessions: { current: boolean; createdAt: number; lastSeenAt: number; ip: string | null; userAgent: string | null }[]; steppedUp: boolean; stepUpUntil: number; sessionExpiresAt: number };
@@ -26,7 +25,7 @@ interface Overview {
 interface AuditEntry { id: number; at: number; actor: string; action: string; result: string; detail: string; ip: string | null }
 interface CountryMetrics { questions: number; signs: number; published: number; sorani: number; badini?: number }
 interface DashboardMetrics {
-  de: CountryMetrics | null;
+  de: (CountryMetrics & { lessons: number; publishedLessons: number; vocabulary: number; pending: number; draft: number }) | null;
   it: CountryMetrics | null;
   students: number | null;
   progress: number | null;
@@ -34,10 +33,10 @@ interface DashboardMetrics {
 }
 type ApiResult = { status: number; body: Record<string, unknown> };
 
-async function api(path: string, body?: unknown): Promise<ApiResult> {
+async function api(path: string, body?: unknown, passive = false): Promise<ApiResult> {
   try {
     const r = await fetch(path, body === undefined
-      ? { credentials: "same-origin", cache: "no-store" }
+      ? { credentials: "same-origin", cache: "no-store", headers: passive ? { "x-dr-passive": "1" } : undefined }
       : { method: "POST", credentials: "same-origin", headers: { "content-type": "application/json", "x-dr-request": "1" }, body: JSON.stringify(body) });
     let parsed: Record<string, unknown> = {};
     try { parsed = await r.json(); } catch { /* non-JSON */ }
@@ -287,9 +286,9 @@ export function DrAdmin() {
     else setFlash({ kind: "err", text: errText(r) });
   }, []);
   const checkSession = useCallback(() => api("/api/dr/session").then(applySession), [applySession]);
-  const load = useCallback(async () => {
+  const load = useCallback(async (passive = false) => {
     const [overview, dashboard, status] = await Promise.all([
-      api("/api/dr/overview"), api("/api/dr/dashboard"), api("/api/health"),
+      api("/api/dr/overview", undefined, passive), api("/api/dr/dashboard", undefined, passive), api("/api/health"),
     ]);
     applyOverview(overview);
     setMetrics(dashboard.status === 200 ? dashboard.body as unknown as DashboardMetrics : null);
@@ -301,6 +300,14 @@ export function DrAdmin() {
     const initial = window.setTimeout(() => void load(), 0);
     return () => window.clearTimeout(initial);
   }, [auth.ok, load]);
+
+  useEffect(() => {
+    if (!auth.ok || section !== "dashboard") return;
+    const timer = window.setInterval(() => {
+      if (document.visibilityState === "visible") void load(true);
+    }, 60_000);
+    return () => window.clearInterval(timer);
+  }, [auth.ok, load, section]);
 
   // Runs a mutating request; asks for a fresh e-mail code when the server requires step-up, then retries once.
   const mutate = useCallback(async (path: string, body: unknown, okText: string) => {
@@ -341,7 +348,8 @@ export function DrAdmin() {
   const byGroup = (g: string) => fs.filter((f) => f.group === g);
   const pick = (...keys: string[]) => fs.filter((f) => keys.includes(f.key));
   const emergency = fs.find((f) => f.key === "emergency_lock");
-  const c = data?.content ?? {};
+  const de = metrics?.de;
+  const it = metrics?.it;
   const aiActive = (data?.ai ?? []).filter((a) => a.status === "ACTIVE").length;
 
   const body = (): ReactNode => {
@@ -412,27 +420,25 @@ export function DrAdmin() {
       </Card>);
       case "questions": return (<Card title="بانکی پرسیار" en="Question Bank">
         <div className="dr-grid">
-          <Tile value={c.total?.questions ?? 0} label="هەموو پرسیارەکان" />
-          <Tile value={c.published?.questions ?? 0} label="بڵاوکراوە (approved)" />
-          <Tile value={c.questionReview?.pending ?? 0} label="چاوەڕێی پێداچوونەوە" />
-          <Tile value={c.questionReview?.draft ?? 0} label="ڕەشنووس" />
+          <Tile value={de?.questions ?? EMPTY} label="🇩🇪 پرسیاری تۆمارکراو" />
+          <Tile value={de?.pending ?? EMPTY} label="🇩🇪 چاوەڕێی پشکنین" />
+          <Tile value={de?.draft ?? EMPTY} label="🇩🇪 ڕەشنووس" />
+          <Tile value={it?.questions ?? EMPTY} label="🇮🇹 پرسیاری تۆمارکراو" />
         </div>
         <Features list={pick("official_question_bank", "content_import")} onSet={setFeature} busy={busy} />
-        <Note>پرسیارەکان تەنها دوای پێداچوونەوەی مرۆیی بڵاو دەکرێنەوە (docs/CONTENT_REVIEW.md).</Note>
+        <button type="button" className="btn btn-secondary btn-sm" onClick={() => go("review")}>پشکنینی مرۆیی</button>
       </Card>);
-      case "signs": return (<Card title="نیشانەکانی هاتوچۆ" en="Traffic Signs"><div className="dr-grid"><Tile value={c.total?.signs ?? 0} label="هەموو" /><Tile value={c.published?.signs ?? 0} label="بڵاوکراوە" /></div></Card>);
-      case "lessons": return (<Card title="وانەکان" en="Lessons"><div className="dr-grid"><Tile value={c.total?.lessons ?? 0} label="هەموو" /><Tile value={c.published?.lessons ?? 0} label="بڵاوکراوە" /><Tile value={c.total?.vocabulary ?? 0} label="وشەنامە" /></div></Card>);
-      case "exams": return (<Card title="تاقیکردنەوەی تاقیکاری" en="Mock Exams">
-        <div className="dr-grid"><Tile value={c.published?.questions ?? 0} label="پرسیاری بەردەست بۆ تاقیکردنەوە" /></div>
+      case "signs": return <Card title="نیشانەکانی هاتوچۆ" en="Traffic Signs">
+        <div className="dr-grid"><Tile value={de?.signs ?? EMPTY} label="🇩🇪 نیشانەی تۆمارکراو" /><Tile value={it?.signs ?? EMPTY} label="🇮🇹 نیشانەی تۆمارکراو" /></div>
+      </Card>;
+      case "lessons": return <Card title="وانەکان" en="Lessons">
+        <div className="dr-grid"><Tile value={de?.lessons ?? EMPTY} label="🇩🇪 وانەی تۆمارکراو" /><Tile value={de?.publishedLessons ?? EMPTY} label="🇩🇪 وانەی بڵاوکراوە" /><Tile value={de?.vocabulary ?? EMPTY} label="🇩🇪 وشەی تۆمارکراو" /></div>
+      </Card>;
+      case "exams": return <Card title="تاقیکردنەوەی تاقیکاری" en="Mock Exams">
         <Features list={pick("official_mock_exams")} onSet={setFeature} busy={busy} />
-      </Card>);
-      case "languages": return (<Card title="زمانەکان" en="Languages">
-        <div className="dr-row"><div className="dr-row-label"><strong>کوردیی سۆرانی</strong><small>ckb · RTL · سەرەکی</small></div><Badge ok>ON</Badge></div>
-        <div className="dr-row"><div className="dr-row-label"><strong>Kurdî (Kurmancî)</strong><small>kmr · LTR · کرمانجی</small></div><Badge ok>ON</Badge></div>
-        <div className="dr-row"><div className="dr-row-label"><strong>العربية</strong><small>ar · RTL · عەرەبی</small></div><Badge ok>ON</Badge></div>
-        <div className="dr-row"><div className="dr-row-label"><strong>Deutsch</strong><small>de · LTR · دووەم</small></div><Badge ok>ON</Badge></div>
-        <Note>دیزاین لە هەموو زمانەکاندا وەک خۆی دەمێنێتەوە (ڕاست بۆ چەپ)؛ تەنها دەقەکان دەگۆڕێن.</Note>
-      </Card>);
+        <button type="button" className="btn btn-secondary btn-sm" onClick={() => go("questions")}>بانکی پرسیار</button>
+      </Card>;
+      case "languages": return <CountryOverview metrics={metrics} go={go} />;
       case "payments": return (<Card title="سیستەمی پارەدان" en="Payments">
         <Note>🟡 پارەدان ئامادەیە بەڵام LOCKED ـە. تەنها بە بڕیاری خۆت و هەنگاوەکانی docs/OWNER_ACTIVATION.md §4 دەکرێتەوە؛ ئەم پانێڵە ناتوانێت پارەدان چالاک بکات.</Note>
         <div className="dr-grid"><Tile value={`€${data.payments?.priceEur ?? 20}`} label="Lifetime" /><Tile value={<Badge warn>LOCKED</Badge>} label="Checkout" /></div>
