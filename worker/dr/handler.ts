@@ -158,13 +158,16 @@ export async function handleDr(req: Request, env: DrEnv, deps: DrDeps = {}): Pro
     return reply({ error: "FORBIDDEN" }, 403);
   }
 
+  const passive = req.method === "GET" && (path === "/api/dr/dashboard" || path === "/api/dr/overview")
+    && req.headers.get("x-dr-passive") === "1";
+
   // ── session ────────────────────────────────────────────────────────────
   const session = await (async (): Promise<SessionRow | null> => {
     const token = readCookie(req, SESSION_COOKIE);
     if (!token) return null;
     const row = await db.prepare("SELECT * FROM dr_sessions WHERE token_hash = ? AND revoked_at IS NULL").bind(await sha256Hex(token)).first<SessionRow>();
     if (!row || row.expires_at <= now || row.last_seen_at + SESSION_IDLE_MS <= now || row.email !== owner) return null;
-    if (now - row.last_seen_at > 60_000) {
+    if (!passive && now - row.last_seen_at > 60_000) {
       await db.prepare("UPDATE dr_sessions SET last_seen_at = ? WHERE token_hash = ?").bind(now, row.token_hash).run();
       row.last_seen_at = now;
     }
@@ -320,6 +323,11 @@ export async function handleDr(req: Request, env: DrEnv, deps: DrDeps = {}): Pro
     const [de, it, students, progress, activity] = await Promise.all([
       content?.prepare(`SELECT COUNT(*) AS questions,
           (SELECT COUNT(*) FROM traffic_signs) AS signs,
+          (SELECT COUNT(*) FROM lessons) AS lessons,
+          (SELECT COUNT(*) FROM lessons WHERE publication_status = 'published') AS publishedLessons,
+          (SELECT COUNT(*) FROM vocabulary) AS vocabulary,
+          COUNT(CASE WHEN review_status = 'pending' THEN 1 END) AS pending,
+          COUNT(CASE WHEN review_status = 'draft' THEN 1 END) AS draft,
           COUNT(CASE WHEN publication_status = 'published' THEN 1 END) AS published,
           COUNT(CASE WHEN trim(prompt_ckb) <> '' AND trim(explanation_ckb) <> '' THEN 1 END) AS sorani
         FROM questions WHERE country = 'DE'`).first().catch(() => null),
