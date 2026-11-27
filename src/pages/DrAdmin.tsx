@@ -296,7 +296,11 @@ export function DrAdmin() {
     setHealth(status.status === 200 ? status.body : { ok: false });
   }, [applyOverview]);
   useEffect(() => { api("/api/dr/session").then(applySession); }, [applySession]);
-  useEffect(() => { if (auth.ok) void load(); }, [auth.ok, load]);
+  useEffect(() => {
+    if (!auth.ok) return;
+    const initial = window.setTimeout(() => void load(), 0);
+    return () => window.clearTimeout(initial);
+  }, [auth.ok, load]);
 
   // Runs a mutating request; asks for a fresh e-mail code when the server requires step-up, then retries once.
   const mutate = useCallback(async (path: string, body: unknown, okText: string) => {
