@@ -112,6 +112,18 @@ describe("/dr owner control center", () => {
     expect(audit.results.some((a) => a.result === "denied")).toBe(true);
   });
 
+  it("protects dashboard metrics and returns unavailable sources without exposing audit details", async () => {
+    const t = setup();
+    expect((await t.call("/api/dr/dashboard")).status).toBe(401);
+    await t.login();
+    const result = await t.call("/api/dr/dashboard");
+    expect(result.status).toBe(200);
+    expect(result.body).toMatchObject({ de: null, it: null, students: null, progress: null });
+    const activity = result.body.activity as Record<string, unknown>[];
+    expect(activity[0]).toMatchObject({ action: "login", result: "allowed" });
+    expect(Object.keys(activity[0]!).sort()).toEqual(["action", "at", "id", "result"]);
+  });
+
   it("enforces controls server-side: locked money features, step-up for critical changes, backups", async () => {
     const t = setup();
     await t.login();
