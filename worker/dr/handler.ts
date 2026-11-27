@@ -28,6 +28,7 @@ export interface DrEnv {
   REGADRIVE_RESEND_API_KEY?: string;
   /** Owner-activated content database for the question bank. Not bound in production (wrangler.jsonc). */
   CONTENT_DB?: ContentDb;
+  STUDENT_DB?: D1Like;
   /** R2 `regadrive-media`: question images and videos (worker/content/media.ts). */
   MEDIA?: MediaBucket;
 }
@@ -157,13 +158,16 @@ export async function handleDr(req: Request, env: DrEnv, deps: DrDeps = {}): Pro
     return reply({ error: "FORBIDDEN" }, 403);
   }
 
+  const passive = req.method === "GET" && (path === "/api/dr/dashboard" || path === "/api/dr/overview")
+    && req.headers.get("x-dr-passive") === "1";
+
   // ── session ────────────────────────────────────────────────────────────
   const session = await (async (): Promise<SessionRow | null> => {
     const token = readCookie(req, SESSION_COOKIE);
     if (!token) return null;
     const row = await db.prepare("SELECT * FROM dr_sessions WHERE token_hash = ? AND revoked_at IS NULL").bind(await sha256Hex(token)).first<SessionRow>();
     if (!row || row.expires_at <= now || row.last_seen_at + SESSION_IDLE_MS <= now || row.email !== owner) return null;
-    if (now - row.last_seen_at > 60_000) {
+    if (!passive && now - row.last_seen_at > 60_000) {
       await db.prepare("UPDATE dr_sessions SET last_seen_at = ? WHERE token_hash = ?").bind(now, row.token_hash).run();
       row.last_seen_at = now;
     }
@@ -312,6 +316,32 @@ export async function handleDr(req: Request, env: DrEnv, deps: DrDeps = {}): Pro
       security: { sessions, steppedUp, stepUpUntil: session.step_up_until, sessionExpiresAt: Math.min(session.expires_at, session.last_seen_at + SESSION_IDLE_MS) },
       backups,
     });
+  }
+
+  if (path === "/api/dr/dashboard" && req.method === "GET") {
+    const content = env.CONTENT_DB;
+    const [de, it, students, progress, activity] = await Promise.all([
+      content?.prepare(`SELECT COUNT(*) AS questions,
+          (SELECT COUNT(*) FROM traffic_signs) AS signs,
+          (SELECT COUNT(*) FROM lessons) AS lessons,
+          (SELECT COUNT(*) FROM lessons WHERE publication_status = 'published') AS publishedLessons,
+          (SELECT COUNT(*) FROM vocabulary) AS vocabulary,
+          COUNT(CASE WHEN review_status = 'pending' THEN 1 END) AS pending,
+          COUNT(CASE WHEN review_status = 'draft' THEN 1 END) AS draft,
+          COUNT(CASE WHEN publication_status = 'published' THEN 1 END) AS published,
+          COUNT(CASE WHEN trim(prompt_ckb) <> '' AND trim(explanation_ckb) <> '' THEN 1 END) AS sorani
+        FROM questions WHERE country = 'DE'`).first().catch(() => null),
+      content?.prepare(`SELECT COUNT(CASE WHEN kind = 'question' THEN 1 END) AS questions,
+          COUNT(CASE WHEN kind = 'sign' THEN 1 END) AS signs,
+          COUNT(CASE WHEN kind = 'question' AND json_extract(payload, '$.publicationStatus') = 'published' THEN 1 END) AS published,
+          COUNT(CASE WHEN kind = 'question' AND trim(json_extract(payload, '$.prompt.ckb')) <> '' AND trim(json_extract(payload, '$.explanation.ckb')) <> '' THEN 1 END) AS sorani,
+          COUNT(CASE WHEN kind = 'question' AND trim(json_extract(payload, '$.prompt.kmrArab')) <> '' AND trim(json_extract(payload, '$.explanation.kmrArab')) <> '' THEN 1 END) AS badini
+        FROM italy_content WHERE country = 'IT'`).first().catch(() => null),
+      env.STUDENT_DB?.prepare("SELECT COUNT(*) AS total FROM students").first<{ total: number }>().catch(() => null),
+      env.STUDENT_DB?.prepare("SELECT COUNT(*) AS total FROM student_progress").first<{ total: number }>().catch(() => null),
+      db.prepare("SELECT id, at, action, result FROM dr_audit_log ORDER BY id DESC LIMIT 8").all(),
+    ]);
+    return reply({ de: de ?? null, it: it ?? null, students: students?.total ?? null, progress: progress?.total ?? null, activity: activity.results });
   }
 
   if (path === "/api/dr/content/status" && req.method === "GET") {

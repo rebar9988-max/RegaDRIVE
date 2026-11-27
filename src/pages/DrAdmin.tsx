@@ -17,19 +17,26 @@ interface Overview {
   database: { ok: boolean; latencyMs: number; name: string; studentData: string; activeSessions: number; auditEntries: number; logins24h: number; denied24h: number; codesSent24h: number; mailFailures24h: number; backups: number };
   features: Feature[];
   ai: { id: string; status: string; detail: string }[];
-  content: { total?: Record<string, number>; published?: Record<string, number>; questionReview?: Record<string, number>; languages?: string[] };
   email: { owner: string; from: string; provider: string; configured: boolean };
   payments: { enabled: boolean; checkout: boolean; webhooks: boolean; purchaseRequired: boolean; priceEur: number } | null;
   security: { sessions: { current: boolean; createdAt: number; lastSeenAt: number; ip: string | null; userAgent: string | null }[]; steppedUp: boolean; stepUpUntil: number; sessionExpiresAt: number };
   backups: { id: string; created_at: number; created_by: string; reason: string }[];
 }
 interface AuditEntry { id: number; at: number; actor: string; action: string; result: string; detail: string; ip: string | null }
+interface CountryMetrics { questions: number; signs: number; published: number; sorani: number; badini?: number }
+interface DashboardMetrics {
+  de: (CountryMetrics & { lessons: number; publishedLessons: number; vocabulary: number; pending: number; draft: number }) | null;
+  it: CountryMetrics | null;
+  students: number | null;
+  progress: number | null;
+  activity: Pick<AuditEntry, "id" | "at" | "action" | "result">[];
+}
 type ApiResult = { status: number; body: Record<string, unknown> };
 
-async function api(path: string, body?: unknown): Promise<ApiResult> {
+async function api(path: string, body?: unknown, passive = false): Promise<ApiResult> {
   try {
     const r = await fetch(path, body === undefined
-      ? { credentials: "same-origin", cache: "no-store" }
+      ? { credentials: "same-origin", cache: "no-store", headers: passive ? { "x-dr-passive": "1" } : undefined }
       : { method: "POST", credentials: "same-origin", headers: { "content-type": "application/json", "x-dr-request": "1" }, body: JSON.stringify(body) });
     let parsed: Record<string, unknown> = {};
     try { parsed = await r.json(); } catch { /* non-JSON */ }
@@ -201,6 +208,53 @@ function AuditTable() {
   );
 }
 
+const SECTION_NAMES = {
+  dashboard: "پوختە", features: "ڕێکخستنەکان", security: "پاراستن", ai: "یاریدەدەری زیرەک",
+  students: "خوێندکاران", questions: "بانکی پرسیار", content: "بەڕێوەبردنی ناوەڕۆک", signs: "نیشانەکانی هاتوچۆ",
+  review: "پشکنینی مرۆیی", exams: "تاقیکردنەوەی تاقیکاری", lessons: "وانەکان", languages: "زمان و وەرگێڕان",
+  payments: "پارەدان", licenses: "مۆڵەتەکان", analytics: "ئامار و پێشکەوتن", email: "ناوەندی ئیمەیڵ",
+  design: "دیزاین", database: "داتابەیس", health: "دۆخی سیستەم", audit: "تۆماری چالاکی",
+} satisfies Record<Section, string>;
+const EMPTY = "داتا بەردەست نییە";
+
+function CountryOverview({ metrics, go }: { metrics: DashboardMetrics | null; go: (section: Section) => void }) {
+  const [country, setCountry] = useState<"DE" | "IT">("DE");
+  const [chart, setChart] = useState<"translations" | "publication">("translations");
+  const stats = country === "DE" ? metrics?.de : metrics?.it;
+  const series = chart === "publication"
+    ? [["نیشانکراو بە بڵاوکراوە لە داتابەیس", stats?.published]] as const
+    : [["سۆرانی", stats?.sorani], ["بادینی دهۆکی", stats?.badini]] as const;
+  return <section className="card dr-country">
+    <div className="dr-card-head">
+      <h2 className="dr-h">ناوەڕۆک بە پێی وڵات</h2>
+      <div className="dr-actions" role="group" aria-label="وڵات">
+        <button type="button" className="dr-chip" aria-pressed={country === "DE"} onClick={() => setCountry("DE")}>🇩🇪 ئەڵمانیا</button>
+        <button type="button" className="dr-chip" aria-pressed={country === "IT"} onClick={() => setCountry("IT")}>🇮🇹 ئیتاڵیا</button>
+      </div>
+    </div>
+    {stats ? <>
+      <div className="dr-grid">
+        <Tile value={stats.questions} label="پرسیاری تۆمارکراو" />
+        <Tile value={stats.signs} label="نیشانەی تۆمارکراو" />
+      </div>
+      <div className="dr-card-head">
+        <h3>{chart === "translations" ? "دەق و ڕوونکردنەوەی پرسیار" : "دۆخی بڵاوکردنەوە"}</h3>
+        <select className="input dr-chart-select" aria-label="جۆری ئامار" value={chart} onChange={(e) => setChart(e.target.value === "publication" ? "publication" : "translations")}>
+          <option value="translations">وەرگێڕان</option><option value="publication">بڵاوکردنەوە</option>
+        </select>
+      </div>
+      {stats.questions > 0 ? series.map(([label, count]) => <div className="dr-meter" key={label}>
+        <span>{label}</span><bdi>{count === undefined ? EMPTY : `${count} / ${stats.questions}`}</bdi>
+        {count !== undefined && <meter aria-label={label} max={stats.questions} value={count} />}
+      </div>) : <p className="dr-empty">هیچ پرسیارێک تۆمار نەکراوە.</p>}
+    </> : <p className="dr-empty">{EMPTY}</p>}
+    <div className="dr-actions">
+      <button type="button" className="btn btn-secondary btn-sm" onClick={() => go("content")}>بەڕێوەبردنی ناوەڕۆک</button>
+      <button type="button" className="btn btn-secondary btn-sm" onClick={() => go("review")}>پشکنینی مرۆیی</button>
+    </div>
+  </section>;
+}
+
 // ── main ──────────────────────────────────────────────────────────────────
 export function DrAdmin() {
   const [auth, setAuth] = useState<{ checked: boolean; ok: boolean; to: string; error?: string }>({ checked: false, ok: false, to: "" });
@@ -209,6 +263,9 @@ export function DrAdmin() {
   const [busy, setBusy] = useState(false);
   const [flash, setFlash] = useState<{ kind: "ok" | "err"; text: string } | null>(null);
   const [stepUp, setStepUp] = useState<null | (() => Promise<void>)>(null);
+  const [metrics, setMetrics] = useState<DashboardMetrics | null>(null);
+  const [search, setSearch] = useState("");
+  const [activityFilter, setActivityFilter] = useState("all");
   const [health, setHealth] = useState<Record<string, unknown> | null>(null);
 
   useEffect(() => {
@@ -229,10 +286,28 @@ export function DrAdmin() {
     else setFlash({ kind: "err", text: errText(r) });
   }, []);
   const checkSession = useCallback(() => api("/api/dr/session").then(applySession), [applySession]);
-  const load = useCallback(() => api("/api/dr/overview").then(applyOverview), [applyOverview]);
+  const load = useCallback(async (passive = false) => {
+    const [overview, dashboard, status] = await Promise.all([
+      api("/api/dr/overview", undefined, passive), api("/api/dr/dashboard", undefined, passive), api("/api/health"),
+    ]);
+    applyOverview(overview);
+    setMetrics(dashboard.status === 200 ? dashboard.body as unknown as DashboardMetrics : null);
+    setHealth(status.status === 200 ? status.body : { ok: false });
+  }, [applyOverview]);
   useEffect(() => { api("/api/dr/session").then(applySession); }, [applySession]);
-  useEffect(() => { if (auth.ok) api("/api/dr/overview").then(applyOverview); }, [auth.ok, applyOverview]);
-  useEffect(() => { if (section === "health") api("/api/health").then((r) => setHealth(r.body)); }, [section]);
+  useEffect(() => {
+    if (!auth.ok) return;
+    const initial = window.setTimeout(() => void load(), 0);
+    return () => window.clearTimeout(initial);
+  }, [auth.ok, load]);
+
+  useEffect(() => {
+    if (!auth.ok || section !== "dashboard") return;
+    const timer = window.setInterval(() => {
+      if (document.visibilityState === "visible") void load(true);
+    }, 60_000);
+    return () => window.clearInterval(timer);
+  }, [auth.ok, load, section]);
 
   // Runs a mutating request; asks for a fresh e-mail code when the server requires step-up, then retries once.
   const mutate = useCallback(async (path: string, body: unknown, okText: string) => {
@@ -259,30 +334,47 @@ export function DrAdmin() {
   if (auth.error) return <div className="dr dr-login"><div className="card"><div className="dr-msg err" role="alert">{auth.error}</div></div></div>;
   if (!auth.ok) return <div className="dr" dir="rtl" lang="ckb"><Login to={auth.to} onDone={() => void checkSession()} /></div>;
 
+  const go = (next: Section) => {
+    setSection(next);
+    setSearch("");
+    document.getElementById("dr-section-title")?.focus({ preventScroll: true });
+    window.scrollTo(0, 0);
+  };
+  const filteredSections = SECTIONS.filter(([key, , label]) =>
+    `${SECTION_NAMES[key]} ${label}`.toLowerCase().includes(search.trim().toLowerCase()));
+  const activity = metrics?.activity.filter((entry) => activityFilter === "all" || entry.result === activityFilter);
+
   const fs = data?.features ?? [];
   const byGroup = (g: string) => fs.filter((f) => f.group === g);
   const pick = (...keys: string[]) => fs.filter((f) => keys.includes(f.key));
   const emergency = fs.find((f) => f.key === "emergency_lock");
-  const c = data?.content ?? {};
+  const de = metrics?.de;
+  const it = metrics?.it;
   const aiActive = (data?.ai ?? []).filter((a) => a.status === "ACTIVE").length;
 
   const body = (): ReactNode => {
-    if (!data) return <p aria-busy="true">…</p>;
+    if (!data) return <p aria-busy={flash?.kind !== "err"}>{flash?.kind === "err" ? EMPTY : "داتا باردەکرێت…"}</p>;
     const db = data.database;
     switch (section) {
       case "dashboard": return (<>
         {emergency && <Card title="قوفڵی کاتی" en="Emergency Lock" className={emergency.state === "ON" ? "dr-emergency" : ""}><Features list={[emergency]} onSet={setFeature} busy={busy} /></Card>}
-        <div className="dr-grid">
-          <Tile value={<Badge ok>ONLINE</Badge>} label={`System · v${data.system.version}`} />
-          <Tile value={`${db.latencyMs} ms`} label="Database regadrive-db" />
-          <Tile value={`${aiActive}/${data.ai.length}`} label="AI providers ACTIVE" />
-          <Tile value={`${c.published?.questions ?? 0}/${c.total?.questions ?? 0}`} label="پرسیاری بڵاوکراوە" />
-          <Tile value={db.logins24h} label="چوونەژوورەوە (24h)" />
-          <Tile value={db.denied24h} label="ڕەتکراوە (24h)" />
-          <Tile value={<Badge warn>LOCKED</Badge>} label="Payments" />
-          <Tile value={db.activeSessions} label="سێشنی چالاک" />
+        <div className="dr-grid dr-kpis">
+          <Tile value={db.activeSessions} label="سێشنی بەڕێوەبەری چالاک" />
+          <Tile value={db.logins24h} label="چوونەژوورەوە · ٢٤ کاتژمێر" />
+          <Tile value={db.denied24h} label="داواکاریی ڕەتکراوە · ٢٤ کاتژمێر" />
+          <Tile value={`${aiActive} / ${data.ai.length}`} label="دابینکەری زیرەکی چالاک" />
         </div>
-        <Card title="کۆنترۆڵە سەرەکییەکان" en="Quick controls"><Features list={pick("ai_explanations", "payments", "student_accounts")} onSet={setFeature} busy={busy} /></Card>
+        <CountryOverview metrics={metrics} go={go} />
+        <Card title="دوایین چالاکییەکان">
+          <select className="input dr-chart-select" aria-label="پاڵاوتنی چالاکی" value={activityFilter} onChange={(e) => setActivityFilter(e.target.value)}>
+            <option value="all">هەموو ئەنجامەکان</option><option value="allowed">ڕێگەپێدراو</option><option value="denied">ڕەتکراوە</option><option value="failed">شکستخواردوو</option>
+          </select>
+          {activity?.length ? <ol className="dr-timeline">{activity.map((entry) => <li key={entry.id}>
+            <bdi>{entry.action}</bdi><time dateTime={new Date(entry.at).toISOString()} dir="ltr">{time(entry.at)}</time>
+            <Badge ok={entry.result === "allowed"} warn={entry.result === "failed"}>{entry.result}</Badge>
+          </li>)}</ol> : <p className="dr-empty">{activity ? "چالاکییەک لەم پاڵاوتنەدا نییە." : EMPTY}</p>}
+          <button type="button" className="btn btn-secondary btn-sm" onClick={() => go("audit")}>هەموو تۆمارەکان</button>
+        </Card>
       </>);
       case "features": return (<>
         <Note>🟢 ON چالاک · 🔴 OFF ناچالاک · 🟡 LOCKED ئامادەیە بەڵام پێویستی بە پشتڕاستکردنەوەی خاوەن هەیە. هەموو دۆخەکان لەسەر سێرڤەر جێبەجێ دەکرێن.</Note>
@@ -323,31 +415,30 @@ export function DrAdmin() {
       </>);
       case "students": return (<Card title="خوێندکاران" en="Students">
         <Features list={pick("student_accounts")} onSet={setFeature} busy={busy} />
-        <Note>هەژماری خوێندکاران هێشتا ناچالاکە. پێشکەوتنی خوێندکاران ئێستا تەنها لەناو browser ـی خۆیاندا پاشەکەوت دەکرێت، بۆیە لێرە لیستی خوێندکار نییە. بۆ چالاککردن: سیاسەتی نهێنیپارێزی + ڕێسای سڕینەوە (docs/OWNER_ACTIVATION.md §3).</Note>
+        <Tile value={metrics?.students ?? EMPTY} label="هەژماری خوێندکاری تۆمارکراو لە بەشی ئەڵمانیا" />
+        <Note>پێشکەوتنی ناوخۆیی خوێندکاران لە ئاماری هەژمارەکاندا نییە.</Note>
       </Card>);
       case "questions": return (<Card title="بانکی پرسیار" en="Question Bank">
         <div className="dr-grid">
-          <Tile value={c.total?.questions ?? 0} label="هەموو پرسیارەکان" />
-          <Tile value={c.published?.questions ?? 0} label="بڵاوکراوە (approved)" />
-          <Tile value={c.questionReview?.pending ?? 0} label="چاوەڕێی پێداچوونەوە" />
-          <Tile value={c.questionReview?.draft ?? 0} label="ڕەشنووس" />
+          <Tile value={de?.questions ?? EMPTY} label="🇩🇪 پرسیاری تۆمارکراو" />
+          <Tile value={de?.pending ?? EMPTY} label="🇩🇪 چاوەڕێی پشکنین" />
+          <Tile value={de?.draft ?? EMPTY} label="🇩🇪 ڕەشنووس" />
+          <Tile value={it?.questions ?? EMPTY} label="🇮🇹 پرسیاری تۆمارکراو" />
         </div>
         <Features list={pick("official_question_bank", "content_import")} onSet={setFeature} busy={busy} />
-        <Note>پرسیارەکان تەنها دوای پێداچوونەوەی مرۆیی بڵاو دەکرێنەوە (docs/CONTENT_REVIEW.md).</Note>
+        <button type="button" className="btn btn-secondary btn-sm" onClick={() => go("review")}>پشکنینی مرۆیی</button>
       </Card>);
-      case "signs": return (<Card title="نیشانەکانی هاتوچۆ" en="Traffic Signs"><div className="dr-grid"><Tile value={c.total?.signs ?? 0} label="هەموو" /><Tile value={c.published?.signs ?? 0} label="بڵاوکراوە" /></div></Card>);
-      case "lessons": return (<Card title="وانەکان" en="Lessons"><div className="dr-grid"><Tile value={c.total?.lessons ?? 0} label="هەموو" /><Tile value={c.published?.lessons ?? 0} label="بڵاوکراوە" /><Tile value={c.total?.vocabulary ?? 0} label="وشەنامە" /></div></Card>);
-      case "exams": return (<Card title="تاقیکردنەوەی تاقیکاری" en="Mock Exams">
-        <div className="dr-grid"><Tile value={c.published?.questions ?? 0} label="پرسیاری بەردەست بۆ تاقیکردنەوە" /></div>
+      case "signs": return <Card title="نیشانەکانی هاتوچۆ" en="Traffic Signs">
+        <div className="dr-grid"><Tile value={de?.signs ?? EMPTY} label="🇩🇪 نیشانەی تۆمارکراو" /><Tile value={it?.signs ?? EMPTY} label="🇮🇹 نیشانەی تۆمارکراو" /></div>
+      </Card>;
+      case "lessons": return <Card title="وانەکان" en="Lessons">
+        <div className="dr-grid"><Tile value={de?.lessons ?? EMPTY} label="🇩🇪 وانەی تۆمارکراو" /><Tile value={de?.publishedLessons ?? EMPTY} label="🇩🇪 وانەی بڵاوکراوە" /><Tile value={de?.vocabulary ?? EMPTY} label="🇩🇪 وشەی تۆمارکراو" /></div>
+      </Card>;
+      case "exams": return <Card title="تاقیکردنەوەی تاقیکاری" en="Mock Exams">
         <Features list={pick("official_mock_exams")} onSet={setFeature} busy={busy} />
-      </Card>);
-      case "languages": return (<Card title="زمانەکان" en="Languages">
-        <div className="dr-row"><div className="dr-row-label"><strong>کوردیی سۆرانی</strong><small>ckb · RTL · سەرەکی</small></div><Badge ok>ON</Badge></div>
-        <div className="dr-row"><div className="dr-row-label"><strong>Kurdî (Kurmancî)</strong><small>kmr · LTR · کرمانجی</small></div><Badge ok>ON</Badge></div>
-        <div className="dr-row"><div className="dr-row-label"><strong>العربية</strong><small>ar · RTL · عەرەبی</small></div><Badge ok>ON</Badge></div>
-        <div className="dr-row"><div className="dr-row-label"><strong>Deutsch</strong><small>de · LTR · دووەم</small></div><Badge ok>ON</Badge></div>
-        <Note>دیزاین لە هەموو زمانەکاندا وەک خۆی دەمێنێتەوە (ڕاست بۆ چەپ)؛ تەنها دەقەکان دەگۆڕێن.</Note>
-      </Card>);
+        <button type="button" className="btn btn-secondary btn-sm" onClick={() => go("questions")}>بانکی پرسیار</button>
+      </Card>;
+      case "languages": return <CountryOverview metrics={metrics} go={go} />;
       case "payments": return (<Card title="سیستەمی پارەدان" en="Payments">
         <Note>🟡 پارەدان ئامادەیە بەڵام LOCKED ـە. تەنها بە بڕیاری خۆت و هەنگاوەکانی docs/OWNER_ACTIVATION.md §4 دەکرێتەوە؛ ئەم پانێڵە ناتوانێت پارەدان چالاک بکات.</Note>
         <div className="dr-grid"><Tile value={`€${data.payments?.priceEur ?? 20}`} label="Lifetime" /><Tile value={<Badge warn>LOCKED</Badge>} label="Checkout" /></div>
@@ -359,7 +450,7 @@ export function DrAdmin() {
           <Tile value={db.logins24h} label="چوونەژوورەوەی admin" /><Tile value={db.codesSent24h} label="کۆدی نێردراو" />
           <Tile value={db.denied24h} label="داواکاری ڕەتکراوە" /><Tile value={db.auditEntries} label="کۆی تۆمارەکان" />
         </div>
-        <Note>ئاماری خوێندکاران دوای چالاککردنی هەژماری خوێندکاران دەردەکەوێت.</Note>
+        <Tile value={metrics?.progress ?? EMPTY} label="خوێندکارانی ئەڵمانیا کە پێشکەوتنیان هاوکات کردووە" />
       </Card>);
       case "email": return (<Card title="ناوەندی ئیمەیڵ" en="Email Center">
         <div className="dr-row"><div className="dr-row-label"><strong>وەرگر (تەنها)</strong><small dir="ltr" style={{ textAlign: "start" }}>{data.email.owner}</small></div><Badge ok>OWNER</Badge></div>
@@ -398,24 +489,62 @@ export function DrAdmin() {
   };
 
   return (
-    <div className="dr" dir="rtl" lang="ckb">
+    <div className="dr dr-workspace" dir="rtl" lang="ckb">
       <header className="dr-top">
-        <img src="/brand/regadrive-logo.webp" width={120} height={40} alt="" />
-        <div className="dr-top-title"><strong>Rega<span>DRIVE</span></strong><small>SUPER ADMIN · <bdi dir="ltr">{data?.owner ?? ""}</bdi></small></div>
-        <button type="button" className="btn btn-secondary btn-sm" onClick={logout}>دەرچوون</button>
+        <img src="/brand/regadrive-logo.webp" width={120} height={40} alt="RegaDRIVE" />
+        <div className="dr-search">
+          <label className="dr-sr" htmlFor="dr-search">گەڕان لە بەشەکان</label>
+          <input id="dr-search" type="search" className="input" placeholder="گەڕان لە هەموو بەشەکان…" value={search} onChange={(e) => setSearch(e.target.value)} onKeyDown={(e) => {
+            if (e.key === "Escape") setSearch("");
+            if (e.key === "Enter" && search.trim() && filteredSections[0]) go(filteredSections[0][0]);
+          }} />
+          {search.trim() && <ul className="dr-search-results">
+            {filteredSections.length ? filteredSections.map(([key]) => <li key={key}><button type="button" onClick={() => go(key)}>{SECTION_NAMES[key]}</button></li>) : <li>هیچ بەشێک نەدۆزرایەوە.</li>}
+          </ul>}
+        </div>
+        <button type="button" className="btn btn-secondary btn-sm" onClick={() => void load()}>نوێکردنەوە</button>
       </header>
-      <nav className="dr-nav" aria-label="Admin sections">
-        {SECTIONS.map(([key, icon, label]) => (
-          <button key={key} type="button" className="dr-chip" aria-current={section === key ? "page" : undefined} onClick={() => { setSection(key); window.scrollTo(0, 0); }}>
-            <span aria-hidden="true">{icon}</span><span dir="ltr">{label}</span>
+      <nav className="dr-nav" aria-label="بەشەکانی بەڕێوەبەری">
+        {SECTIONS.map(([key, icon]) => (
+          <button key={key} type="button" className="dr-chip" aria-current={section === key ? "page" : undefined} onClick={() => go(key)}>
+            <span aria-hidden="true">{icon}</span><span>{SECTION_NAMES[key]}</span>
           </button>
         ))}
       </nav>
       <main className="dr-main" id="main">
+        <div className="dr-card-head dr-heading">
+          <h1 tabIndex={-1} id="dr-section-title">{SECTION_NAMES[section]}</h1>
+          {data && <small>نوێکراوەتەوە <time dateTime={new Date(data.now).toISOString()} dir="ltr">{time(data.now)}</time></small>}
+        </div>
         {emergency?.state === "ON" && <div className="dr-msg err" role="alert">🚨 قوفڵی کاتی چالاکە — تایبەتمەندییە گشتییەکان ڕاگیراون.</div>}
         {flash && <div className={`dr-msg ${flash.kind}`} role={flash.kind === "err" ? "alert" : "status"} onClick={() => setFlash(null)}>{flash.text}</div>}
         {body()}
       </main>
+      {data && <aside className="dr-aside" aria-label="هەژمار و دۆخی سیستەم">
+        <Card title="هەژماری بەڕێوەبەر" className="dr-profile">
+          <img src="/brand/regadrive-emblem.webp" width={64} height={64} alt="" />
+          <strong lang="en" dir="ltr">SUPER ADMIN</strong>
+          <bdi dir="ltr">{data.owner}</bdi>
+          <div className="dr-actions">
+            <button type="button" className="btn btn-secondary btn-sm" onClick={() => go("security")}>پاراستن</button>
+            <button type="button" className="btn btn-secondary btn-sm" onClick={logout}>دەرچوون</button>
+          </div>
+        </Card>
+        <Card title="دۆخی سیستەم">
+          <div className="dr-row"><span>داتابەیس</span><Badge ok={data.database.ok}>{data.database.ok ? `${data.database.latencyMs} ms` : "ERROR"}</Badge></div>
+          <div className="dr-row"><span>API</span><Badge ok={health?.ok === true}>{health ? health.ok === true ? "OK" : "ERROR" : "…"}</Badge></div>
+          <button type="button" className="btn btn-secondary btn-sm" onClick={() => go("health")}>وردەکاری</button>
+        </Card>
+        <Card title="ئاگادارکردنەوە · ٢٤ کاتژمێر">
+          <div className="dr-row"><span>داواکاریی ڕەتکراوە</span><b>{data.database.denied24h}</b></div>
+          <div className="dr-row"><span>شکستی ناردنی ئیمەیڵ</span><b>{data.database.mailFailures24h}</b></div>
+          <button type="button" className="btn btn-secondary btn-sm" onClick={() => go("audit")}>تۆماری چالاکی</button>
+        </Card>
+        <Card title="کارە خێراکان">
+          {(["questions", "signs", "review", "database"] as const).map((key) =>
+            <button type="button" className="btn btn-secondary btn-sm" key={key} onClick={() => go(key)}>{SECTION_NAMES[key]}</button>)}
+        </Card>
+      </aside>}
       {stepUp && (
         <div className="dr-dialog-back">
           <div className="dr-dialog" role="dialog" aria-modal="true" aria-labelledby="dr-stepup-title">

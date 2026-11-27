@@ -32,10 +32,11 @@ function setup() {
   const mails: MailMessage[] = [];
   const env: DrEnv = { DB: db, DR_OWNER_EMAIL: OWNER, REGADRIVE_RESEND_API_KEY: "re_test" };
   let cookie = "";
-  const call = async (path: string, init: { method?: string; body?: unknown; now?: number; ip?: string; header?: boolean } = {}) => {
+  const call = async (path: string, init: { method?: string; body?: unknown; now?: number; ip?: string; header?: boolean; passive?: boolean } = {}) => {
     const method = init.method ?? (init.body === undefined ? "GET" : "POST");
     const headers: Record<string, string> = { "cf-connecting-ip": init.ip ?? "203.0.113.7", "user-agent": "test" };
     if (cookie) headers.cookie = cookie;
+    if (init.passive) headers["x-dr-passive"] = "1";
     if (method !== "GET" && init.header !== false) headers["x-dr-request"] = "1";
     const r = await handleDr(new Request(`https://www.regaplatform.com${path}`, { method, headers, body: init.body === undefined ? undefined : JSON.stringify(init.body) }), env, {
       now: init.now ?? T0,
@@ -110,6 +111,26 @@ describe("/dr owner control center", () => {
     const audit = await t.db.prepare("SELECT action, result FROM dr_audit_log ORDER BY id").all<{ action: string; result: string }>();
     expect(audit.results.some((a) => a.action === "login" && a.result === "allowed")).toBe(true);
     expect(audit.results.some((a) => a.result === "denied")).toBe(true);
+  });
+
+  it("protects dashboard metrics and returns unavailable sources without exposing audit details", async () => {
+    const t = setup();
+    expect((await t.call("/api/dr/dashboard")).status).toBe(401);
+    await t.login();
+    const result = await t.call("/api/dr/dashboard");
+    expect(result.status).toBe(200);
+    expect(result.body).toMatchObject({ de: null, it: null, students: null, progress: null });
+    const activity = result.body.activity as Record<string, unknown>[];
+    expect(activity[0]).toMatchObject({ action: "login", result: "allowed" });
+    expect(Object.keys(activity[0]!).sort()).toEqual(["action", "at", "id", "result"]);
+  });
+
+  it("does not renew an idle owner session during dashboard polling", async () => {
+    const t = setup();
+    await t.login();
+    expect((await t.call("/api/dr/dashboard", { passive: true, now: T0 + 29 * 60_000 })).status).toBe(200);
+    expect((await t.call("/api/dr/overview", { passive: true, now: T0 + 29 * 60_000 })).status).toBe(200);
+    expect((await t.call("/api/dr/dashboard", { passive: true, now: T0 + 30 * 60_000 })).status).toBe(401);
   });
 
   it("enforces controls server-side: locked money features, step-up for critical changes, backups", async () => {
