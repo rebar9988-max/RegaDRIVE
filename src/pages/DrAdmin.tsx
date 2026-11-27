@@ -357,7 +357,7 @@ export function DrAdmin() {
     const db = data.database;
     switch (section) {
       case "dashboard": return (<>
-        {emergency && <Card title="قوفڵی کاتی" en="Emergency Lock" className={emergency.state === "ON" ? "dr-emergency" : ""}><Features list={[emergency]} onSet={setFeature} busy={busy} /></Card>}
+        {emergency && <Card title="قوفڵی کاتی" en="Emergency Lock" className={`dr-emergency-card${emergency.state === "ON" ? " dr-emergency" : ""}`}><Features list={[emergency]} onSet={setFeature} busy={busy} /></Card>}
         <div className="dr-grid dr-kpis">
           <Tile value={db.activeSessions} label="سێشنی بەڕێوەبەری چالاک" />
           <Tile value={db.logins24h} label="چوونەژوورەوە · ٢٤ کاتژمێر" />
