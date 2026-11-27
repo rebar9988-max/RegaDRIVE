@@ -166,7 +166,7 @@
 .dr-top-brand > img { width: min(120px, 24vw); height: auto; }
 .dr-top-page-title { min-width: max-content; line-height: 1.2; }
 .dr-top-page-title strong { display: block; color: #173a2b; font-size: 1.12rem; font-weight: 800; }
-.dr-top-page-title small { display: block; margin-top: 3px; color: #668070; font-size: .68rem; }
+.dr-top-page-title small { display: block; margin-top: 3px; color: #52695c; font-size: .68rem; }
 .dr-top-actions { display: flex; align-items: center; gap: 7px; flex: 0 0 auto; }
 .dr-workspace .dr-kpis .dr-tile { border-top: 1px solid var(--dr-line); background: #fff; box-shadow: 0 3px 12px #173a2b08; }
 .dr-workspace .dr-kpis .dr-tile b { color: #173a2b; font-size: clamp(1.45rem, 2vw, 1.75rem); }
