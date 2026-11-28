@@ -267,3 +267,14 @@
 .it-cat-queue h3 { margin: 0; font-size: 1rem; }
 .it-cat-queue p { margin: 0; }
 .it-cat-queue-chapters { display: flex; flex-wrap: wrap; gap: 6px; }
+
+/* Content Review: totals that add up, Germany and Italy apart, and the reasons an item is not live. */
+.rv-reconcile { display: grid; gap: 6px; padding: 14px 16px; border-inline-start: 4px solid #176145; background: #f3faf5; }
+.rv-reconcile p { margin: 0; line-height: 1.7; overflow-wrap: anywhere; }
+.rv-reconcile b { color: #173f2c; }
+.rv-country .dr-chip { font-size: .95rem; }
+.rv-reasons { border: 1px solid #f1dfb8; background: #fffaf0; border-radius: 12px; padding: 6px 10px; }
+.rv-reasons li { overflow-wrap: anywhere; }
+.rv-reasons code { font-size: .72rem; color: var(--muted); }
+.it-cat-why ul { margin: 0; padding-inline-start: 16px; font-size: .78rem; }
+.it-cat-why li { overflow-wrap: anywhere; }

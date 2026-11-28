@@ -30,7 +30,10 @@ const STAGE_WHO: Record<string, string> = {
   TRANSLATION_REVIEW: "Sorani reviewer", EDUCATIONAL_REVIEW: "driving instructor (text and media)", APPROVED: "owner", PUBLISHED: "owner; the database checks every rule again",
 };
 
-export function DrContent() {
+type ApiResult = { status: number; body: Record<string, unknown> };
+interface DrProps { api?: (path: string, body?: unknown) => Promise<ApiResult>; onNeedStepUp?: (retry: () => Promise<void>) => void }
+
+export function DrContent({ api, onNeedStepUp }: DrProps = {}) {
   const [status, setStatus] = useState<Status | null>(null);
   const [statusNote, setStatusNote] = useState("loading…");
   useEffect(() => {
@@ -57,8 +60,8 @@ export function DrContent() {
         </tbody></table></div>
       </section>
 
-      <ItalyImportPanel />
-      <DrItalyCatalogue />
+      <ItalyImportPanel api={api} onNeedStepUp={onNeedStepUp} />
+      <DrItalyCatalogue api={api} onNeedStepUp={onNeedStepUp} />
 
       <section className="card stack" data-testid="italy-storage">
         <h2 className="section-title">🇮🇹 ئیتالیا — بانکی ناوەڕۆک</h2>
@@ -114,7 +117,7 @@ interface ImportReport { ok?: boolean; dryRun?: boolean; received?: number; stor
  * Content Review before a learner sees it, and re-importing an item with different wording withdraws
  * the approval that was bound to the old wording.
  */
-function ItalyImportPanel() {
+function ItalyImportPanel({ api, onNeedStepUp }: DrProps) {
   const [info, setInfo] = useState<ImportReady | null>(null);
   const [note, setNote] = useState("loading…");
   const [payload, setPayload] = useState("");
@@ -128,16 +131,17 @@ function ItalyImportPanel() {
   };
   useEffect(refresh, []);
 
-  const post = async (path: string, body?: unknown) => {
+  const post = async (path: string, body?: unknown): Promise<void> => {
     setBusy(true);
     try {
-      const r = await fetch(path, {
+      // Every /dr write needs the x-dr-request header; a real import also needs a fresh sign-in code.
+      const r = api ? await api(path, body ?? {}) : await fetch(path, {
         method: "POST", credentials: "same-origin",
-        headers: { "content-type": "application/json" },
+        headers: { "content-type": "application/json", "x-dr-request": "1" },
         body: JSON.stringify(body ?? {}),
-      });
-      const data = await r.json().catch(() => ({})) as ImportReport;
-      setReport(data);
+      }).then(async (x) => ({ status: x.status, body: await x.json().catch(() => ({})) as Record<string, unknown> }));
+      if (r.body.error === "STEP_UP_REQUIRED" && onNeedStepUp) { onNeedStepUp(() => post(path, body)); return; }
+      setReport(r.body as ImportReport);
       refresh();
     } catch { setReport({ error: "NETWORK" }); } finally { setBusy(false); }
   };

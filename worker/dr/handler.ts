@@ -601,16 +601,20 @@ export async function handleDr(req: Request, env: DrEnv, deps: DrDeps = {}): Pro
     const { rows, ready: tablesReady } = await loadRowsWithState(db);
     const states = new Map(evaluateAll(rows).map((x) => [x.id, x]));
     const items = ALL_REVIEW_ITEMS.map((i) => ({ ...states.get(i.id)!, checks: i.checks, valid: i.valid, sourceRefs: i.sourceRefs, contentVersion: i.contentVersion }));
+    const country = () => ({ total: 0, published: 0, awaiting: 0, inReview: 0, rejected: 0 });
     const counts = { total: items.length, published: 0, awaiting: 0, inReview: 0, rejected: 0,
       signs: { total: 0, published: 0 }, signQuiz: { total: 0, published: 0 },
-      itSigns: { total: 0, published: 0 }, itQuestions: { total: 0, published: 0 } };
+      itSigns: { total: 0, published: 0 }, itQuestions: { total: 0, published: 0 },
+      // Germany and Italy apart, so every number on the screen adds up to `total` (owner question 2026-11-28).
+      byCountry: { de: country(), it: country() } };
     for (const x of items) {
       const k = x.kind === "sign" ? "signs" : x.kind === "signQuiz" ? "signQuiz" : x.kind === "itSign" ? "itSigns" : "itQuestions";
-      counts[k].total++;
-      if (x.publishable) { counts.published++; counts[k].published++; }
-      else if (x.status === "REJECTED") counts.rejected++;
-      else if (x.status === "AWAITING_REVIEW") counts.awaiting++;
-      else counts.inReview++;
+      const c = counts.byCountry[sourceFor(x.kind)];
+      counts[k].total++; c.total++;
+      if (x.publishable) { counts.published++; counts[k].published++; c.published++; }
+      else if (x.status === "REJECTED") { counts.rejected++; c.rejected++; }
+      else if (x.status === "AWAITING_REVIEW") { counts.awaiting++; c.awaiting++; }
+      else { counts.inReview++; c.inReview++; }
     }
     const history = rows.slice(-300).reverse();
     const italyQuestions = tablesReady.it ? await italyQuestionsForReview(db, rows) : [];
@@ -625,21 +629,31 @@ export async function handleDr(req: Request, env: DrEnv, deps: DrDeps = {}): Pro
     const action = `review.${sub.stage}.${sub.outcome}`;
     if (!steppedUp) return needStepUp(action);
     const { rows, ready: tablesReady } = await loadRowsWithState(db);
-    const italyId = sub.ids.find((id) => IT_QUESTION_BY_ID.has(id));
-    if (italyId) {
+    const italyIds = sub.ids.filter((id) => IT_QUESTION_BY_ID.has(id));
+    if (italyIds.length > 0) {
       if (!tablesReady.it) return reply({ error: "REVIEW_TABLE_MISSING" }, 503);
-      if (sub.ids.length !== 1) return reply({ error: "ITALY_REVIEW_SINGLE_QUESTION" }, 400);
-      const draft = await loadItalyQuestionDraft(db, IT_QUESTION_BY_ID.get(italyId)!);
-      const questionHash = (body as { questionHash?: unknown }).questionHash;
-      if (questionHash !== draft.item.hash) return reply({ error: "STALE_TRANSLATION" }, 409);
-      const invalid = checkSubmission(sub, draft.item, italyQuestionRows(draft, rows), reviewToday);
-      if (invalid) {
-        await audit(actor, action, "denied", { id: italyId, reason: invalid });
-        return reply({ error: invalid }, 422);
+      // Italian questions are reviewed on their editable draft wording, so they are never mixed with other items.
+      if (italyIds.length !== sub.ids.length) return reply({ error: "ITALY_REVIEW_MIXED" }, 400);
+      // Each question carries the fingerprint of the wording the reviewer saw: one `questionHash` for a single
+      // question, or `questionHashes: { id: hash }` for a selection. A changed wording refuses the whole batch.
+      const raw = body as { questionHash?: unknown; questionHashes?: unknown };
+      const hashes = raw.questionHashes && typeof raw.questionHashes === "object" ? raw.questionHashes as Record<string, unknown> : {};
+      const seen = (id: string) => (italyIds.length === 1 && raw.questionHash !== undefined ? raw.questionHash : hashes[id]);
+      const drafts = await Promise.all(italyIds.map((id) => loadItalyQuestionDraft(db, IT_QUESTION_BY_ID.get(id)!)));
+      const stale = drafts.filter((d) => seen(d.item.id) !== d.item.hash).map((d) => d.item.id);
+      if (stale.length) return reply({ error: "STALE_TRANSLATION", stale }, 409);
+      const errors: { id: string; error: string }[] = [];
+      for (const d of drafts) { const e = checkSubmission(sub, d.item, italyQuestionRows(d, rows), reviewToday); if (e) errors.push({ id: d.item.id, error: e }); }
+      if (errors.length) {
+        await audit(actor, action, "denied", { ids: italyIds.slice(0, 10), reason: errors[0]!.error, count: errors.length });
+        // All or nothing: one refused question records nothing for the others.
+        return reply({ error: italyIds.length === 1 ? errors[0]!.error : "REJECTED", errors: errors.slice(0, 20), rejectedCount: errors.length }, 422);
       }
-      if (!await recordItalyQuestionReview(db, draft, sub, actor, now)) return reply({ error: "STALE_TRANSLATION" }, 409);
-      await audit(actor, action, "allowed", { ids: [italyId], reviewer: sub.reviewerName, questionHash });
-      return reply({ ok: true, recorded: 1 });
+      let recorded = 0;
+      for (const d of drafts) if (await recordItalyQuestionReview(db, d, sub, actor, now)) recorded++;
+      await audit(actor, action, recorded ? "allowed" : "denied", { ids: italyIds.slice(0, 10), count: italyIds.length, recorded, reviewer: sub.reviewerName, evidence: sub.evidenceRef.slice(0, 120) });
+      if (recorded < drafts.length) return reply({ error: "STALE_TRANSLATION", recorded }, 409);
+      return reply({ ok: true, recorded });
     }
     const needed = [...new Set(sub.ids.map((id) => REVIEW_ITEM_BY_ID.get(id)).filter((i) => i !== undefined).map((i) => sourceFor(i.kind)))];
     if (needed.some((src) => !tablesReady[src])) {

@@ -71,7 +71,36 @@ function loadReviewer() {
  * published from here, and recording one needs a fresh sign-in code, a named human reviewer, a date and
  * an evidence reference. Machine checks never count as a review.
  */
-export function DrItalyCatalogue() {
+type ApiResult = { status: number; body: Record<string, unknown> };
+interface Props {
+  /** The /dr request helper: sends the x-dr-request header the server requires for every write. */
+  api?: (path: string, body?: unknown) => Promise<ApiResult>;
+  /** Opens the sign-in code dialog and retries the write afterwards. */
+  onNeedStepUp?: (retry: () => Promise<void>) => void;
+}
+
+/** Fallback helper with the same contract as /dr's own, so the panel never posts without the header. */
+async function drPost(path: string, body: unknown): Promise<ApiResult> {
+  try {
+    const r = await fetch(path, { method: "POST", credentials: "same-origin", headers: { "content-type": "application/json", "x-dr-request": "1" }, body: JSON.stringify(body) });
+    return { status: r.status, body: await r.json().catch(() => ({})) as Record<string, unknown> };
+  } catch { return { status: 0, body: { error: "NETWORK" } }; }
+}
+
+const DECISION_ERR: Record<string, string> = {
+  REVIEWER_NAME_INVALID: "پشکنەر دەبێت کەسێکی ڕاستەقینە و بە ناو بێت (نەک AI یان خۆکار)",
+  REVIEW_DATE_INVALID: "بەروار دەبێت ڕاستەقینە بێت و نەکەوێتە داهاتوو",
+  EVIDENCE_REQUIRED: "بەڵگە پێویستە (لانیکەم ٨ پیت)",
+  NOTE_TOO_LONG: "تێبینی زۆر درێژە",
+  STEP_UP_REQUIRED: "کۆدی پشتڕاستکردنەوە پێویستە",
+  STAGING_TABLE_MISSING: "خشتەی کەتەلۆگ لە داتابەیسدا نییە",
+  NO_CONTENT_DB: "داتابەیسی ناوەڕۆک بەستراو نییە",
+  UNKNOWN_ITEM: "پرسیار نەدۆزرایەوە",
+  TOO_MANY_ITEMS: "زۆرترین ١٠٠ پرسیار لە یەک جاردا",
+  NETWORK: "پەیوەندی بە سێرڤەرەوە نییە",
+};
+
+export function DrItalyCatalogue({ api, onNeedStepUp }: Props = {}) {
   const [offset, setOffset] = useState(0);
   const [chapter, setChapter] = useState("");
   const [status, setStatus] = useState("");
@@ -119,22 +148,27 @@ export function DrItalyCatalogue() {
   };
   const reviewerReady = reviewer.reviewerName.trim().length > 1 && reviewer.evidenceRef.trim().length >= 8 && Boolean(reviewer.reviewedOn);
 
-  const decide = async (ids: string[], languages: Lang[], next: Status) => {
+  const decide = async (ids: string[], languages: Lang[], next: Status): Promise<void> => {
     if (ids.length === 0 || languages.length === 0) return;
     setBusy(true); setMsg(null);
     const parts: string[] = [];
     let ok = true;
+    const post = api ?? drPost;
     try {
-      for (const language of languages) {
-        const r = await fetch("/api/dr/italy/catalogue/review", {
-          method: "POST", credentials: "same-origin", headers: { "content-type": "application/json" },
-          body: JSON.stringify({ sourceIds: ids, language, status: next, ...reviewer }),
-        });
-        const body = await r.json().catch(() => ({})) as { ok?: boolean; error?: string; recorded?: number; unknown?: string[] };
-        if (!r.ok) { ok = false; parts.push(`${LANG_LABEL[language]}: ${body.error ?? `HTTP ${r.status}`}`); break; }
-        parts.push(`${LANG_LABEL[language]}: ${body.recorded ?? ids.length} → ${STATUS_LABEL[next]}${body.unknown?.length ? ` (not found: ${body.unknown.join(", ")})` : ""}`);
+      for (const [i, language] of languages.entries()) {
+        const r = await post("/api/dr/italy/catalogue/review", { sourceIds: ids, language, status: next, ...reviewer });
+        const body = r.body as { ok?: boolean; error?: string; recorded?: number; unknown?: string[] };
+        if (body.error === "STEP_UP_REQUIRED" && onNeedStepUp) {
+          // Nothing was saved for this language; after the code, send it and the languages after it again.
+          const rest = languages.slice(i);
+          onNeedStepUp(() => decide(ids, rest, next));
+          ok = false; parts.push(`${LANG_LABEL[language]}: ${DECISION_ERR.STEP_UP_REQUIRED}`);
+          break;
+        }
+        if (r.status !== 200) { ok = false; parts.push(`${LANG_LABEL[language]}: ${DECISION_ERR[body.error ?? ""] ?? body.error ?? `HTTP ${r.status}`} — هیچ شتێک پاشەکەوت نەکرا`); break; }
+        parts.push(`${LANG_LABEL[language]}: ${body.recorded ?? ids.length} → ${STATUS_LABEL[next]}${body.unknown?.length ? ` (نەدۆزرایەوە: ${body.unknown.join(", ")})` : ""}`);
       }
-    } catch { ok = false; parts.push("NETWORK"); } finally { setBusy(false); }
+    } finally { setBusy(false); }
     setMsg({ ok, text: parts.join(" · ") });
     load(); loadSummary();
   };
@@ -226,9 +260,9 @@ export function DrItalyCatalogue() {
 
       <fieldset className="it-cat-reviewer small">
         <legend>پێداچووەر — کەسێکی ناودار، بۆ هەموو بڕیارێک پێویستە</legend>
-        <input aria-label="Reviewer name" placeholder="ناوی تەواوی پێداچووەر" value={reviewer.reviewerName} onChange={(e) => setReviewerField("reviewerName", e.target.value)} />
-        <input aria-label="Review date" type="date" max={today()} value={reviewer.reviewedOn} onChange={(e) => setReviewerField("reviewedOn", e.target.value)} />
-        <input aria-label="Evidence reference" placeholder="سەرچاوەی بەڵگە (لانیکەم ٨ پیت)" value={reviewer.evidenceRef} onChange={(e) => setReviewerField("evidenceRef", e.target.value)} />
+        <input aria-label="ناوی تەواوی پێداچووەر" placeholder="ناوی تەواوی پێداچووەر" value={reviewer.reviewerName} onChange={(e) => setReviewerField("reviewerName", e.target.value)} />
+        <input aria-label="بەرواری پێداچوونەوە" type="date" max={today()} value={reviewer.reviewedOn} onChange={(e) => setReviewerField("reviewedOn", e.target.value)} />
+        <input aria-label="سەرچاوەی بەڵگە" placeholder="سەرچاوەی بەڵگە (لانیکەم ٨ پیت)" value={reviewer.evidenceRef} onChange={(e) => setReviewerField("evidenceRef", e.target.value)} />
         {!reviewerReady && <p className="muted" data-testid="italy-catalogue-reviewer-needed">بۆ تۆمارکردنی بڕیار ناو، بەروار و سەرچاوەی بەڵگە پڕ بکەرەوە.</p>}
       </fieldset>
 
@@ -236,7 +270,7 @@ export function DrItalyCatalogue() {
       {msg && <p className={`small dr-msg ${msg.ok ? "ok" : "err"}`} data-testid="italy-catalogue-msg">{msg.text}</p>}
 
       <div className="it-cat-bulk small" data-testid="italy-catalogue-bulk">
-        <label className="it-cat-pick"><input type="checkbox" aria-label="Select all on this page" checked={allSelected} onChange={() => setSelected(allSelected ? new Set() : new Set(pageIds))} /> هەمووی ئەم لاپەڕەیە</label>
+        <label className="it-cat-pick"><input type="checkbox" aria-label="هەڵبژاردنی هەموو ئەم لاپەڕەیە" checked={allSelected} onChange={() => setSelected(allSelected ? new Set() : new Set(pageIds))} /> هەمووی ئەم لاپەڕەیە</label>
         <span>هەڵبژێردراو: <strong>{selected.size}</strong>{selectedBlocked > 0 && <span className="dr-badge bad">{selectedBlocked} هەڵەی پشکنین</span>}</span>
         <button type="button" className="btn btn-primary" disabled={approveDisabled} onClick={() => void decide([...selected], ["ckb", "kmrArab"], "approved")}>پەسەندکردنی هەردوو زمان</button>
         {(["ckb", "kmrArab"] as const).map((lang) => <span key={lang} className="it-cat-pair">
@@ -246,10 +280,10 @@ export function DrItalyCatalogue() {
       </div>
 
       {rows.length > 0 && <table className="dr-table it-cat-table"><thead><tr>
-        <th aria-label="Select" /><th>ID</th><th>بەش</th><th>Italiano</th><th>وەڵام</th><th>سۆرانی</th><th>بادینی</th><th>وێنە</th>
+        <th aria-label="هەڵبژاردن" /><th>ID</th><th>بەش</th><th>Italiano</th><th>وەڵام</th><th>سۆرانی</th><th>بادینی</th><th>وێنە</th><th>بۆچی بڵاو نەکراوەتەوە</th>
       </tr></thead><tbody>
         {rows.map((r) => <tr key={r.source_id} data-testid="italy-catalogue-row">
-          <td data-label="هەڵبژاردن"><input type="checkbox" aria-label={`Select ${r.source_id}`} checked={selected.has(r.source_id)} onChange={() => toggle(r.source_id)} /></td>
+          <td data-label="هەڵبژاردن"><input type="checkbox" aria-label={`هەڵبژاردنی ${r.source_id}`} checked={selected.has(r.source_id)} onChange={() => toggle(r.source_id)} /></td>
           <td data-label="ID"><bdi dir="ltr">{r.source_id}</bdi> <span className="muted"><bdi dir="ltr">{r.batch}</bdi></span></td>
           <td data-label="بەش">{r.chapter_draft ?? "—"}{r.chapter_confidence === "needs_review" && <span className="dr-badge warn" title="draft chapter needs review">پشتڕاست بکەرەوە</span>}</td>
           <td data-label="Italiano" lang="it" dir="ltr" className="it-cat-it">{r.question_it}</td>
@@ -269,6 +303,9 @@ export function DrItalyCatalogue() {
             </td>;
           })}
           <td data-label="وێنە"><bdi dir="ltr">{r.image ?? "—"}</bdi>{r.image && <span className="dr-badge warn">مافی وێنە پشتڕاست نەکراوە</span>}</td>
+          <td data-label="بۆچی بڵاو نەکراوەتەوە" className="it-cat-why" data-testid="italy-catalogue-row-blockers">
+            <ul>{[...(r.blockers ?? []), ...(summary?.catalogueBlockers ?? [])].map((b) => <li key={b}>{BLOCKER_LABEL[b]?.ckb ?? b}</li>)}</ul>
+          </td>
         </tr>)}
       </tbody></table>}
 

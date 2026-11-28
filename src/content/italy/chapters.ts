@@ -33,7 +33,7 @@ export const IT_CHAPTERS: ItChapter[] = [
   { id: 13, plannedCount: 390,
     title: { ckb: "وەستانی کاتی، پارککردن، وەستان و دەرچوون", it: "Fermata, sosta, arresto e partenza", kmrArab: "ڕاوەستیانا دەمکی، پارککرن، ڕاوەستیان و دەرکەفتن", kmr: "Rawestan, park kirin û dest pê kirin", de: "Halten, Parken, Anhalten und Anfahren", ar: "التوقف والوقوف والانطلاق" } },
   { id: 14, plannedCount: 375,
-    title: { ckb: "بەکارهێنانی گڵۆپەکان، هۆڕن و گڵۆپە ئاگادارکەرەوەکان", it: "Uso delle luci, dispositivi acustici e spie", kmrArab: "بکارئینانا گڵۆپان، هۆڕن و گڵۆپێن ئاگەهدارکرنێ", kmr: "Bikaranîna ronahiyan, bîp û lambeyên hişyariyê", de: "Beleuchtung, Hupe und Kontrollleuchten", ar: "استخدام الأنوار والمنبّه ومصابيح التحذير" } },
+    title: { ckb: "بەکارهێنانی گڵۆپەکان، هۆڕن و گڵۆپە ئاگادارکەرەوەکان", it: "Uso delle luci, dispositivi acustici e spie", kmrArab: "بکارئینانا گلۆپان، هۆڕن و گلۆپێن ئاگەهدارکرنێ", kmr: "Bikaranîna ronahiyan, bîp û lambeyên hişyariyê", de: "Beleuchtung, Hupe und Kontrollleuchten", ar: "استخدام الأنوار والمنبّه ومصابيح التحذير" } },
   { id: 15, plannedCount: 345,
     title: { ckb: "مۆڵەتی شۆفێری، خاڵەکان و بەڵگەنامەکان", it: "Patente di guida, punti e documenti", kmrArab: "دەستوورا شۆفێریێ، خال و بەلگەنامە", kmr: "Destûrnameya ajotinê, pûan û belge", de: "Führerschein, Punkte und Dokumente", ar: "رخصة القيادة والنقاط والوثائق" } },
   { id: 16, plannedCount: 330,
