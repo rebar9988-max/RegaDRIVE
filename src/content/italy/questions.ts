@@ -169,7 +169,7 @@ export const IT_QUESTIONS: ItQuestion[] = [
     prompt: {
       ckb: "کاتێک گڵۆپی ترافیک لایت زەردی جێگیرە، پێویستە پێش هێڵی وەستان بوەستیت، مەگەر هێندە نزیک بیت کە نەتوانیت بە سەلامەتی بوەستیت.",
       it: "Quando la luce del semaforo è gialla fissa, bisogna fermarsi prima della striscia di arresto, a meno che non ci si trovi così vicino da non poterlo fare in sicurezza.",
-      kmrArab: "دەمێ گڵۆپێ ترافیک لایتێ زەرێ جێگیر بیت، پێدڤیە بەری هێلا ڕاوەستیانێ ڕاوەستی، مەگەر هند نێزیک بی کو نەشێی ب سلامەتی ڕاوەستی.",
+      kmrArab: "دەمێ گلۆپێ ترافیک لایتێ زەرێ جێگیر بیت، پێدڤیە بەری هێلا ڕاوەستیانێ ڕاوەستی، مەگەر هند نێزیک بی کو نەشێی ب سلامەتی ڕاوەستی.",
       kmr: "Gava ronahiya lambeya trafîkê zer û sabît be, divê mirov berî xeta rawestanê raweste, ji bilî ku ew qas nêzîk be ku ev bi ewlehî ne pêkan be.",
       de: "Bei dauerhaft gelbem Licht muss man vor der Haltlinie anhalten, außer man ist ihr schon so nahe, dass dies nicht sicher möglich ist.",
       ar: "عند الضوء الأصفر الثابت يجب التوقف قبل خط التوقف، إلا إذا كنت قريبًا جدًا بحيث لا يمكن ذلك بأمان.",
@@ -177,7 +177,7 @@ export const IT_QUESTIONS: ItQuestion[] = [
     explanation: {
       ckb: "ڕاستە: لەگەڵ گڵۆپی زەردی جێگیر وەستان ناچارییە ئەگەر بتوانیت بە سەلامەتی بوەستیت.",
       it: "VERO: Con luce gialla fissa è obbligatorio arrestarsi se è possibile farlo in condizioni di sicurezza.",
-      kmrArab: "ڕاستە: دگەل گڵۆپێ زەرێ جێگیر ڕاوەستیان نەچاری یە ئەگەر بشێی ب سلامەتی ڕاوەستی.",
+      kmrArab: "ڕاستە: دگەل گلۆپێ زەرێ جێگیر ڕاوەستیان نەچاری یە ئەگەر بشێی ب سلامەتی ڕاوەستی.",
       kmr: "RAST: Bi ronahiya zer a sabît de rawestan neçarî ye, heke bi ewlehî pêkan be.",
       de: "RICHTIG: Bei dauerhaft gelbem Licht ist anzuhalten, wenn es sicher möglich ist.",
       ar: "صحيح: عند الضوء الأصفر الثابت يجب التوقف إذا كان ذلك ممكنًا بأمان.",

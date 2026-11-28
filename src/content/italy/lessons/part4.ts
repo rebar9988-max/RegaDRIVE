@@ -60,18 +60,18 @@ export const IT_LESSONS_13_16: ItLesson[] = [
     intro: {
       it: "Le luci servono a vedere e a farsi vedere; il clacson serve solo quando c'è pericolo. Le spie sul quadro ti dicono quando qualcosa non va.",
       ckb: "گڵۆپەکان بۆ بینین و بینینی خۆتن؛ هۆڕن تەنها کاتێک مەترسی هەیە. گڵۆپە ئاگادارکەرەوەکانی سەر تابلۆ پێت دەڵێن کەی شتێک لە جێی خۆی نییە.",
-      kmrArab: "گڵۆپ بۆ دیتن و دیتنا خۆنە؛ هۆڕن تنێ دەمێ مەترسی هەبیت. گڵۆپێن ئاگەهداریێ یێن سەر تابلۆ بۆ تە دبێژن کەنگی تشتەک ل جهێ خۆ نینە.",
+      kmrArab: "گلۆپ بۆ دیتن و دیتنا خۆنە؛ هۆڕن تنێ دەمێ مەترسی هەبیت. گلۆپێن ئاگەهداریێ یێن سەر تابلۆ بۆ تە دبێژن کەنگی تشتەک ل جهێ خۆ نینە.",
     },
     points: [
       { ref: "CdS art. 152", text: {
         it: "Gli anabbaglianti sono obbligatori di notte, e di giorno fuori dai centri abitati e in autostrada.",
         ckb: "گڵۆپی نزم (anabbaglianti) بە شەو ناچارییە، و بە ڕۆژ لە دەرەوەی شار و لە ئۆتۆسترادا.",
-        kmrArab: "گڵۆپێن نزم (anabbaglianti) ب شەڤێ نەچارینە، و ب ڕۆژێ ل دەرڤەیا باژێری و ل ئۆتۆسترادایێ.",
+        kmrArab: "گلۆپێن نزم (anabbaglianti) ب شەڤێ نەچارینە، و ب ڕۆژێ ل دەرڤەیا باژێری و ل ئۆتۆسترادایێ.",
       } },
       { ref: "CdS art. 153", text: {
         it: "Gli abbaglianti si spengono quando incroci un altro veicolo o segui qualcuno da vicino: la luce alta accieca.",
         ckb: "گڵۆپی بەرز (abbaglianti) دەکوژێنرێتەوە کاتێک بەرەوڕووی ئۆتۆمبێلێکی تر دەبی یان لە نزیکەوە دوای کەسێک دەڕۆی: ڕووناکیی بەرز چاو کوێر دەکات.",
-        kmrArab: "گڵۆپێن بلند (abbaglianti) دئێنە تەمراندن دەمێ تو بەرەڤ ترۆمبێلەکا دی دچی یان ژ نێزیک ل پەی کەسەکی دچی: ڕۆناهیا بلند چاڤ کۆر دکەت.",
+        kmrArab: "گلۆپێن بلند (abbaglianti) دئێنە تەمراندن دەمێ تو بەرەڤ ترۆمبێلەکا دی دچی یان ژ نێزیک ل پەی کەسەکی دچی: ڕۆناهیا بلند چاڤ کۆر دکەت.",
       } },
       { ref: "CdS art. 156", text: {
         it: "Il clacson si usa solo per evitare un pericolo; nei centri abitati è ammesso solo in caso di effettivo pericolo.",
@@ -87,14 +87,14 @@ export const IT_LESSONS_13_16: ItLesson[] = [
     example: {
       it: "Esci da una galleria di notte e incroci un'auto: passi dagli abbaglianti agli anabbaglianti prima di incrociarla, non quando ti lampeggia.",
       ckb: "بە شەو لە تونێلێک دەردەچی و بەرەوڕووی ئۆتۆمبێلێک دەبی: پێش بەرەوڕووبوون لە گڵۆپی بەرز بۆ نزم دەگۆڕی، نەک کاتێک سیگناڵی لێ دەدات.",
-      kmrArab: "ب شەڤێ ژ تونێلەکێ دەردکەڤی و بەرەڤ ترۆمبێلەکێ دچی: بەری بەرەڤهەڤچوونێ ژ گڵۆپێن بلند بۆ نزم دگوهۆڕی، نە دەمێ سیگنال ل تە دکەت.",
+      kmrArab: "ب شەڤێ ژ تونێلەکێ دەردکەڤی و بەرەڤ ترۆمبێلەکێ دچی: بەری بەرەڤهەڤچوونێ ژ گلۆپێن بلند بۆ نزم دگوهۆڕی، نە دەمێ سیگنال ل تە دکەت.",
     },
     signIds: ["it-semaforo"],
     checks: [
       { id: "it-l14-c1", answer: true,
         statement: { it: "In autostrada gli anabbaglianti devono essere accesi anche di giorno.",
           ckb: "لە ئۆتۆسترادا گڵۆپی نزم دەبێت بە ڕۆژیش داگیرساو بن.",
-          kmrArab: "ل ئۆتۆسترادایێ گڵۆپێن نزم دڤێت ب ڕۆژێ ژی ڤەکری بن." },
+          kmrArab: "ل ئۆتۆسترادایێ گلۆپێن نزم دڤێت ب ڕۆژێ ژی ڤەکری بن." },
         why: { it: "VERO: fuori dai centri abitati e in autostrada l'uso diurno è obbligatorio.",
           ckb: "ڕاستە: لە دەرەوەی شار و لە ئۆتۆسترادا بەکارهێنانی بە ڕۆژ ناچارییە.",
           kmrArab: "ڕاستە: ل دەرڤەیا باژێری و ل ئۆتۆسترادایێ بکارئینانا ب ڕۆژێ نەچارییە." } },

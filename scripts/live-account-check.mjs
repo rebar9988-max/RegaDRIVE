@@ -33,11 +33,13 @@ await check("live build is a production build" + (expectCommit ? ` of ${expectCo
 });
 
 // ── Server-side safeguards (no session, no data) ──────────────────────
-await check("flags: student accounts on, official bank, payments and database off", async () => {
+await check("flags: student accounts on, owner-activated content features on, payments off", async () => {
   const f = await (await get("/api/flags")).json();
   assert.equal(f.studentAuthEnabled, true, "studentAuthEnabled");
-  assert.equal(f.officialQuestionBankEnabled, false, "officialQuestionBankEnabled (unlicensed TÜV/DEKRA bank stays off)");
-  for (const k of ["paymentsEnabled", "checkoutEnabled", "purchaseRequired", "databaseProductionEnabled"]) assert.equal(f[k], false, k);
+  // Owner activation 2026-11-23 (#103), gated in scripts/preflight.mjs and asserted by scripts/smoke.mjs. Items still
+  // reach learners only after an owner APPROVED review, which /api/content/approved and the live content check verify.
+  for (const k of ["databaseProductionEnabled", "officialQuestionBankEnabled"]) assert.equal(f[k], true, k);
+  for (const k of ["paymentsEnabled", "checkoutEnabled", "purchaseRequired"]) assert.equal(f[k], false, k);
 });
 await check("profile: signed-out /api/me reveals nothing and sets no cookie", async () => {
   const r = await get("/api/me");

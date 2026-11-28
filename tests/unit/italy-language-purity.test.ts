@@ -34,6 +34,9 @@ const SORANI_MARKERS =
 /** Markers of Latin-script Kurmanji (Hawar); Badini is Arabic script only. */
 const HAWAR_MARKERS = /[şŞçÇêÊîÎûÛ]/;
 
+/** The velarised ڵ is a Sorani letter; Duhok Badini writes ل (گلۆپ, خال). Same rule as worker/italy/stagingChecks.ts. */
+const SORANI_LETTER = /ڵ/;
+
 const itTexts = (): { where: string; t: ItText }[] => [
   ...IT_QUESTIONS.flatMap((q) => [
     { where: `${q.id}.prompt`, t: q.prompt },
@@ -92,7 +95,7 @@ describe("Badini interface strings", () => {
   it("are Arabic-script Badini: no Latin-script Kurmanji, no Sorani forms", () => {
     const leaks = Object.entries(badiniInterface).filter(([, v]) => {
       const text = strip(v);
-      return HAWAR_MARKERS.test(text) || SORANI_MARKERS.test(text);
+      return HAWAR_MARKERS.test(text) || SORANI_MARKERS.test(text) || SORANI_LETTER.test(text);
     });
     expect(leaks).toEqual([]);
   });
@@ -124,7 +127,7 @@ describe("Italian content", () => {
 
   it("writes Badini in Badini, not Sorani or Latin Kurmanji", () => {
     const leaks = [...itTexts(), ...lessonTexts()]
-      .filter(({ t }) => t.kmrArab && (SORANI_MARKERS.test(t.kmrArab) || HAWAR_MARKERS.test(t.kmrArab)))
+      .filter(({ t }) => t.kmrArab && (SORANI_MARKERS.test(t.kmrArab) || HAWAR_MARKERS.test(t.kmrArab) || SORANI_LETTER.test(t.kmrArab)))
       .map(({ where }) => `${where}.kmrArab`);
     expect(leaks).toEqual([]);
   });

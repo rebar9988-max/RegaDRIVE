@@ -341,7 +341,7 @@ export const badiniInterface: Record<string, string> = {
   "Der Fortschritt wird nur auf diesem Gerät gespeichert.": "پێشکەفتن ل سەر ڤی ئامێری دهێتە پاشەکەفتکرن.",
   "Dein Lernfortschritt": "پێشکەفتنا فێربوونا تە",
   "Stand deines Fragentrainings": "بارێ ڕاهێنانا تە ل سەر پرسان",
-  "Deine Stärken": "خاڵێن بهێز یێن تە",
+  "Deine Stärken": "خالێن بهێز یێن تە",
   "Nach dem Üben siehst du hier deine Ergebnisse.": "پشتی ڕاهێنانێ دێ ئەنجامێن خۆ ل ڤێرێ بینی.",
   "Über RegaDRIVE": "دەربارەی RegaDRIVE",
   "Anbieterinformationen · Impressum": "پێزانینێن دابینکەری",
