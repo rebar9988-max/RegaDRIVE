@@ -8,7 +8,7 @@
  */
 import { loadItalyCatalogue } from "../italy/catalogue";
 import { IT_IMPORT_MAX_ITEMS, parseItalyImport, runItalyImport } from "../italy/import";
-import { STAGING_PAGE_MAX, listStaging, parseStagingDecisions, parseStagingQuery, recordStagingDecision } from "../italy/stagingReview";
+import { STAGING_PAGE_MAX, listStaging, parseStagingDecisions, parseStagingQuery, recordStagingDecision, summariseStaging } from "../italy/stagingReview";
 import { evaluateAll, loadRowsWithState, parseSubmission, checkSubmission, checkReviewMetadata, recordReview, ALL_REVIEW_ITEMS, REVIEW_ITEM_BY_ID, REVIEW_TABLE, ROLE_FOR_STAGE, rulesVersionFor, sourceFor } from "./reviews";
 import { IT_QUESTION_BY_ID, italyQuestionRows, italyQuestionsForReview, italyTranslationHistory, loadItalyQuestionDraft, parseTranslations, recordItalyQuestionReview, saveItalyQuestionEdit } from "./italyQuestionReview";
 import { KLASSE_B_RULES_2026 } from "../../src/lib/shared/exam";
@@ -443,6 +443,17 @@ export async function handleDr(req: Request, env: DrEnv, deps: DrDeps = {}): Pro
     if (!env.CONTENT_DB) return reply({ error: "NO_CONTENT_DB" }, 503);
     try {
       return reply({ ok: true, ...(await listStaging(env.CONTENT_DB, parseStagingQuery(url.searchParams))), pageMax: STAGING_PAGE_MAX });
+    } catch {
+      return reply({ error: "STAGING_TABLE_MISSING", reason: "apply content migrations 0005 and 0006" }, 503);
+    }
+  }
+
+  if (path === "/api/dr/italy/catalogue/summary" && req.method === "GET") {
+    // Read-only: the automatic translation checks and the publication blockers of the whole staged
+    // catalogue. Machine checks never count as a review.
+    if (!env.CONTENT_DB) return reply({ error: "NO_CONTENT_DB" }, 503);
+    try {
+      return reply({ ok: true, ...(await summariseStaging(env.CONTENT_DB)) });
     } catch {
       return reply({ error: "STAGING_TABLE_MISSING", reason: "apply content migrations 0005 and 0006" }, 503);
     }

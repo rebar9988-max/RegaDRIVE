@@ -217,3 +217,49 @@
 @media (prefers-reduced-motion: reduce) {
   .dr-workspace .dr-chip, .dr-workspace .btn { transition: none; }
 }
+
+/* Italy · staged catalogue review (DrItalyCatalogue). The page stays RTL; Italian cells are LTR islands. */
+.it-cat { min-width: 0; }
+.it-cat .section-title small { display: block; color: var(--muted); font: 600 .75rem var(--font-de); text-align: start; }
+.it-cat-stats { display: grid; gap: 8px; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); }
+.it-cat-stats span { display: grid; gap: 2px; padding: 10px; border: 1px solid var(--border); border-radius: 12px; background: var(--white); font-size: .78rem; color: var(--muted); }
+.it-cat-stats b { color: var(--ink); font: 800 1.2rem var(--font-de); direction: ltr; text-align: start; }
+.it-cat-panel { border: 1px solid var(--border); border-radius: 14px; padding: 10px 12px; background: var(--white); display: grid; gap: 8px; }
+.it-cat-panel > summary { cursor: pointer; min-height: 32px; }
+.it-cat-codes { margin: 0; padding-inline-start: 18px; display: grid; gap: 4px; }
+.it-cat-blockers code { font-size: .7rem; color: var(--muted); unicode-bidi: isolate; }
+.it-cat-filters, .it-cat-reviewer, .it-cat-bulk, .it-cat-pager { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.it-cat-filters label { display: grid; gap: 4px; font-weight: 700; color: var(--muted); flex: 1 1 130px; min-width: 0; }
+.it-cat-filters label.grow { flex: 2 1 200px; }
+.it-cat-filters select, .it-cat-filters input, .it-cat-reviewer input { min-height: 44px; padding: 6px 10px; border: 1px solid var(--border); border-radius: 10px; font: inherit; background: var(--white); color: inherit; width: 100%; box-sizing: border-box; min-width: 0; }
+.it-cat-reviewer { border: 1px solid var(--border); border-radius: 14px; padding: 10px 12px; margin: 0; }
+.it-cat-reviewer input { flex: 1 1 180px; width: auto; }
+.it-cat-reviewer legend { padding-inline: 4px; font-weight: 700; }
+.it-cat-reviewer p { flex-basis: 100%; margin: 0; }
+.it-cat-bulk { position: sticky; top: 112px; z-index: 5; background: var(--canvas); padding: 8px 0; border-bottom: 1px solid var(--border); }
+.it-cat-bulk .btn, .it-cat-pair .btn { min-height: 44px; padding: 8px 12px; font-size: .8rem; }
+.it-cat-pick { display: inline-flex; align-items: center; gap: 6px; min-height: 44px; font-weight: 700; }
+.it-cat-pair { display: inline-flex; flex-wrap: wrap; gap: 6px; }
+.it-cat-table td { min-width: 0; }
+.it-cat-table input[type='checkbox'], .it-cat-pick input { width: 22px; height: 22px; }
+.it-cat-text { margin: 0 0 6px; line-height: 1.7; unicode-bidi: plaintext; text-align: start; }
+.it-cat-it { font-family: var(--font-de); line-height: 1.5; }
+.it-cat-table .dr-badge, .it-cat .dr-badge { margin-inline-end: 4px; margin-block: 2px; white-space: normal; }
+.it-cat-pager { justify-content: space-between; }
+@media (min-width: 761px) {
+  .it-cat-table td:nth-child(4), .it-cat-table td:nth-child(6), .it-cat-table td:nth-child(7) { min-width: 180px; }
+}
+/* Phones: each row becomes a card; labels come from data-label, so nothing scrolls sideways. */
+@media (max-width: 760px) {
+  .it-cat-table, .it-cat-table tbody, .it-cat-table tr, .it-cat-table td,
+  .it-cat-blockers, .it-cat-blockers tbody, .it-cat-blockers tr, .it-cat-blockers td { display: block; width: 100%; box-sizing: border-box; }
+  .it-cat-table thead, .it-cat-blockers thead { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+  .it-cat-table tr, .it-cat-blockers tr { border: 1px solid var(--border); border-radius: 14px; padding: 8px 10px; margin-block-end: 10px; background: var(--white); }
+  .it-cat-table td, .it-cat-blockers td { border-top: 0; padding: 6px 0; }
+  .it-cat-table td + td, .it-cat-blockers td + td { border-top: 1px dashed var(--border); }
+  .it-cat-table td::before, .it-cat-blockers td::before { content: attr(data-label); display: block; font: 700 .72rem var(--font-ckb); color: var(--muted); margin-block-end: 2px; direction: rtl; text-align: right; }
+  .it-cat-table td[dir='ltr']::before { text-align: left; direction: ltr; }
+  .it-cat-bulk { top: 104px; }
+  .it-cat-bulk .btn, .it-cat-pair .btn { flex: 1 1 140px; }
+  .it-cat-pair { width: 100%; }
+}
