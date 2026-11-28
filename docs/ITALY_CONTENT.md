@@ -187,3 +187,46 @@ approval was bound to the fingerprint of the wording that was reviewed. The pane
 ## Database inventory (2026-11-23)
 
 The owner requested a visible home in the database for Italy. Content migration `0004_italy_inventory.sql` stores the existing 12 questions, 8 signs and 16 chapters in `regadrive-content.italy_content`, with `country=IT`, complete multilingual JSON and source references. It is an inventory of the imported original material, not a new approval or a replacement for the learner publication gate. The owner workbench reads counts and question rows from D1 through the authenticated `/api/dr/content/status` endpoint. Re-running the seed preserves existing rows. Later editorial changes must be imported explicitly; these stored snapshots do not silently follow source-file edits.
+
+## Staged catalogue: automatic checks and publication blockers (2026-11-28)
+
+The 7,020 supplied questions live in `regadrive-content.italy_catalogue_staging` (content migrations
+0005–0006), with draft Sorani (`ckb`) and Duhok Badini (`kmr_arab`) translations. Production audit on
+2026-11-28 (read-only): 7,020 rows in 117 batches, every row has both translations, 3,919 rows reference an
+image, 1,082 draft chapters are marked `needs_review`, **0 approved, 0 published**.
+
+`/dr` → *بەڕێوەبردنی ناوەڕۆک* → *ئیتاڵیا · پێداچوونەوەی کەتەلۆگ* now shows, per row and for the whole
+catalogue, the automatic checks (`worker/italy/stagingChecks.ts`, computed on read from the stored text, no
+schema change) and the reasons nothing is published (`GET /api/dr/italy/catalogue/summary`, owner session,
+read-only).
+
+Automatic checks — machine checks are never a review:
+
+| Code | Severity | Meaning |
+| --- | --- | --- |
+| `MISSING` | error | no translation |
+| `NOT_ARABIC_SCRIPT` | error | the Kurdish text is not in Arabic script |
+| `NUMBERS_DIFFER` | error | the numbers differ from the Italian (Kurdish digits and «٫» are normalised) |
+| `SORANI_LETTER_IN_BADINI` | error | Sorani «ڵ» in Badini |
+| `LATIN_KURMANJI_IN_BADINI` | error | Hawar letters (ş, ç, ê, î, û) in Badini |
+| `SORANI_FORM_IN_BADINI` / `BADINI_FORM_IN_SORANI` | warning | grammar of the other dialect |
+| `UNKNOWN_LATIN_WORD` | warning | a Latin word the Italian does not contain |
+| `NEGATION_NOT_FOUND` | warning | the Italian has a negation the heuristic cannot find (often a false alarm: «ڕوونادات») |
+
+On the delivered translations: 0 errors, 18 rows with warnings, 7,002 clean. A row with an error cannot be
+approved in the panel until its text is fixed.
+
+Publication blockers. Per row: Sorani not approved, Badini not approved, needs revision, check error, check
+warning, draft chapter unconfirmed, image rights unverified. For **every** row (the staging table has no place
+for them yet): text rights unverified, no explanation, no legal reference, not yet in the three-stage review
+pipeline (`italy_content` + `TRANSLATION_REVIEW` → `EDUCATIONAL_REVIEW` → `APPROVED`), images not hosted.
+None of these can be cleared by software; `publishable` is always 0 while they remain.
+
+Owner approval, made quicker without lowering the bar: the reviewer name and evidence reference are
+remembered on the device (every decision still sends them and the server still checks them, including the
+machine-name refusal), a filter shows rows whose checks are clean, and *پەسەندکردنی هەردوو زمان* records the
+Sorani and the Badini decision for the selected rows in one action — two recorded decisions, each with the
+named reviewer. The panel is RTL (Italian cells are LTR islands) and becomes one card per question on a phone.
+
+Images: the 3,919 extracted images are **not** uploaded anywhere. Their rights are unverified, and publishing
+unlicensed official exam content needs the owner's separate approval (`CLAUDE.md`).

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { listStaging, parseStagingDecision, parseStagingDecisions, parseStagingQuery, recordStagingDecision, STAGING_PAGE_MAX } from "../../worker/italy/stagingReview";
+import { listStaging, parseStagingDecision, parseStagingDecisions, parseStagingQuery, recordStagingDecision, STAGING_PAGE_MAX, summariseStaging } from "../../worker/italy/stagingReview";
 import { checkReviewMetadata } from "../../worker/dr/reviews";
 import type { D1Like } from "../../worker/dr/db";
 
@@ -39,7 +39,9 @@ const decision = { sourceId: "21810", language: "ckb", status: "approved", revie
 describe("staged Italian catalogue review", () => {
   it("parses list queries within bounds", () => {
     const q = parseStagingQuery(new URLSearchParams("offset=-5&limit=9999&chapter=17&status=done&q=%20segnale%20"));
-    expect(q).toEqual({ offset: 0, limit: STAGING_PAGE_MAX, chapter: null, status: null, search: "segnale" });
+    expect(q).toEqual({ offset: 0, limit: STAGING_PAGE_MAX, chapter: null, status: null, search: "segnale", checks: null });
+    expect(parseStagingQuery(new URLSearchParams("checks=errors")).checks).toBe("errors");
+    expect(parseStagingQuery(new URLSearchParams("checks=approved")).checks).toBeNull();
     expect(parseStagingQuery(new URLSearchParams("chapter=8&status=pending")).chapter).toBe(8);
   });
 
@@ -91,5 +93,24 @@ describe("staged Italian catalogue review", () => {
     for (const d of many) expect(await recordStagingDecision(db, d, "owner:test")).toBe(true);
     expect(row("21816")).toMatchObject({ kmr_arab_status: "needs_revision", ckb_status: "pending", publish_status: "unpublished" });
     expect(row("21810")).toMatchObject({ kmr_arab_status: "pending", ckb_status: "pending" });
+  });
+
+  it("attaches the automatic checks and the blockers to every listed row, and filters on the checks", async () => {
+    const { db } = setup();
+    const res = await listStaging(db, parseStagingQuery(new URLSearchParams("")));
+    expect(res.rows[0]).toMatchObject({ source_id: "21810", checks: { errors: 0, warnings: 0 }, blockers: ["CKB_NOT_APPROVED", "KMR_ARAB_NOT_APPROVED", "IMAGE_RIGHTS_UNVERIFIED"] });
+    expect((await listStaging(db, parseStagingQuery(new URLSearchParams("checks=clean")))).total).toBe(2);
+    expect((await listStaging(db, parseStagingQuery(new URLSearchParams("checks=errors")))).rows).toEqual([]);
+    const page = await listStaging(db, parseStagingQuery(new URLSearchParams("checks=clean&limit=1&offset=1")));
+    expect(page.total).toBe(2);
+    expect(page.rows.map((r) => r.source_id)).toEqual(["21816"]);
+  });
+
+  it("summarises the whole staged catalogue: nothing is publishable", async () => {
+    const { db } = setup();
+    const sum = await summariseStaging(db);
+    expect(sum).toMatchObject({ total: 2, publishable: 0, readyForHumanReview: 2, checks: { rowsWithErrors: 0, rowsClean: 2 } });
+    expect(sum.rowBlockers.IMAGE_RIGHTS_UNVERIFIED).toBe(1);
+    expect(sum.catalogueBlockers).toContain("TEXT_RIGHTS_UNVERIFIED");
   });
 });

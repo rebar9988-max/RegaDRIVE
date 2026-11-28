@@ -49,7 +49,10 @@ async function waitUp() {
 }
 
 const results = [];
+// E2E_ONLY=<text> runs only the tests whose name contains <text> (local debugging; CI runs everything).
+const ONLY = process.env.E2E_ONLY ?? "";
 async function test(name, fn) {
+  if (ONLY && !name.includes(ONLY)) return;
   const t = Date.now();
   try { await fn(); results.push({ name, ok: true }); console.log(`PASS ${name} (${Date.now() - t}ms)`); }
   catch (e) { results.push({ name, ok: false }); console.log(`FAIL ${name}\n  ${e?.stack ?? e}`); }
@@ -1115,6 +1118,73 @@ try {
     assert.equal(edits[0].questionHash, "review:fixture:0");
     await italyCard.getByText("مێژووی پشکنین و گۆڕانکارییەکان").click();
     await italyCard.getByText("هێشتا مێژوویەک تۆمار نەکراوە.").waitFor();
+    assert.deepEqual(errors, []);
+    await ctx.close();
+  });
+
+  await test("/dr Italy catalogue review: RTL cards on iPhone, automatic checks, publication blockers, approval only with a named reviewer (mocked owner session)", async () => {
+    const ctx = await browser.newContext({ ...devices["iPhone 13"], bypassCSP: true });
+    const page = await ctx.newPage();
+    const errors = [];
+    page.on("pageerror", (e) => errors.push(e.message));
+    const row = (id, extra = {}) => ({
+      source_id: id, batch: "batch-001", question_it: "La distanza minima di sicurezza se si viaggia a 50 km/h deve essere di circa 14 metri", correct_answer: 1, answer_original: "VERO",
+      source_page: 1, source_group: "g", image: null, ckb: "دووریی سەلامەتی ٥٠ کم/کاتژمێر ١٤ مەتر", kmr_arab: "دویراتیا سلامەتیێ ٥٠ کم/دەمژمێر ١٤ مەتر", translation_notes: null,
+      ckb_status: "pending", kmr_arab_status: "pending", reviewer_name: null, review_date: null, chapter_draft: 4, chapter_confidence: null,
+      checks: { ckb: [], kmrArab: [], errors: 0, warnings: 0 }, blockers: ["CKB_NOT_APPROVED", "KMR_ARAB_NOT_APPROVED"], ...extra,
+    });
+    const rows = [
+      row("22578"),
+      row("21810", { image: "images/it_21810.jpg", chapter_confidence: "needs_review", checks: { ckb: [], kmrArab: [{ code: "SORANI_LETTER_IN_BADINI", severity: "error" }], errors: 1, warnings: 0 } }),
+    ];
+    const posts = [];
+    await ctx.route("**/api/**", async (r) => {
+      const u = new URL(r.request().url());
+      const json = (status, body) => r.fulfill({ status, contentType: "application/json", body: JSON.stringify(body) });
+      if (u.pathname === "/api/dr/session") return json(200, { authenticated: true, email: "re•••@gmail.com", expiresAt: Date.now() + 3600000, stepUpUntil: Date.now() + 600000 });
+      if (u.pathname === "/api/dr/overview") return json(200, { now: Date.now(), owner: "re•••@gmail.com", system: { app: "regadrive", version: "t", contentMode: "production", colo: null }, database: { ok: true, latencyMs: 1, name: "regadrive-db", studentData: "off", activeSessions: 1, auditEntries: 0, logins24h: 0, denied24h: 0, codesSent24h: 0, mailFailures24h: 0, backups: 0 }, features: [], ai: [], content: {}, email: { owner: "x", from: "x", provider: "Resend", configured: true }, payments: null, security: { sessions: [], steppedUp: true, stepUpUntil: Date.now() + 600000, sessionExpiresAt: Date.now() + 3600000 }, backups: [] });
+      if (u.pathname === "/api/dr/italy/catalogue/summary") return json(200, { ok: true, total: 2, readyForHumanReview: 1, publishable: 0,
+        checks: { rowsWithErrors: 1, rowsWithWarnings: 0, rowsClean: 1, byCode: { SORANI_LETTER_IN_BADINI: { ckb: 0, kmrArab: 1 }, MISSING: { ckb: 0, kmrArab: 0 } } },
+        rowBlockers: { CKB_NOT_APPROVED: 2, KMR_ARAB_NOT_APPROVED: 2, AUTOMATIC_CHECK_ERROR: 1, CHAPTER_UNCONFIRMED: 1, IMAGE_RIGHTS_UNVERIFIED: 1, NEEDS_REVISION: 0 },
+        catalogueBlockers: ["TEXT_RIGHTS_UNVERIFIED", "NO_EXPLANATION", "NO_LEGAL_REFERENCE", "NOT_IN_REVIEW_PIPELINE", "IMAGES_NOT_HOSTED"] });
+      if (u.pathname === "/api/dr/italy/catalogue") return json(200, { ok: true, total: 2, rows, counts: { total: 2, ckbApproved: 0, kmrArabApproved: 0, needsRevision: 0, pending: 2, chapterNeedsReview: 1 }, pageMax: 100 });
+      if (u.pathname === "/api/dr/italy/catalogue/review") { posts.push(JSON.parse(r.request().postData() ?? "{}")); return json(200, { ok: true, recorded: 1, unknown: [] }); }
+      if (u.pathname.startsWith("/api/dr/")) return json(404, { error: "NOT_FOUND" });
+      return r.continue();
+    });
+    await page.goto(`${BASE}/dr`);
+    await page.getByRole("navigation", { name: "بەشەکانی بەڕێوەبەری" }).getByRole("button", { name: "بەڕێوەبردنی ناوەڕۆک" }).click();
+    const panel = page.locator("[data-testid=italy-catalogue-review]");
+    await panel.locator("[data-testid=italy-catalogue-row]").first().waitFor();
+    assert.equal(await panel.getAttribute("dir"), "rtl", "the Kurdish review panel is RTL even inside the English workbench");
+    assert.equal(await panel.locator("[data-testid=italy-catalogue-row]").count(), 2);
+    assert.equal(await panel.locator("td.it-cat-it").first().getAttribute("dir"), "ltr", "Italian stays an LTR island");
+    assert.equal(await panel.locator("[data-testid=italy-catalogue-publishable]").textContent().then((t) => t.includes("0")), true, "nothing is publishable");
+    assert.equal(await panel.locator("[data-testid=italy-catalogue-blocker]").count(), 5 + 5, "every catalogue-wide and every non-zero row blocker is listed");
+    // Phone: the rows are cards, nothing scrolls sideways.
+    assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth), false, "no horizontal overflow on iPhone");
+    assert.equal(await panel.locator(".it-cat-table thead").evaluate((e) => e.getBoundingClientRect().height <= 1), true, "the table header is visually hidden on a phone");
+    // No decision without a named reviewer and evidence; never for a row with a check error.
+    const rowOk = panel.locator("[data-testid=italy-catalogue-row]").nth(0);
+    const rowErr = panel.locator("[data-testid=italy-catalogue-row]").nth(1);
+    await panel.locator("[data-testid=italy-catalogue-reviewer-needed]").waitFor();
+    assert.equal(await rowOk.getByRole("button", { name: "پەسەند", exact: true }).first().isDisabled(), true, "approval needs a reviewer");
+    await panel.getByLabel("Reviewer name").fill("Test Person");
+    await panel.getByLabel("Evidence reference").fill("signed-review-2026");
+    assert.equal(await rowOk.getByRole("button", { name: "پەسەند", exact: true }).first().isDisabled(), false);
+    assert.equal(await rowErr.getByRole("button", { name: "پەسەند", exact: true }).first().isDisabled(), true, "a row with a check error cannot be approved");
+    await rowErr.getByRole("checkbox").check();
+    assert.equal(await panel.getByRole("button", { name: "پەسەندکردنی هەردوو زمان" }).isDisabled(), true, "bulk approval refuses a selection with a check error");
+    await rowErr.getByRole("checkbox").uncheck();
+    await rowOk.getByRole("checkbox").check();
+    await axe(page, "/dr Italy catalogue review");
+    await panel.getByRole("button", { name: "پەسەندکردنی هەردوو زمان" }).click();
+    await panel.locator("[data-testid=italy-catalogue-msg]").filter({ hasText: "بادینی" }).waitFor();
+    assert.deepEqual(posts.map((p) => [p.language, p.status, p.sourceIds, p.reviewerName, p.evidenceRef]), [
+      ["ckb", "approved", ["22578"], "Test Person", "signed-review-2026"],
+      ["kmrArab", "approved", ["22578"], "Test Person", "signed-review-2026"],
+    ], "one decision per language, each with the named reviewer and evidence");
+    await page.screenshot({ path: `${OUT}/dr-italy-catalogue-iphone.png`, fullPage: false });
     assert.deepEqual(errors, []);
     await ctx.close();
   });

@@ -1,4 +1,5 @@
 import type { D1Like } from "../dr/db";
+import { checkRow, rowBlockers, summarise, type BlockerInput, type RowBlocker, type RowChecks } from "./stagingChecks";
 
 /**
  * Owner review of the staged Italian catalogue (content table italy_catalogue_staging, content
@@ -12,7 +13,10 @@ export type StagingLanguage = "ckb" | "kmrArab";
 export type StagingStatus = "pending" | "needs_revision" | "approved";
 const STATUSES: readonly StagingStatus[] = ["pending", "needs_revision", "approved"];
 
-export interface StagingQuery { offset: number; limit: number; chapter: number | null; status: StagingStatus | null; search: string }
+/** Filter on the automatic checks: rows with an error, rows with only warnings, or rows with neither. */
+export type StagingChecksFilter = "errors" | "warnings" | "clean";
+const CHECK_FILTERS: readonly StagingChecksFilter[] = ["errors", "warnings", "clean"];
+export interface StagingQuery { offset: number; limit: number; chapter: number | null; status: StagingStatus | null; search: string; checks: StagingChecksFilter | null }
 
 export function parseStagingQuery(params: URLSearchParams): StagingQuery {
   const int = (key: string, fallback: number) => {
@@ -27,6 +31,7 @@ export function parseStagingQuery(params: URLSearchParams): StagingQuery {
     chapter: chapter >= 1 && chapter <= 16 ? chapter : null,
     status: STATUSES.includes(status as StagingStatus) ? (status as StagingStatus) : null,
     search: (params.get("q") ?? "").trim().slice(0, 64),
+    checks: CHECK_FILTERS.includes(params.get("checks") as StagingChecksFilter) ? (params.get("checks") as StagingChecksFilter) : null,
   };
 }
 
@@ -36,6 +41,18 @@ export interface StagingRow {
   ckb: string | null; kmr_arab: string | null; translation_notes: string | null;
   ckb_status: StagingStatus; kmr_arab_status: StagingStatus; reviewer_name: string | null; review_date: string | null;
   review_notes: string | null; chapter_draft: number | null; chapter_confidence: string | null;
+}
+
+const ROW_COLUMNS = `source_id, batch, question_it, correct_answer, answer_original, source_page, source_group, image, image_sha256,
+            ckb, kmr_arab, translation_notes, ckb_status, kmr_arab_status, reviewer_name, review_date, review_notes,
+            chapter_draft, chapter_confidence`;
+
+export interface ListedStagingRow extends StagingRow { checks: RowChecks; blockers: RowBlocker[] }
+
+function matchesChecks(checks: RowChecks, filter: StagingChecksFilter): boolean {
+  if (filter === "errors") return checks.errors > 0;
+  if (filter === "warnings") return checks.errors === 0 && checks.warnings > 0;
+  return checks.errors === 0 && checks.warnings === 0;
 }
 
 export async function listStaging(db: D1Like, q: StagingQuery) {
@@ -48,13 +65,26 @@ export async function listStaging(db: D1Like, q: StagingQuery) {
     else { where.push("question_it LIKE ?"); binds.push(`%${q.search.replace(/[%_]/g, "")}%`); }
   }
   const clause = where.join(" AND ");
-  const total = await db.prepare(`SELECT COUNT(*) AS total FROM italy_catalogue_staging WHERE ${clause}`).bind(...binds).first<{ total: number }>();
-  const { results } = await db.prepare(
-    `SELECT source_id, batch, question_it, correct_answer, answer_original, source_page, source_group, image, image_sha256,
-            ckb, kmr_arab, translation_notes, ckb_status, kmr_arab_status, reviewer_name, review_date, review_notes,
-            chapter_draft, chapter_confidence
-     FROM italy_catalogue_staging WHERE ${clause} ORDER BY batch, source_id LIMIT ? OFFSET ?`,
-  ).bind(...binds, q.limit, q.offset).all<StagingRow>();
+  let total: number;
+  let results: StagingRow[];
+  if (q.checks) {
+    // The checks are computed from the text, so this filter reads the matching rows' text and pages in
+    // memory: at most 7,020 short rows, and only when the owner asks for it.
+    const all = await db.prepare(
+      `SELECT source_id, question_it, ckb, kmr_arab FROM italy_catalogue_staging WHERE ${clause} ORDER BY batch, source_id`,
+    ).bind(...binds).all<{ source_id: string; question_it: string; ckb: string | null; kmr_arab: string | null }>();
+    const ids = all.results.filter((r) => matchesChecks(checkRow(r), q.checks!)).map((r) => r.source_id);
+    total = ids.length;
+    const page = ids.slice(q.offset, q.offset + q.limit);
+    results = page.length === 0 ? [] : (await db.prepare(
+      `SELECT ${ROW_COLUMNS} FROM italy_catalogue_staging WHERE country = 'IT' AND source_id IN (${page.map(() => "?").join(",")}) ORDER BY batch, source_id`,
+    ).bind(...page).all<StagingRow>()).results;
+  } else {
+    total = (await db.prepare(`SELECT COUNT(*) AS total FROM italy_catalogue_staging WHERE ${clause}`).bind(...binds).first<{ total: number }>())?.total ?? 0;
+    results = (await db.prepare(
+      `SELECT ${ROW_COLUMNS} FROM italy_catalogue_staging WHERE ${clause} ORDER BY batch, source_id LIMIT ? OFFSET ?`,
+    ).bind(...binds, q.limit, q.offset).all<StagingRow>()).results;
+  }
   const counts = await db.prepare(
     `SELECT COUNT(*) AS total,
             SUM(ckb_status = 'approved') AS ckbApproved, SUM(kmr_arab_status = 'approved') AS kmrArabApproved,
@@ -63,7 +93,17 @@ export async function listStaging(db: D1Like, q: StagingQuery) {
             SUM(chapter_confidence = 'needs_review') AS chapterNeedsReview
      FROM italy_catalogue_staging WHERE country = 'IT'`,
   ).first<Record<string, number>>();
-  return { total: total?.total ?? 0, rows: results, counts: counts ?? {} };
+  const rows: ListedStagingRow[] = results.map((r) => { const checks = checkRow(r); return { ...r, checks, blockers: rowBlockers(r, checks) }; });
+  return { total, rows, counts: counts ?? {} };
+}
+
+/** Automatic checks and publication blockers over the whole staged catalogue (read-only). */
+export async function summariseStaging(db: D1Like) {
+  const { results } = await db.prepare(
+    `SELECT question_it, ckb, kmr_arab, image, ckb_status, kmr_arab_status, chapter_confidence
+     FROM italy_catalogue_staging WHERE country = 'IT'`,
+  ).all<BlockerInput>();
+  return summarise(results);
 }
 
 export interface StagingDecision {
