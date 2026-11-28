@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { CATALOGUE_BLOCKERS, checkRow, checkTranslation, numbersOf, rowBlockers, summarise, toWesternDigits } from "../../worker/italy/stagingChecks";
+import { CATALOGUE_BLOCKERS, checkRow, isReadyForApproval, checkTranslation, numbersOf, rowBlockers, summarise, toWesternDigits } from "../../worker/italy/stagingChecks";
 
 const codes = (issues: { code: string }[]) => issues.map((i) => i.code);
 const base = { image: null, ckb_status: "pending", kmr_arab_status: "pending", chapter_confidence: null };
@@ -67,5 +67,15 @@ describe("publication blockers", () => {
     expect(sum.catalogueBlockers).toEqual(CATALOGUE_BLOCKERS);
     expect(sum.publishable).toBe(0);
     expect(checkRow(row)).toMatchObject({ errors: 0, warnings: 0 });
+  });
+
+  it("puts a row in the final-approval queue only while a language is pending and nothing blocks it", () => {
+    expect(isReadyForApproval(row)).toBe(true);
+    expect(isReadyForApproval({ ...row, kmr_arab: "ڕێک دڵ" })).toBe(false);
+    expect(isReadyForApproval({ ...row, ckb_status: "needs_revision" })).toBe(false);
+    expect(isReadyForApproval({ ...row, ckb_status: "approved", kmr_arab_status: "approved" })).toBe(false);
+    expect(isReadyForApproval({ ...row, ckb_status: "approved" })).toBe(true);
+    const sum = summarise([{ ...row, chapter_draft: 3 }, { ...row, chapter_draft: 3 }, { ...row, chapter_draft: null }]);
+    expect(sum.readyForFinalApproval).toEqual({ total: 3, withWarnings: 0, byChapter: { "3": 2, "0": 1 } });
   });
 });

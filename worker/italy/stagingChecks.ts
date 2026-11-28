@@ -130,7 +130,14 @@ export type CatalogueBlocker = (typeof CATALOGUE_BLOCKERS)[number];
 
 export interface BlockerInput {
   question_it: string; ckb: string | null; kmr_arab: string | null; image: string | null;
-  ckb_status: string; kmr_arab_status: string; chapter_confidence: string | null;
+  ckb_status: string; kmr_arab_status: string; chapter_confidence: string | null; chapter_draft?: number | null;
+}
+
+/** In the final-approval queue: no check error, no revision request, at least one language still pending. */
+export function isReadyForApproval(row: BlockerInput, checks: RowChecks = checkRow(row)): boolean {
+  const pending = row.ckb_status === "pending" || row.kmr_arab_status === "pending";
+  const revision = row.ckb_status === "needs_revision" || row.kmr_arab_status === "needs_revision";
+  return checks.errors === 0 && pending && !revision;
 }
 
 export function rowBlockers(row: BlockerInput, checks: RowChecks = checkRow(row)): RowBlocker[] {
@@ -152,6 +159,8 @@ export interface CatalogueSummary {
   catalogueBlockers: readonly CatalogueBlocker[];
   /** Rows a reviewer can approve without first fixing anything the machine found. */
   readyForHumanReview: number;
+  /** The final-approval queue (isReadyForApproval), in total and per draft chapter ("0" = no chapter). */
+  readyForFinalApproval: { total: number; withWarnings: number; byChapter: Record<string, number> };
   publishable: 0;
 }
 
@@ -160,6 +169,7 @@ export function summarise(rows: BlockerInput[]): CatalogueSummary {
   const byCode: Record<string, { ckb: number; kmrArab: number }> = Object.fromEntries(CHECK_CODES.map((c) => [c, { ckb: 0, kmrArab: 0 }]));
   const blockerCounts = Object.fromEntries(ROW_BLOCKERS.map((b) => [b, 0])) as Record<RowBlocker, number>;
   let rowsWithErrors = 0, rowsWithWarnings = 0, rowsClean = 0, ready = 0;
+  const queue = { total: 0, withWarnings: 0, byChapter: {} as Record<string, number> };
   for (const row of rows) {
     const checks = checkRow(row);
     for (const i of checks.ckb) byCode[i.code]!.ckb++;
@@ -169,6 +179,12 @@ export function summarise(rows: BlockerInput[]): CatalogueSummary {
     if (!checks.errors && !checks.warnings) rowsClean++;
     if (!checks.errors) ready++;
     for (const b of rowBlockers(row, checks)) blockerCounts[b]++;
+    if (isReadyForApproval(row, checks)) {
+      queue.total++;
+      if (checks.warnings) queue.withWarnings++;
+      const ch = String(row.chapter_draft ?? 0);
+      queue.byChapter[ch] = (queue.byChapter[ch] ?? 0) + 1;
+    }
   }
   return {
     total: rows.length,
@@ -176,6 +192,7 @@ export function summarise(rows: BlockerInput[]): CatalogueSummary {
     rowBlockers: blockerCounts,
     catalogueBlockers: CATALOGUE_BLOCKERS,
     readyForHumanReview: ready,
+    readyForFinalApproval: queue,
     publishable: 0,
   };
 }
