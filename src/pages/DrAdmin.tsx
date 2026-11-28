@@ -482,7 +482,7 @@ export function DrAdmin() {
         </div>
         <div className="dr-actions"><button type="button" className="btn btn-secondary btn-sm" onClick={() => void load()}>نوێکردنەوە</button></div>
       </Card>);
-      case "content": return <Card title="کارگەی ناوەڕۆک" en="Content Workbench"><Suspense fallback={<div aria-busy="true" />}><DrContent /></Suspense></Card>;
+      case "content": return <Card title="کارگەی ناوەڕۆک" en="Content Workbench"><Suspense fallback={<div aria-busy="true" />}><DrContent api={api} onNeedStepUp={(retry) => setStepUp(() => async () => { setStepUp(null); await retry(); })} /></Suspense></Card>;
       case "review": return <Card title="پێداچوونەوە و پەسەندکردنی ناوەڕۆک" en="Content Review & Approval"><Suspense fallback={<div aria-busy="true" />}><DrReview api={api} onNeedStepUp={(retry) => setStepUp(() => async () => { setStepUp(null); await retry(); })} /></Suspense></Card>;
       case "audit": return <Card title="تۆماری گۆڕانکارییەکان" en="Audit Logs"><AuditTable /></Card>;
     }

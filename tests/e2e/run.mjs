@@ -1054,6 +1054,8 @@ try {
       if (u.pathname === "/api/dr/session") return json(200, { authenticated: true, email: "re•••@gmail.com", expiresAt: Date.now() + 3600000, stepUpUntil: Date.now() + 600000 });
       if (u.pathname === "/api/dr/overview") return json(200, { now: Date.now(), owner: "re•••@gmail.com", system: { app: "regadrive", version: "t", contentMode: "production", colo: null }, database: { ok: true, latencyMs: 1, name: "regadrive-db", studentData: "off", activeSessions: 1, auditEntries: 0, logins24h: 0, denied24h: 0, codesSent24h: 0, mailFailures24h: 0, backups: 0 }, features: [], ai: [], content: {}, email: { owner: "x", from: "x", provider: "Resend", configured: true }, payments: null, security: { sessions: [], steppedUp: true, stepUpUntil: Date.now() + 600000, sessionExpiresAt: Date.now() + 3600000 }, backups: [] });
       if (u.pathname === "/api/dr/reviews" && r.request().method() === "GET") return json(200, { items, italyQuestions: [italy], tablesReady: { de: true, it: true }, counts: { total: 3, published: 1, awaiting: 1, inReview: 1, rejected: 0, signs: { total: 2, published: 0 }, signQuiz: { total: 1, published: 1 } }, history: [], rulesVersion: "test-rules", roles: {}, steppedUp: true });
+      if (u.pathname === "/api/dr/italy/catalogue") return json(200, { ok: true, total: 7020, rows: [], counts: { total: 7020, ckbApproved: 0, kmrArabApproved: 0, needsRevision: 0, pending: 7020, chapterNeedsReview: 0 }, pageMax: 100 });
+      if (u.pathname === "/api/dr/italy/catalogue/summary") return json(200, { ok: true, total: 7020, publishable: 0, catalogueBlockers: [], rowBlockers: {} });
       if (u.pathname === "/api/dr/reviews/translation") {
         if (r.request().method() === "GET") return json(200, { decisions: [], edits: [] });
         edits.push(JSON.parse(r.request().postData() ?? "{}"));
@@ -1072,6 +1074,14 @@ try {
     await page.locator("[data-testid=dr-review]").waitFor();
     assert.equal(await page.locator("[data-testid=review-item]").count(), 3);
     assert.equal(await page.locator("[data-testid=rv-signs]").textContent(), "0 / 2");
+    // Every number adds up: the total is Germany plus Italy, and the list says how many of the country's items it shows.
+    assert.equal(await page.locator("[data-testid=rv-total]").textContent(), "3");
+    assert.equal(await page.locator("[data-testid=rv-total-de]").textContent(), "3");
+    assert.equal(await page.locator("[data-testid=rv-total-it]").textContent(), "0");
+    await page.locator("[data-testid=rv-catalogue-total]").filter({ hasText: "7020" }).waitFor();
+    assert.ok((await page.locator("[data-testid=rv-shown]").textContent()).includes("3 بابەت پیشان دراوە لە 3"));
+    assert.ok(await page.locator("[data-id=s102] [data-testid=rv-reasons]").count() === 1, "the reasons an unpublished item is not live are shown");
+    assert.ok((await page.locator("[data-id=s102] [data-testid=rv-reasons]").textContent()).includes("هێشتا تێنەپەڕیوە"), "in Sorani");
     for (const st of ["TRANSLATION_REVIEW", "EDUCATIONAL_REVIEW", "APPROVED"]) assert.equal(await page.locator(`[data-id=s102] [data-testid=stage-${st}]`).count(), 1, `${st} shown`);
     const dirs = await page.locator("[data-id=s102] .rv-de, [data-id=s102] .rv-ckb").evaluateAll((els) => els.slice(0, 2).map((e) => [e.getAttribute("lang"), e.getAttribute("dir")]));
     assert.deepEqual(dirs, [["de", "ltr"], ["ckb", "rtl"]], "German LTR first, Sorani RTL below");
@@ -1093,6 +1103,19 @@ try {
     assert.equal(posts.length, 2);
     assert.deepEqual({ stage: posts[0].stage, outcome: posts[0].outcome, ids: posts[0].ids, reviewerName: posts[0].reviewerName, confirm: posts[0].confirm }, { stage: "TRANSLATION_REVIEW", outcome: "pass", ids: ["s102"], reviewerName: "Test Person", confirm: true });
     await page.screenshot({ path: `${OUT}/dr-content-review-iphone.png`, fullPage: false });
+    // The confirmation sentence wraps as one paragraph, not as columns of broken words.
+    const confirmH = await page.locator("[data-testid=review-form] .rv-confirm span").evaluate((e) => e.getBoundingClientRect().width);
+    assert.ok(confirmH > 200, `confirmation text has room (${confirmH}px wide)`);
+    // Smallest phone and desktop: nothing scrolls sideways.
+    for (const [w, h, name] of [[320, 700, "320"], [1280, 900, "desktop"]]) {
+      await page.setViewportSize({ width: w, height: h });
+      await page.locator("[data-testid=rv-reconcile]").scrollIntoViewIfNeeded();
+      assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth), false, `no horizontal overflow at ${name}`);
+      await page.screenshot({ path: `${OUT}/dr-content-review-${name}.png`, fullPage: false });
+    }
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.getByTestId("rv-country-it").click();
+    assert.equal(await page.locator("[data-testid=rv-kind-sign]").count(), 0, "Germany's lists are not offered inside Italy");
     await page.getByTestId("rv-kind-itQuestion").click();
     const panel = page.getByTestId("rv-italy-questions");
     const italyCard = panel.getByTestId("review-item");
@@ -1106,9 +1129,9 @@ try {
     assert.equal(await italyCard.count(), 1);
     await panel.getByRole("searchbox").fill("دەقێ بادینی");
     assert.equal(await italyCard.count(), 1);
-    await panel.getByRole("combobox").selectOption("approved");
+    await panel.getByTestId("rv-italy-filter").selectOption("approved");
     assert.equal(await italyCard.count(), 0);
-    await panel.getByRole("combobox").selectOption("pending");
+    await panel.getByTestId("rv-italy-filter").selectOption("pending");
     await italyCard.getByRole("button", { name: "دەستکاریکردنی وەرگێڕان" }).click();
     await italyCard.getByLabel("پرسیار بە سۆرانی").fill("دەقی دەستکاریکراوی سۆرانی");
     await italyCard.getByLabel("ناوی تەواوی پشکنەر").fill("Test Reviewer");
@@ -1121,6 +1144,21 @@ try {
     assert.equal(edits[0].questionHash, "review:fixture:0");
     await italyCard.getByText("مێژووی پشکنین و گۆڕانکارییەکان").click();
     await italyCard.getByText("هێشتا مێژوویەک تۆمار نەکراوە.").waitFor();
+    // Bulk: the selected Italian questions get one decision, each sent with the fingerprint of the wording shown.
+    const bulk = panel.getByTestId("rv-italy-bulk");
+    await italyCard.locator("input[type=checkbox]").first().check();
+    await bulk.getByLabel("پشکنەر (ناوی تەواو)").fill("Test Person");
+    await bulk.getByLabel(/بەڵگە \(لیستی واژۆکراو/).fill("evidence-123");
+    assert.equal(await bulk.getByTestId("rv-italy-bulk-submit").isDisabled(), true, "needs the confirmation");
+    await bulk.getByLabel(/دووپاتی دەکەمەوە کە کەسە ناوبراوەکە/).check();
+    await bulk.getByTestId("rv-italy-bulk-submit").click();
+    await bulk.getByRole("status").filter({ hasText: "بڕیار تۆمارکرا" }).waitFor();
+    const bulkPost = posts.at(-1);
+    assert.deepEqual({ ids: bulkPost.ids, hashes: bulkPost.questionHashes, reviewerName: bulkPost.reviewerName }, { ids: ["it-b-001"], hashes: { "it-b-001": italy.hash }, reviewerName: "Test Person" });
+    assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth), false, "Italian bulk form fits iPhone");
+    // The staged catalogue is part of Italy's review, reachable from the same screen.
+    await page.getByTestId("rv-kind-catalogue").click();
+    await page.locator("[data-testid=italy-catalogue-review]").waitFor();
     assert.deepEqual(errors, []);
     await ctx.close();
   });
@@ -1154,7 +1192,11 @@ try {
         catalogueBlockers: ["TEXT_RIGHTS_UNVERIFIED", "NO_EXPLANATION", "NO_LEGAL_REFERENCE", "NOT_IN_REVIEW_PIPELINE", "IMAGES_NOT_HOSTED"] });
       if (u.pathname === "/api/dr/italy/catalogue") listQueries.push(Object.fromEntries(u.searchParams));
       if (u.pathname === "/api/dr/italy/catalogue") return json(200, { ok: true, total: 2, rows, counts: { total: 2, ckbApproved: 0, kmrArabApproved: 0, needsRevision: 0, pending: 2, chapterNeedsReview: 1 }, pageMax: 100 });
-      if (u.pathname === "/api/dr/italy/catalogue/review") { posts.push(JSON.parse(r.request().postData() ?? "{}")); return json(200, { ok: true, recorded: 1, unknown: [] }); }
+      if (u.pathname === "/api/dr/italy/catalogue/review") {
+        // The real server refuses any write without this header (403); the panel must send it.
+        if (r.request().headers()["x-dr-request"] !== "1") return json(403, { error: "FORBIDDEN" });
+        posts.push(JSON.parse(r.request().postData() ?? "{}")); return json(200, { ok: true, recorded: 1, unknown: [] });
+      }
       if (u.pathname.startsWith("/api/dr/")) return json(404, { error: "NOT_FOUND" });
       return r.continue();
     });
@@ -1167,6 +1209,7 @@ try {
     assert.equal(await panel.locator("td.it-cat-it").first().getAttribute("dir"), "ltr", "Italian stays an LTR island");
     assert.equal(await panel.locator("[data-testid=italy-catalogue-publishable]").textContent().then((t) => t.includes("0")), true, "nothing is publishable");
     assert.equal(await panel.locator("[data-testid=italy-catalogue-blocker]").count(), 5 + 5, "every catalogue-wide and every non-zero row blocker is listed");
+    assert.ok((await panel.locator("[data-testid=italy-catalogue-row-blockers]").first().textContent()).includes("سۆرانی پەسەند نەکراوە"), "each row says why it is not published");
     // Phone: the rows are cards, nothing scrolls sideways.
     assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth), false, "no horizontal overflow on iPhone");
     assert.equal(await panel.locator(".it-cat-table thead").evaluate((e) => e.getBoundingClientRect().height <= 1), true, "the table header is visually hidden on a phone");
@@ -1175,8 +1218,8 @@ try {
     const rowErr = panel.locator("[data-testid=italy-catalogue-row]").nth(1);
     await panel.locator("[data-testid=italy-catalogue-reviewer-needed]").waitFor();
     assert.equal(await rowOk.getByRole("button", { name: "پەسەند", exact: true }).first().isDisabled(), true, "approval needs a reviewer");
-    await panel.getByLabel("Reviewer name").fill("Test Person");
-    await panel.getByLabel("Evidence reference").fill("signed-review-2026");
+    await panel.getByLabel("ناوی تەواوی پێداچووەر").fill("Test Person");
+    await panel.getByLabel("سەرچاوەی بەڵگە").fill("signed-review-2026");
     assert.equal(await rowOk.getByRole("button", { name: "پەسەند", exact: true }).first().isDisabled(), false);
     assert.equal(await rowErr.getByRole("button", { name: "پەسەند", exact: true }).first().isDisabled(), true, "a row with a check error cannot be approved");
     await rowErr.getByRole("checkbox").check();

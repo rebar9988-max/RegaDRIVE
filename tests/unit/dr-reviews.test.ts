@@ -68,7 +68,7 @@ const flow = (ids: string[], over: Record<string, unknown> = {}) => ({ ids, outc
 const TR = (ids: string[], o: Record<string, unknown> = {}) => flow(ids, { stage: "TRANSLATION_REVIEW", reviewerName: "Test Translator Alpha", evidenceRef: "signed-list-2026-11-07.pdf", ...o });
 const ED = (ids: string[], o: Record<string, unknown> = {}) => flow(ids, { stage: "EDUCATIONAL_REVIEW", reviewerName: "Test Instructor Beta", evidenceRef: "fahrlehrer-protokoll-2026-11-07", ...o });
 const AP = (ids: string[], o: Record<string, unknown> = {}) => flow(ids, { stage: "APPROVED", reviewerName: "Test Owner Gamma", evidenceRef: "owner-approval-2026-11-07", ...o });
-type Item = { id: string; kind: string; status: string; publishable: boolean };
+type Item = { id: string; kind: string; status: string; publishable: boolean; stages: Record<"TRANSLATION_REVIEW" | "EDUCATIONAL_REVIEW" | "APPROVED", { state: string; reviewer?: string; evidenceRef?: string }> };
 
 describe("/dr Content Review & Approval", () => {
   it("covers exactly the 40 signs and 89 sign-quiz questions, all unpublished while nothing is reviewed", async () => {
@@ -214,6 +214,50 @@ describe("/dr Content Review & Approval", () => {
     expect((await draft()).status).toBe("REJECTED");
     const history = await t.call(`/api/dr/reviews/translation?id=${id}`);
     expect(history.body.decisions).toHaveLength(4);
+  });
+
+  it("counts Germany and Italy apart, and the two add up to the total (149 = 129 + 20)", async () => {
+    const t = setup();
+    await t.login();
+    const r = await t.call("/api/dr/reviews");
+    const counts = r.body.counts as { total: number; byCountry: Record<"de" | "it", { total: number; published: number; awaiting: number; inReview: number; rejected: number }> };
+    expect(counts.byCountry.de.total).toBe(40 + 89);
+    expect(counts.byCountry.it.total).toBe(8 + IT_QUESTIONS.length);
+    expect(counts.byCountry.de.total + counts.byCountry.it.total).toBe(counts.total);
+    expect(counts.total).toBe((r.body.items as unknown[]).length);
+    for (const c of Object.values(counts.byCountry)) expect(c.published + c.awaiting + c.inReview + c.rejected).toBe(c.total);
+  });
+
+  it("records one decision for several Italian questions only when every one of them may take it", async () => {
+    const t = setup();
+    await t.login();
+    const [a, b] = [IT_QUESTIONS[0]!.id, IT_QUESTIONS[1]!.id];
+    const drafts = async () => new Map(((await t.call("/api/dr/reviews")).body.italyQuestions as (Item & { hash: string })[]).map((i) => [i.id, i]));
+    const d0 = await drafts();
+    const hashes = { [a]: d0.get(a)!.hash, [b]: d0.get(b)!.hash };
+    const post = (decision: Record<string, unknown>) => t.call("/api/dr/reviews", { body: decision });
+    // Mixed with a German item, a missing fingerprint, or an approval before the reviews: nothing is recorded.
+    expect((await post({ ...TR([a, SIGNS[0]!.id]), questionHashes: hashes })).body.error).toBe("ITALY_REVIEW_MIXED");
+    expect((await post({ ...TR([a, b]), questionHashes: { [a]: hashes[a] } })).status).toBe(409);
+    const refused = await post({ ...AP([a, b]), questionHashes: hashes });
+    expect(refused.status).toBe(422);
+    expect(refused.body).toMatchObject({ error: "REJECTED", rejectedCount: 2 });
+    expect((await post({ ...TR([a, b], { reviewerName: "AI reviewer" }), questionHashes: hashes })).status).toBe(422);
+    expect([...(await drafts()).values()].every((i) => i.stages.TRANSLATION_REVIEW.state === "pending")).toBe(true);
+    // A valid batch is recorded for both, each as its own row with the named reviewer and evidence.
+    expect((await post({ ...TR([a, b]), questionHashes: hashes })).body).toMatchObject({ ok: true, recorded: 2 });
+    const after = await drafts();
+    for (const id of [a, b]) expect(after.get(id)!.stages.TRANSLATION_REVIEW).toMatchObject({ state: "pass", reviewer: "Test Translator Alpha", evidenceRef: "signed-list-2026-11-07.pdf" });
+    // All or nothing: one question that is not ready refuses the whole selection.
+    const c = IT_QUESTIONS[2]!.id;
+    const mixed = await post({ ...ED([a, c]), questionHashes: { [a]: after.get(a)!.hash, [c]: after.get(c)!.hash } });
+    expect(mixed.body).toMatchObject({ error: "REJECTED", errors: [{ id: c, error: "TRANSLATION_REVIEW_FIRST" }] });
+    expect((await drafts()).get(a)!.stages.EDUCATIONAL_REVIEW.state).toBe("pending");
+    // Editorial decisions never publish an Italian question.
+    expect((await approvedContent(t.db)).itQuestions).toEqual({});
+    const audit = (await t.call("/api/dr/audit?limit=50")).body.entries as { action: string; result: string }[];
+    expect(audit.filter((x) => x.action === "review.TRANSLATION_REVIEW.pass" && x.result === "allowed")).toHaveLength(1);
+    expect(audit.some((x) => x.action === "review.APPROVED.pass" && x.result === "denied")).toBe(true);
   });
 
   it("records only human translation edits, resets the review for new wording, and rejects stale writes", async () => {
