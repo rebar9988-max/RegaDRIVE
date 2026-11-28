@@ -1,0 +1,16 @@
+
+> regadrive@0.1.0 test
+> vitest run
+
+
+ RUN  v5.1.0 /workspace/RegaDRIVE
+
+
+ Test Files  52 passed (52)
+      Tests  1814 passed (1814)
+   Start at  07:13:33
+   Duration  14.69s (tests 61%, import 23%, transform 12%, worker 3%)
+
+    Isolate  52 workers spawned · ~127ms startup each (spawn + environment, per file)
+             at least ~6.47s faster with isolate: false — reuses workers across files instead of one per file
+

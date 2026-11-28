@@ -1,0 +1,2 @@
+{"policy":"public, max-age=0, must-revalidate, no-transform","navigations":3,"imageRequests":3,"imageBodyBytes":212784}
+{"policy":"public, max-age=3600, no-transform","navigations":3,"imageRequests":1,"imageBodyBytes":70928}

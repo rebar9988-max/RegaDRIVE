@@ -17,3 +17,21 @@
 /sw.js
   ! Cache-Control
   Cache-Control: no-cache
+
+# Stable image URLs may change between releases: short freshness, never immutable.
+# Preserve exact artwork and educational meaning at intermediary caches.
+/brand/*
+  ! Cache-Control
+  Cache-Control: public, max-age=3600, no-transform
+
+/icons/*
+  ! Cache-Control
+  Cache-Control: public, max-age=3600, no-transform
+
+/flags/*
+  ! Cache-Control
+  Cache-Control: public, max-age=3600, no-transform
+
+/signs/it/*
+  ! Cache-Control
+  Cache-Control: public, max-age=3600, no-transform

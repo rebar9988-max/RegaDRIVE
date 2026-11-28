@@ -1,0 +1,146 @@
+[
+  {
+    "path": "public/favicon.png",
+    "bytes": 4286,
+    "sha256": "19a4ae36e4c10c7c7f2cbdd2096114c94697dba3ae3bc0c0c0f7b05f4de64168",
+    "unchanged": true
+  },
+  {
+    "path": "public/icons/icon-192.png",
+    "bytes": 19812,
+    "sha256": "9d18ada76fd1f7c37d83b2204fde1fd1661311d01f4c2f788085bda21e5e6270",
+    "unchanged": true
+  },
+  {
+    "path": "public/icons/apple-touch-icon.png",
+    "bytes": 17836,
+    "sha256": "7ee93851742f5c1eef914b08e916d293e3327dac724d34af4048de9b83076afc",
+    "unchanged": true
+  },
+  {
+    "path": "public/icons/maskable-512.png",
+    "bytes": 53284,
+    "sha256": "a98a2857e87c2fdc257c93de6967b8eef160556be96c83a03d2df0dbfc5d6744",
+    "unchanged": true
+  },
+  {
+    "path": "public/icons/maskable-192.png",
+    "bytes": 13325,
+    "sha256": "daa8a35de595d6c805ec816fb4d2788fc885e0f355911b4efe1eae7184d5fc32",
+    "unchanged": true
+  },
+  {
+    "path": "public/icons/icon-512.png",
+    "bytes": 77491,
+    "sha256": "c9841d0d7be0b83931af21905a1e96e47fe54b2b350c3393b5deae779af1ce34",
+    "unchanged": true
+  },
+  {
+    "path": "public/flags/it.svg",
+    "bytes": 176,
+    "sha256": "6eef82bc5f77a117df68f24215b8d8e164b01cee69586ea50fa1043fd2bc66bd",
+    "unchanged": true
+  },
+  {
+    "path": "public/flags/arabic.png",
+    "bytes": 4206,
+    "sha256": "4fee35bd54b1b3b840c0958ef55020af679c95b28cb599343cff0c466100ab81",
+    "unchanged": true
+  },
+  {
+    "path": "public/flags/kurdistan.png",
+    "bytes": 1751,
+    "sha256": "168a269f999393a9cffe69cadd45e9e273fe3062093cb55f881ab5f58cabc4e4",
+    "unchanged": true
+  },
+  {
+    "path": "public/flags/de.png",
+    "bytes": 99,
+    "sha256": "4bf08b86243b0c5d79c196728100dd278a398ab57edaf56c871fceb9d879dbeb",
+    "unchanged": true
+  },
+  {
+    "path": "public/brand/regadrive-banner-1200.webp",
+    "bytes": 47766,
+    "sha256": "cd5609c087f9f8be47bb3d282e20c98acfa1736685cd0671b4a5672d94ce6b4e",
+    "unchanged": true
+  },
+  {
+    "path": "public/brand/regadrive-emblem.webp",
+    "bytes": 14962,
+    "sha256": "d7ac398ade4dbb44b1160b171425dbc4bbb5e166bbca82c5299e6880c336c24c",
+    "unchanged": true
+  },
+  {
+    "path": "public/brand/regadrive-logo.webp",
+    "bytes": 47840,
+    "sha256": "1643b307619c0f1aee61517766459b344ee7b3d67c5010cf8571d32524ef6035",
+    "unchanged": true
+  },
+  {
+    "path": "public/brand/regadrive-banner.webp",
+    "bytes": 70928,
+    "sha256": "60277cfe9fa3763eaddc1abffc99e928482df6c137a9a47ab654c30a9c2b542c",
+    "unchanged": true
+  },
+  {
+    "path": "public/brand/regadrive-og.jpg",
+    "bytes": 78299,
+    "sha256": "106394a95d817ada496817d1081c6314d1dc4a59a71aacc3206107b7307bfefa",
+    "unchanged": true
+  },
+  {
+    "path": "public/brand/regadrive-emblem.png",
+    "bytes": 29755,
+    "sha256": "dc2f798b8fcd5fa08912e234b09391cbf92892af56e529319f84cd9ca1a5a315",
+    "unchanged": true
+  },
+  {
+    "path": "public/signs/it/obbligo.svg",
+    "bytes": 292,
+    "sha256": "a47bf89546bd1250a0c4f299c60058e0bacf9ca20f7a5dd432775f0641ca9947",
+    "unchanged": true
+  },
+  {
+    "path": "public/signs/it/precedenza.svg",
+    "bytes": 185,
+    "sha256": "279f0cb3282f26524e7adbe27acbae8425ab0cee8e74148473e057e143959344",
+    "unchanged": true
+  },
+  {
+    "path": "public/signs/it/parcheggio.svg",
+    "bytes": 270,
+    "sha256": "eeb44ab0a879d70bf459843af71f2ffdca80e344118c585a9960fb7da63f4426",
+    "unchanged": true
+  },
+  {
+    "path": "public/signs/it/stop.svg",
+    "bytes": 311,
+    "sha256": "1729a7cd0d87919c6529b8d454905aa855ed87be002338da8b5452ede9bb8d3b",
+    "unchanged": true
+  },
+  {
+    "path": "public/signs/it/pericolo.svg",
+    "bytes": 286,
+    "sha256": "906023adcbeafdd1975cedd67807e5f45de85f6281e90652e7b1cd1a3525ebfc",
+    "unchanged": true
+  },
+  {
+    "path": "public/signs/it/divieto.svg",
+    "bytes": 255,
+    "sha256": "e69ec69eda68e14bcae46024b2868b699cad28486527681301dbc20e5c2d61c6",
+    "unchanged": true
+  },
+  {
+    "path": "public/signs/it/autostrada.svg",
+    "bytes": 418,
+    "sha256": "a8b9ccfe2cd824bc7a9c70366dc5f8a34d2fa0251394cd94ddab493fb75cde28",
+    "unchanged": true
+  },
+  {
+    "path": "public/signs/it/semaforo.svg",
+    "bytes": 293,
+    "sha256": "ce1754c5f10a7a895cc5aee5d16e98bc27b07f7b54ff758c8650eb68126fcb77",
+    "unchanged": true
+  }
+]

@@ -1,0 +1,64 @@
+
+> regadrive@0.1.0 test:e2e
+> node tests/e2e/run.mjs
+
+[33m▲ [43;33m[[43;30mWARNING[43;33m][0m [1mProxy environment variables detected. We'll use your proxy for fetch requests.[0m
+
+
+
+ ⛅️ wrangler 4.158.0 (update available 4.169.0)
+───────────────────────────────────────────────
+Resource location: local 
+
+Use --remote if you want to access the remote instance.
+
+Migrations to be applied:
+┌───────────────────────┐
+│ name                  │
+├───────────────────────┤
+│ 0001_student_auth.sql │
+└───────────────────────┘
+? About to apply 1 migration(s)
+Your database may not be available to serve requests during the migration, continue?
+🤖 Using fallback value in non-interactive context: yes
+🌀 Executing on local database regadrive-students (4b6065a1-812c-44c3-8558-b50e66e18764) from .wrangler/state/v3/d1:
+🌀 To execute on your remote database, add a --remote flag to your wrangler command.
+🚣 15 commands executed successfully.
+┌───────────────────────┬────────┐
+│ name                  │ status │
+├───────────────────────┼────────┤
+│ 0001_student_auth.sql │ ✅     │
+└───────────────────────┴────────┘
+PASS API: health, flags OFF, student auth on separate DB, checkout refused (110ms)
+PASS home renders logo, RTL, no overflow, no console errors [iphone] (3111ms)
+PASS home renders logo, RTL, no overflow, no console errors [android] (2681ms)
+PASS home renders logo, RTL, no overflow, no console errors [tablet] (3381ms)
+PASS home renders logo, RTL, no overflow, no console errors [desktop] (2489ms)
+PASS accessibility (axe WCAG 2.x A/AA) on key pages, RTL and mobile (23934ms)
+PASS bilingual question: Kurdish RTL first, German LTR below; multi-answer checkboxes; feedback; no duplicate scoring (6215ms)
+PASS sign quiz: German LTR line with Sorani RTL below, answer feedback, a 10-question round ends with a score [iPhone] (3552ms)
+PASS search by Kurdish and German (1993ms)
+PASS mock exam: 30 questions, no answer disclosure, scored once, labelled as simulation (8000ms)
+PASS question interaction: title, square checkboxes, change selection, green/red after checking, error points, back/next/jump, modes [iPhone] (6349ms)
+PASS exam: timer, question overview, flag, answers survive a reload, unanswered warning, full review [desktop + iPhone + iPad] (20640ms)
+PASS exam: no time limit by default; optional 45-minute practice limit hands in automatically (3251ms)
+PASS media viewer: image zoom and full screen, video poster, five plays in the exam, broken file fallback (synthetic test pattern only) (4494ms)
+PASS navigation: radio keys in settings, practice filter follows the URL, malformed lesson URL shows not found (fixes from PR #22) (3293ms)
+PASS home: weak-topics empty state starts a real practice; no in-app country switch; broken screen recovers (7328ms)
+PASS settings language switch never moves the mobile header [iPhone, as the live smoke test] (2476ms)
+PASS header language selector: one compact control, five languages, checkmark, saved choice, bottom sheet on phones (22309ms)
+PASS languages: Sorani, Kurmanji, Arabic and German change the words, never the layout (8412ms)
+PASS student account: register → e-mail code → verify → log out → log in; reset; local progress kept [iPhone] (14042ms)
+PASS purchase disabled, services show no invented data (3199ms)
+PASS owner import workbench (preview build only): validate fixture locally, never import or publish (4353ms)
+PASS language settings: German-only, translation without German, Arabic practice question (5099ms)
+PASS mobile phone emulation: settings header never moves between languages (2226ms)
+PASS reference navigation, lesson filters and narrow layouts (11148ms)
+PASS /dr owner control center: sign-in page, fail-closed API, accessible on iPhone (1738ms)
+PASS /dr Content Review & Approval: 3 stages, German LTR + Sorani RTL, reviewer/evidence required, accessible on iPhone (mocked owner session) (4455ms)
+PASS /dr Italy catalogue review: RTL cards on iPhone, automatic checks, publication blockers, approval only with a named reviewer (mocked owner session) (3405ms)
+PASS 200 percent text on a 320px screen: nothing cut off or off screen, in all five languages (WCAG 1.4.4 / 1.4.10; from PR #22) (47687ms)
+PASS offline: app shell and practice work after first visit (service worker) (8270ms)
+PASS italy student journey: free registration, practice, progress, exam state, no German leftovers (48823ms)
+
+31/31 E2E tests passed

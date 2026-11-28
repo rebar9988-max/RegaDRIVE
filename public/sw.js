@@ -34,7 +34,7 @@ self.addEventListener("fetch", (event) => {
   if (url.pathname === "/api/content/italy") {
     event.respondWith(
       fetch(req)
-        .then((res) => { if (res.ok) { const copy = res.clone(); caches.open(CACHE).then((c) => c.put(req, copy)); } return res; })
+        .then((res) => { if (res.ok) { const copy = res.clone(); event.waitUntil(caches.open(CACHE).then((c) => c.put(req, copy)).catch(() => undefined)); } return res; })
         .catch(() => caches.match(req).then((r) => r || new Response(JSON.stringify({ ok: false, offline: true, questions: [], signs: [] }), { status: 200, headers: { "content-type": "application/json" } }))),
     );
     return;
@@ -45,7 +45,7 @@ self.addEventListener("fetch", (event) => {
     // Network first so updates arrive; fall back to the cached app shell offline.
     event.respondWith(
       fetch(req)
-        .then((res) => { if (res.ok) { const copy = res.clone(); caches.open(CACHE).then((c) => c.put("/", copy)); } return res; })
+        .then((res) => { if (res.ok) { const copy = res.clone(); event.waitUntil(caches.open(CACHE).then((c) => c.put("/", copy)).catch(() => undefined)); } return res; })
         .catch(() => caches.match("/").then((r) => r || new Response("Offline", { status: 503 }))),
     );
     return;
@@ -56,7 +56,7 @@ self.addEventListener("fetch", (event) => {
     caches.match(req).then((hit) => hit || fetch(req).then((res) => {
       if (res.ok && (url.pathname.startsWith("/assets/") || url.pathname.startsWith("/brand/") || url.pathname.startsWith("/icons/") || url.pathname.startsWith("/fonts/") || url.pathname.startsWith("/flags/") || url.pathname.startsWith("/signs/it/"))) {
         const copy = res.clone();
-        caches.open(CACHE).then((c) => c.put(req, copy));
+        event.waitUntil(caches.open(CACHE).then((c) => c.put(req, copy)).catch(() => undefined));
       }
       return res;
     })),
