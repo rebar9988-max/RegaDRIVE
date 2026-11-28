@@ -200,7 +200,8 @@ assert.equal(Object.values(sdb.prepare("PRAGMA integrity_check").get())[0], "ok"
 
 // ── Content database (regadrive-content, migrations-content/) ─────────────
 // Its schema is the content part of ./migrations, copied statement by statement: the same rules protect it.
-const stmts = (sql) => sql.split("\n").map((l) => l.replace(/\s*--.*$/, "")).join("\n").split(/;\s*(?:\n|$)/).map((x) => x.replace(/\s+/g, " ").trim()).filter(Boolean);
+// Line endings are normalised first: a Windows checkout has CRLF files while git stores LF.
+const stmts = (sql) => sql.replace(/\r\n?/g, "\n").split("\n").map((l) => l.replace(/\s*--.*$/, "")).join("\n").split(/;\s*(?:\n|$)/).map((x) => x.replace(/\s+/g, " ").trim()).filter(Boolean);
 const cfiles = readdirSync("migrations-content").filter((f) => f.endsWith(".sql")).sort();
 assert.deepEqual(cfiles, ["0001_content_base.sql", "0002_content_import.sql", "0003_license_rights_media_provenance.sql", "0004_italy_inventory.sql", "0005_italy_catalogue_staging.sql", "0006_italy_catalogue_chapter_draft.sql"], "content migrations: fixed, ordered set");
 const orig = (f) => stmts(readFileSync(`migrations/${f}`, "utf8"));

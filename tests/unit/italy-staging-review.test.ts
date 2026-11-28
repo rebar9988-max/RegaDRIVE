@@ -39,7 +39,10 @@ const decision = { sourceId: "21810", language: "ckb", status: "approved", revie
 describe("staged Italian catalogue review", () => {
   it("parses list queries within bounds", () => {
     const q = parseStagingQuery(new URLSearchParams("offset=-5&limit=9999&chapter=17&status=done&q=%20segnale%20"));
-    expect(q).toEqual({ offset: 0, limit: STAGING_PAGE_MAX, chapter: null, status: null, search: "segnale", checks: null });
+    expect(q).toEqual({ offset: 0, limit: STAGING_PAGE_MAX, chapter: null, status: null, search: "segnale", checks: null, queue: null });
+    expect(parseStagingQuery(new URLSearchParams("queue=ready")).queue).toBe("ready");
+    expect(parseStagingQuery(new URLSearchParams("")).limit).toBe(25);
+    expect(parseStagingQuery(new URLSearchParams("queue=all")).queue).toBeNull();
     expect(parseStagingQuery(new URLSearchParams("checks=errors")).checks).toBe("errors");
     expect(parseStagingQuery(new URLSearchParams("checks=approved")).checks).toBeNull();
     expect(parseStagingQuery(new URLSearchParams("chapter=8&status=pending")).chapter).toBe(8);
@@ -112,5 +115,18 @@ describe("staged Italian catalogue review", () => {
     expect(sum).toMatchObject({ total: 2, publishable: 0, readyForHumanReview: 2, checks: { rowsWithErrors: 0, rowsClean: 2 } });
     expect(sum.rowBlockers.IMAGE_RIGHTS_UNVERIFIED).toBe(1);
     expect(sum.catalogueBlockers).toContain("TEXT_RIGHTS_UNVERIFIED");
+  });
+
+  it("lists the final-approval queue by chapter, and drops a row once it needs revision", async () => {
+    const { db } = setup();
+    const ready = await listStaging(db, parseStagingQuery(new URLSearchParams("queue=ready")));
+    expect(ready.total).toBe(2);
+    expect(ready.rows.map((r) => [r.source_id, r.chapter_draft])).toEqual([["21816", 2], ["21810", 8]]);
+    const revise = parseStagingDecision({ ...decision, sourceId: "21816", status: "needs_revision" });
+    if (typeof revise === "string") throw new Error(revise);
+    await recordStagingDecision(db, revise, "owner:test");
+    expect((await listStaging(db, parseStagingQuery(new URLSearchParams("queue=ready")))).rows.map((r) => r.source_id)).toEqual(["21810"]);
+    const sum = await summariseStaging(db);
+    expect(sum.readyForFinalApproval).toEqual({ total: 1, withWarnings: 0, byChapter: { "8": 1 } });
   });
 });

@@ -12,6 +12,9 @@ const require = createRequire(import.meta.url);
 const AXE = readFileSync(require.resolve("axe-core/axe.min.js"), "utf8");
 const PORT = 8788;
 const BASE = `http://127.0.0.1:${PORT}`;
+// Windows needs a shell to run npx (npx.cmd); Linux CI runs it directly, as before.
+const WIN = process.platform === "win32";
+const NPX = "npx";
 const OUT = "test-results";
 mkdirSync(OUT, { recursive: true });
 
@@ -33,9 +36,9 @@ const mailSink = createServer((req, res) => {
 const codeFor = (to) => /(\d{6})/.exec([...outbox].reverse().find((m) => m.to?.[0] === to)?.text ?? "")?.[1] ?? "";
 // Fresh local student database with the reviewed migrations (local only — never touches Cloudflare).
 rmSync(".wrangler/state", { recursive: true, force: true });
-execFileSync("npx", ["wrangler", "d1", "migrations", "apply", "regadrive-students", "--local", "-c", ".wrangler-e2e.json"], { stdio: "inherit", env: { ...process.env, CI: "true", WRANGLER_SEND_METRICS: "false" } });
+execFileSync(NPX, ["wrangler", "d1", "migrations", "apply", "regadrive-students", "--local", "-c", ".wrangler-e2e.json"], { stdio: "inherit", shell: WIN, env: { ...process.env, CI: "true", WRANGLER_SEND_METRICS: "false" } });
 
-const dev = spawn("npx", ["wrangler", "dev", "-c", ".wrangler-e2e.json", "--port", String(PORT), "--ip", "127.0.0.1", "--show-interactive-dev-session=false"], { stdio: ["ignore", "pipe", "pipe"], env: { ...process.env, WRANGLER_SEND_METRICS: "false" } });
+const dev = spawn(NPX, ["wrangler", "dev", "-c", ".wrangler-e2e.json", "--port", String(PORT), "--ip", "127.0.0.1", "--show-interactive-dev-session=false"], { stdio: ["ignore", "pipe", "pipe"], shell: WIN, env: { ...process.env, WRANGLER_SEND_METRICS: "false" } });
 let devLog = "";
 dev.stdout.on("data", (d) => (devLog += d));
 dev.stderr.on("data", (d) => (devLog += d));
@@ -1138,15 +1141,18 @@ try {
       row("21810", { image: "images/it_21810.jpg", chapter_confidence: "needs_review", checks: { ckb: [], kmrArab: [{ code: "SORANI_LETTER_IN_BADINI", severity: "error" }], errors: 1, warnings: 0 } }),
     ];
     const posts = [];
+    const listQueries = [];
     await ctx.route("**/api/**", async (r) => {
       const u = new URL(r.request().url());
       const json = (status, body) => r.fulfill({ status, contentType: "application/json", body: JSON.stringify(body) });
       if (u.pathname === "/api/dr/session") return json(200, { authenticated: true, email: "re•••@gmail.com", expiresAt: Date.now() + 3600000, stepUpUntil: Date.now() + 600000 });
       if (u.pathname === "/api/dr/overview") return json(200, { now: Date.now(), owner: "re•••@gmail.com", system: { app: "regadrive", version: "t", contentMode: "production", colo: null }, database: { ok: true, latencyMs: 1, name: "regadrive-db", studentData: "off", activeSessions: 1, auditEntries: 0, logins24h: 0, denied24h: 0, codesSent24h: 0, mailFailures24h: 0, backups: 0 }, features: [], ai: [], content: {}, email: { owner: "x", from: "x", provider: "Resend", configured: true }, payments: null, security: { sessions: [], steppedUp: true, stepUpUntil: Date.now() + 600000, sessionExpiresAt: Date.now() + 3600000 }, backups: [] });
       if (u.pathname === "/api/dr/italy/catalogue/summary") return json(200, { ok: true, total: 2, readyForHumanReview: 1, publishable: 0,
+        readyForFinalApproval: { total: 1, withWarnings: 0, byChapter: { "4": 1 } },
         checks: { rowsWithErrors: 1, rowsWithWarnings: 0, rowsClean: 1, byCode: { SORANI_LETTER_IN_BADINI: { ckb: 0, kmrArab: 1 }, MISSING: { ckb: 0, kmrArab: 0 } } },
         rowBlockers: { CKB_NOT_APPROVED: 2, KMR_ARAB_NOT_APPROVED: 2, AUTOMATIC_CHECK_ERROR: 1, CHAPTER_UNCONFIRMED: 1, IMAGE_RIGHTS_UNVERIFIED: 1, NEEDS_REVISION: 0 },
         catalogueBlockers: ["TEXT_RIGHTS_UNVERIFIED", "NO_EXPLANATION", "NO_LEGAL_REFERENCE", "NOT_IN_REVIEW_PIPELINE", "IMAGES_NOT_HOSTED"] });
+      if (u.pathname === "/api/dr/italy/catalogue") listQueries.push(Object.fromEntries(u.searchParams));
       if (u.pathname === "/api/dr/italy/catalogue") return json(200, { ok: true, total: 2, rows, counts: { total: 2, ckbApproved: 0, kmrArabApproved: 0, needsRevision: 0, pending: 2, chapterNeedsReview: 1 }, pageMax: 100 });
       if (u.pathname === "/api/dr/italy/catalogue/review") { posts.push(JSON.parse(r.request().postData() ?? "{}")); return json(200, { ok: true, recorded: 1, unknown: [] }); }
       if (u.pathname.startsWith("/api/dr/")) return json(404, { error: "NOT_FOUND" });
@@ -1184,6 +1190,15 @@ try {
       ["ckb", "approved", ["22578"], "Test Person", "signed-review-2026"],
       ["kmrArab", "approved", ["22578"], "Test Person", "signed-review-2026"],
     ], "one decision per language, each with the named reviewer and evidence");
+    // Final-approval queue: count from the summary, one button per chapter, opens that chapter's ready rows.
+    const queue = panel.locator("[data-testid=italy-catalogue-queue]");
+    assert.equal(await queue.locator("[data-testid=italy-catalogue-queue-total]").textContent(), "1");
+    await queue.locator("[data-testid=italy-catalogue-queue-chapter]").first().click();
+    for (let i = 0; i < 50 && !(listQueries.at(-1)?.queue === "ready"); i++) await page.waitForTimeout(100);
+    const lastQuery = listQueries.at(-1);
+    assert.deepEqual({ queue: lastQuery.queue, chapter: lastQuery.chapter, limit: lastQuery.limit }, { queue: "ready", chapter: "4", limit: "100" }, "the queue opens the chapter's ready rows, 100 per page");
+    await panel.locator("[data-testid=italy-catalogue-row]").first().waitFor();
+    assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth), false, "queue view fits iPhone");
     await page.screenshot({ path: `${OUT}/dr-italy-catalogue-iphone.png`, fullPage: false });
     assert.deepEqual(errors, []);
     await ctx.close();
@@ -1553,7 +1568,10 @@ try {
 
 } finally {
   await browser?.close();
-  dev.kill("SIGTERM");
+  // On Windows the dev server runs under a shell: end the whole process tree, or workerd keeps the
+  // local state folder locked for the next run.
+  if (WIN) { try { execFileSync("taskkill", ["/pid", String(dev.pid), "/T", "/F"], { stdio: "ignore" }); } catch { /* already gone */ } }
+  else dev.kill("SIGTERM");
   mailSink.close();
 }
 

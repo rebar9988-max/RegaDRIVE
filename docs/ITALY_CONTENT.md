@@ -230,3 +230,9 @@ named reviewer. The panel is RTL (Italian cells are LTR islands) and becomes one
 
 Images: the 3,919 extracted images are **not** uploaded anywhere. Their rights are unverified, and publishing
 unlicensed official exam content needs the owner's separate approval (`CLAUDE.md`).
+
+Final-approval queue (2026-11-28): *ڕیزی پەسەندکردنی کۆتایی* at the top of the panel lists the questions that
+are ready for a human decision — no automatic-check error, no revision request, at least one language still
+pending — with one button per draft chapter (`GET /api/dr/italy/catalogue?queue=ready&chapter=N`, ordered by
+chapter, up to 100 per page). On the delivered catalogue that is all 7,020 questions (18 of them carry a
+warning to look at). Being in the queue is not an approval; every decision still needs a named reviewer.

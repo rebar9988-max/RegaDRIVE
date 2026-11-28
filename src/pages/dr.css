@@ -263,3 +263,7 @@
   .it-cat-bulk .btn, .it-cat-pair .btn { flex: 1 1 140px; }
   .it-cat-pair { width: 100%; }
 }
+.it-cat-queue { border: 2px solid var(--primary); border-radius: 14px; padding: 10px 12px; background: var(--primary-soft); display: grid; gap: 8px; }
+.it-cat-queue h3 { margin: 0; font-size: 1rem; }
+.it-cat-queue p { margin: 0; }
+.it-cat-queue-chapters { display: flex; flex-wrap: wrap; gap: 6px; }

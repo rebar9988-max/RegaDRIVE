@@ -15,11 +15,12 @@ interface Row {
 interface ListReply { ok?: boolean; total?: number; rows?: Row[]; counts?: Record<string, number | null>; pageMax?: number; error?: string; reason?: string }
 interface Summary {
   ok?: boolean; total?: number; readyForHumanReview?: number; publishable?: number;
+  readyForFinalApproval?: { total: number; withWarnings: number; byChapter: Record<string, number> };
   checks?: { rowsWithErrors: number; rowsWithWarnings: number; rowsClean: number; byCode: Record<string, { ckb: number; kmrArab: number }> };
   rowBlockers?: Record<string, number>; catalogueBlockers?: string[];
 }
 
-const PAGE = 25;
+const PAGE_SIZES = [25, 50, 100] as const;
 const today = () => new Date().toISOString().slice(0, 10);
 const REVIEWER_KEY = "rd.dr.italyReviewer";
 
@@ -75,6 +76,8 @@ export function DrItalyCatalogue() {
   const [chapter, setChapter] = useState("");
   const [status, setStatus] = useState("");
   const [checks, setChecks] = useState("");
+  const [queue, setQueue] = useState("");
+  const [pageSize, setPageSize] = useState<number>(25);
   const [search, setSearch] = useState("");
   const [data, setData] = useState<ListReply | null>(null);
   const [summary, setSummary] = useState<Summary | null>(null);
@@ -85,10 +88,11 @@ export function DrItalyCatalogue() {
   const [selected, setSelected] = useState<Set<string>>(new Set());
 
   const load = useCallback(() => {
-    const p = new URLSearchParams({ offset: String(offset), limit: String(PAGE) });
+    const p = new URLSearchParams({ offset: String(offset), limit: String(pageSize) });
     if (chapter) p.set("chapter", chapter);
     if (status) p.set("status", status);
     if (checks) p.set("checks", checks);
+    if (queue) p.set("queue", queue);
     if (search.trim()) p.set("q", search.trim());
     fetch(`/api/dr/italy/catalogue?${p}`, { credentials: "same-origin" })
       .then(async (r) => {
@@ -97,7 +101,7 @@ export function DrItalyCatalogue() {
         else setNote(r.status === 401 ? "Sign in at /dr." : `${body.error ?? "Not available"} (HTTP ${r.status})${body.reason ? `: ${body.reason}` : ""}`);
       })
       .catch(() => setNote("Not available (offline)."));
-  }, [offset, chapter, status, checks, search]);
+  }, [offset, chapter, status, checks, queue, pageSize, search]);
   useEffect(load, [load]);
 
   const loadSummary = useCallback(() => {
@@ -146,6 +150,9 @@ export function DrItalyCatalogue() {
   const c = data?.counts ?? {};
   const total = data?.total ?? 0;
   const resetTo = (fn: () => void) => { setOffset(0); fn(); };
+  const openQueue = (ch: string) => { setOffset(0); setQueue("ready"); setStatus(""); setChecks(""); setSearch(""); setChapter(ch); setPageSize(100); };
+  const rq = summary?.readyForFinalApproval;
+  const queueChapters = Object.entries(rq?.byChapter ?? {}).sort(([a], [b]) => Number(a) - Number(b));
   return (
     <section className="card stack it-cat" data-testid="italy-catalogue-review" dir="rtl" lang="ckb">
       <h2 className="section-title">ئیتاڵیا · پێداچوونەوەی کەتەلۆگ <small lang="en" dir="ltr">Italy · catalogue review (staged, unpublished)</small></h2>
@@ -185,6 +192,22 @@ export function DrItalyCatalogue() {
         </tbody></table>
       </details>}
 
+      {rq && <section className="it-cat-queue" data-testid="italy-catalogue-queue" aria-labelledby="it-cat-queue-title">
+        <h3 id="it-cat-queue-title">ڕیزی پەسەندکردنی کۆتایی</h3>
+        <p className="small">
+          <b data-testid="italy-catalogue-queue-total">{rq.total}</b> پرسیار ئامادەن بۆ بڕیاری مرۆیی (بێ هەڵەی پشکنین، بێ داوای چاککردنەوە، لانیکەم یەک زمان چاوەڕوانە)
+          {rq.withWarnings > 0 && <> · <b>{rq.withWarnings}</b> لەوانە هۆشدارییان هەیە، سەیریان بکە</>}.
+          {" "}ڕیزبوون پەسەندکردن نییە: هەر بڕیارێک ناوی پێداچووەر و بەڵگەی دەوێت.
+        </p>
+        <div className="it-cat-queue-chapters">
+          <button type="button" className={`dr-chip${queue === "ready" && !chapter ? " on" : ""}`} aria-pressed={queue === "ready" && !chapter} onClick={() => openQueue("")}>هەمووی · <bdi dir="ltr">{rq.total}</bdi></button>
+          {queueChapters.map(([ch, n]) => <button key={ch} type="button" className="dr-chip" aria-pressed={queue === "ready" && chapter === ch} data-testid="italy-catalogue-queue-chapter" onClick={() => openQueue(ch === "0" ? "" : ch)}>
+            {ch === "0" ? "بێ بەش" : <>بەشی <bdi dir="ltr">{ch}</bdi></>} · <bdi dir="ltr">{n}</bdi>
+          </button>)}
+          {queue && <button type="button" className="dr-chip" onClick={() => resetTo(() => { setQueue(""); setPageSize(25); })}>داخستنی ڕیز ✕</button>}
+        </div>
+      </section>}
+
       <div className="it-cat-filters small">
         <label>بەش <select value={chapter} onChange={(e) => resetTo(() => setChapter(e.target.value))} data-testid="italy-catalogue-chapter">
           <option value="">هەموو</option>{Array.from({ length: 16 }, (_, i) => <option key={i + 1} value={String(i + 1)}>{i + 1}</option>)}
@@ -194,6 +217,9 @@ export function DrItalyCatalogue() {
         </select></label>
         <label>پشکنین <select value={checks} onChange={(e) => resetTo(() => setChecks(e.target.value))} data-testid="italy-catalogue-checks">
           <option value="">هەموو</option><option value="clean">پاک (ئامادە بۆ پێداچوونەوە)</option><option value="warnings">هۆشداری</option><option value="errors">هەڵە</option>
+        </select></label>
+        <label>لە هەر لاپەڕەیەک <select value={pageSize} onChange={(e) => resetTo(() => setPageSize(Number(e.target.value)))} data-testid="italy-catalogue-page-size">
+          {PAGE_SIZES.map((n) => <option key={n} value={n}>{n}</option>)}
         </select></label>
         <label className="grow">گەڕان <input value={search} onChange={(e) => resetTo(() => setSearch(e.target.value))} placeholder="ID یان دەقی ئیتاڵی" /></label>
       </div>
@@ -247,9 +273,9 @@ export function DrItalyCatalogue() {
       </tbody></table>}
 
       <div className="it-cat-pager small">
-        <button type="button" className="btn" disabled={offset === 0} onClick={() => setOffset(Math.max(0, offset - PAGE))}>‹ پێشوو</button>
-        <span><bdi dir="ltr">{total === 0 ? 0 : offset + 1}–{Math.min(offset + PAGE, total)} / {total}</bdi></span>
-        <button type="button" className="btn" disabled={offset + PAGE >= total} onClick={() => setOffset(offset + PAGE)}>دواتر ›</button>
+        <button type="button" className="btn" disabled={offset === 0} onClick={() => setOffset(Math.max(0, offset - pageSize))}>‹ پێشوو</button>
+        <span><bdi dir="ltr">{total === 0 ? 0 : offset + 1}–{Math.min(offset + pageSize, total)} / {total}</bdi></span>
+        <button type="button" className="btn" disabled={offset + pageSize >= total} onClick={() => setOffset(offset + pageSize)}>دواتر ›</button>
       </div>
     </section>
   );

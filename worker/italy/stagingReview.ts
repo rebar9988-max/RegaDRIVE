@@ -16,11 +16,19 @@ const STATUSES: readonly StagingStatus[] = ["pending", "needs_revision", "approv
 /** Filter on the automatic checks: rows with an error, rows with only warnings, or rows with neither. */
 export type StagingChecksFilter = "errors" | "warnings" | "clean";
 const CHECK_FILTERS: readonly StagingChecksFilter[] = ["errors", "warnings", "clean"];
-export interface StagingQuery { offset: number; limit: number; chapter: number | null; status: StagingStatus | null; search: string; checks: StagingChecksFilter | null }
+/**
+ * `queue=ready`: the final-approval queue — rows with no automatic-check error, no revision request, and at
+ * least one language still pending; ordered by draft chapter so the owner can work chapter by chapter.
+ * Being in the queue is not an approval: each decision still needs a named reviewer.
+ */
+export type StagingQueue = "ready";
+export interface StagingQuery { offset: number; limit: number; chapter: number | null; status: StagingStatus | null; search: string; checks: StagingChecksFilter | null; queue: StagingQueue | null }
 
 export function parseStagingQuery(params: URLSearchParams): StagingQuery {
   const int = (key: string, fallback: number) => {
-    const n = Number(params.get(key));
+    const raw = params.get(key);
+    if (raw === null || raw.trim() === "") return fallback; // Number(null) is 0, not "absent"
+    const n = Number(raw);
     return Number.isInteger(n) && n >= 0 ? n : fallback;
   };
   const chapter = int("chapter", 0);
@@ -32,6 +40,7 @@ export function parseStagingQuery(params: URLSearchParams): StagingQuery {
     status: STATUSES.includes(status as StagingStatus) ? (status as StagingStatus) : null,
     search: (params.get("q") ?? "").trim().slice(0, 64),
     checks: CHECK_FILTERS.includes(params.get("checks") as StagingChecksFilter) ? (params.get("checks") as StagingChecksFilter) : null,
+    queue: params.get("queue") === "ready" ? "ready" : null,
   };
 }
 
@@ -60,24 +69,30 @@ export async function listStaging(db: D1Like, q: StagingQuery) {
   const binds: unknown[] = [];
   if (q.chapter) { where.push("chapter_draft = ?"); binds.push(q.chapter); }
   if (q.status) { where.push("(ckb_status = ? OR kmr_arab_status = ?)"); binds.push(q.status, q.status); }
+  if (q.queue === "ready") where.push("(ckb_status = 'pending' OR kmr_arab_status = 'pending') AND ckb_status <> 'needs_revision' AND kmr_arab_status <> 'needs_revision'");
   if (q.search) {
     if (/^\d+$/.test(q.search)) { where.push("source_id = ?"); binds.push(q.search); }
     else { where.push("question_it LIKE ?"); binds.push(`%${q.search.replace(/[%_]/g, "")}%`); }
   }
   const clause = where.join(" AND ");
+  const order = q.queue === "ready" ? "chapter_draft, batch, source_id" : "batch, source_id";
   let total: number;
   let results: StagingRow[];
-  if (q.checks) {
+  if (q.checks || q.queue) {
     // The checks are computed from the text, so this filter reads the matching rows' text and pages in
     // memory: at most 7,020 short rows, and only when the owner asks for it.
     const all = await db.prepare(
-      `SELECT source_id, question_it, ckb, kmr_arab FROM italy_catalogue_staging WHERE ${clause} ORDER BY batch, source_id`,
+      `SELECT source_id, question_it, ckb, kmr_arab FROM italy_catalogue_staging WHERE ${clause} ORDER BY ${order}`,
     ).bind(...binds).all<{ source_id: string; question_it: string; ckb: string | null; kmr_arab: string | null }>();
-    const ids = all.results.filter((r) => matchesChecks(checkRow(r), q.checks!)).map((r) => r.source_id);
+    const ids = all.results.filter((r) => {
+      const checks = checkRow(r);
+      if (q.queue === "ready" && checks.errors > 0) return false;
+      return q.checks ? matchesChecks(checks, q.checks) : true;
+    }).map((r) => r.source_id);
     total = ids.length;
     const page = ids.slice(q.offset, q.offset + q.limit);
     results = page.length === 0 ? [] : (await db.prepare(
-      `SELECT ${ROW_COLUMNS} FROM italy_catalogue_staging WHERE country = 'IT' AND source_id IN (${page.map(() => "?").join(",")}) ORDER BY batch, source_id`,
+      `SELECT ${ROW_COLUMNS} FROM italy_catalogue_staging WHERE country = 'IT' AND source_id IN (${page.map(() => "?").join(",")}) ORDER BY ${order}`,
     ).bind(...page).all<StagingRow>()).results;
   } else {
     total = (await db.prepare(`SELECT COUNT(*) AS total FROM italy_catalogue_staging WHERE ${clause}`).bind(...binds).first<{ total: number }>())?.total ?? 0;
@@ -100,7 +115,7 @@ export async function listStaging(db: D1Like, q: StagingQuery) {
 /** Automatic checks and publication blockers over the whole staged catalogue (read-only). */
 export async function summariseStaging(db: D1Like) {
   const { results } = await db.prepare(
-    `SELECT question_it, ckb, kmr_arab, image, ckb_status, kmr_arab_status, chapter_confidence
+    `SELECT question_it, ckb, kmr_arab, image, ckb_status, kmr_arab_status, chapter_confidence, chapter_draft
      FROM italy_catalogue_staging WHERE country = 'IT'`,
   ).all<BlockerInput>();
   return summarise(results);
